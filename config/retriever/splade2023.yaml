@@ -1,6 +1,0 @@
-init_args: 
-  _target_: models.retrievers.splade.Splade
-  model_name: naver/splade-v3
-  max_len: 256
-batch_size: 128
-
