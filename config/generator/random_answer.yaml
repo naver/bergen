@@ -1,0 +1,5 @@
+init_args: 
+  _target_: models.generators.random_answer.RandomAnswer
+  model_name: "random_answer"
+  max_length: null
+batch_size: 1024

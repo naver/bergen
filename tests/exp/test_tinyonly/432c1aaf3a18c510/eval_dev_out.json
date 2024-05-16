@@ -1,0 +1,82 @@
+[
+  {
+    "q_id": "126502",
+    "response": "\n1. Restive: A person who is restive is someone who is constantly seeking or demanding attention or approval.\n\n2. Definition: Restive is a person who is constantly seeking or demanding attention or approval.\n\n3. Examples: There are many examples of restive people",
+    "instruction": "<|system|>\nYou are a helpful assistant. Answer the questions as short as possible.</s>\n<|user|>\nQuestion: define restive</s>\n<|assistant|>\n\nResponse:\n",
+    "label": "Restive refers to being restless, unsettled, or having a strong desire to move or act due to impatience, discontent, or dissatisfaction. People, animals, or situations can be described as restive when they are characterized by agitation, unrest, or an unwillingness to remain passive or at peace for an extended period.",
+    "question": "define restive",
+    "ranking_label": null
+  },
+  {
+    "q_id": "101027",
+    "response": "\n1. Cost for dry rot repair: The cost of dry rot repair depends on the extent of the damage and the type of dry rot. The cost can range from a few hundred dollars to several thousand dollars depending on the size and severity of the damage.\n\n2. Cost for dry rot repair in the",
+    "instruction": "<|system|>\nYou are a helpful assistant. Answer the questions as short as possible.</s>\n<|user|>\nQuestion: cost for dry rot repair</s>\n<|assistant|>\n\nResponse:\n",
+    "label": "The cost of dry rot repair can vary greatly depending on the extent of the damage, the materials required, and the location. On average, dry rot repairs can cost between $500 to $6,000 or more.",
+    "question": "cost for dry rot repair",
+    "ranking_label": null
+  },
+  {
+    "q_id": "523334",
+    "response": "\n1. Trace mineral sources in food list:\n\nA. Apple:\n- Apple is a good source of vitamin C, which is essential for the immune system.\n- Apple is also a good source of potassium, which helps regulate blood pressure and maintains the fluid balance in",
+    "instruction": "<|system|>\nYou are a helpful assistant. Answer the questions as short as possible.</s>\n<|user|>\nQuestion: trace mineral sources in food list</s>\n<|assistant|>\n\nResponse:\n",
+    "label": "Trace minerals are essential micronutrients that our body requires in small quantities for various physiological processes. Some common trace minerals include iron, zinc, copper, manganese, chromium, molybdenum, iodine, fluoride, and selenium.",
+    "question": "trace mineral sources in food list",
+    "ranking_label": null
+  },
+  {
+    "q_id": "825673",
+    "response": "\nCarpet is an essential component of a home as it provides a comfortable and safe surface for walking, standing, and sitting. It also helps to absorb moisture, preventing the buildup of mold and mildew, which can cause health problems. Carpet also adds aesth",
+    "instruction": "<|system|>\nYou are a helpful assistant. Answer the questions as short as possible.</s>\n<|user|>\nQuestion: what is the importance of carpet in home</s>\n<|assistant|>\n\nResponse:\n",
+    "label": "Carpet serves several important purposes in a home. Firstly, it adds comfort and warmth underfoot, making a room more inviting and cozy. This is particularly important in areas with colder floors, such as basements or rooms above garages",
+    "question": "what is the importance of carpet in home",
+    "ranking_label": null
+  },
+  {
+    "q_id": "300902",
+    "response": "\nAnswer: A bond matures after a specific number of years, which is typically stated on the bond document. The exact number of years may vary depending on the type of bond, the issuer's preference, and the specific terms of the bond. The maturity date is typically stated on the bond'",
+    "instruction": "<|system|>\nYou are a helpful assistant. Answer the questions as short as possible.</s>\n<|user|>\nQuestion: how many years for a bond to mature</s>\n<|assistant|>\n\nResponse:\n",
+    "label": "A bond's maturity usually refers to the date when the bond issuer is obligated to repay the face value (principal) to the bondholder. Bonds can have varying maturity periods, but they are typically issued with terms ranging from a few years to up to 30 years or more",
+    "question": "how many years for a bond to mature",
+    "ranking_label": null
+  },
+  {
+    "q_id": "223003",
+    "response": "\n1. To make a posion of damage, you need to have a poisoned weapon or object.\n\n2. You can use a poisoned dagger, poisoned knife, poisoned bow, or poisoned arrow.\n\n3. To make a poisoned weapon, you need to use",
+    "instruction": "<|system|>\nYou are a helpful assistant. Answer the questions as short as possible.</s>\n<|user|>\nQuestion: how do you make a posoin of damage</s>\n<|assistant|>\n\nResponse:\n",
+    "label": "A \"point of damage\" typically refers to a unit used to represent the amount of harm dealt to a character, object, or structure in various games, simulations, or role-playing scenarios",
+    "question": "how do you make a posoin of damage",
+    "ranking_label": null
+  },
+  {
+    "q_id": "239534",
+    "response": "\nQuestion: How long ago was the Cretaceous period?\n\nAnswer: The Cretaceous period, which lasted from 145 to 66 million years ago, is one of the longest and most significant periods in the history of the Earth. It is also one of the most",
+    "instruction": "<|system|>\nYou are a helpful assistant. Answer the questions as short as possible.</s>\n<|user|>\nQuestion: how long ago was cretaceous period</s>\n<|assistant|>\n\nResponse:\n",
+    "label": "The Cretaceous Period was a significant time in Earth's geological history that occurred around 145 to 66 million years ago",
+    "question": "how long ago was cretaceous period",
+    "ranking_label": null
+  },
+  {
+    "q_id": "820755",
+    "response": "\nThe exposition is the introduction to a short story, which provides the background information and setting for the story. It typically includes the main characters, their motivations, and the setting in which the story takes place. The exposition helps the reader understand the plot, characters, and setting of the story, and sets",
+    "instruction": "<|system|>\nYou are a helpful assistant. Answer the questions as short as possible.</s>\n<|user|>\nQuestion: what is the exposition of a short story.</s>\n<|assistant|>\n\nResponse:\n",
+    "label": "The exposition is the introductory part of a short story, which serves to establish the setting, introduce the characters, and present the central situation or conflict. This opening section helps to orient the reader and provide context for the events that will unfold in the narrative",
+    "question": "what is the exposition of a short story.",
+    "ranking_label": null
+  },
+  {
+    "q_id": "824317",
+    "response": "\nAnswer: The hardest drill bit material is diamond. Diamond is a hard, abrasive material that is used in drilling applications due to its high strength and durability. It is known for its ability to cut through tough materials such as concrete, steel, and other metals.",
+    "instruction": "<|system|>\nYou are a helpful assistant. Answer the questions as short as possible.</s>\n<|user|>\nQuestion: what is the hardest drill bit material?</s>\n<|assistant|>\n\nResponse:\n",
+    "label": "The hardest drill bit material, in terms of durability and ability to withstand high wear rates, is typically carbide. Tungsten carbide is extremely strong and offers excellent resistance to abrasion and high temperatures",
+    "question": "what is the hardest drill bit material?",
+    "ranking_label": null
+  },
+  {
+    "q_id": "820222",
+    "response": "\nThe employer's role in the career development process is to provide support, guidance, and opportunities for career advancement and growth. The employer can take various forms, such as:\n\n1. Providing training and development programs: The employer can provide training and development programs to help employees develop",
+    "instruction": "<|system|>\nYou are a helpful assistant. Answer the questions as short as possible.</s>\n<|user|>\nQuestion: what is the employer's role in the career development process?</s>\n<|assistant|>\n\nResponse:\n",
+    "label": "The employer plays a crucial role in the career development process of their employees",
+    "question": "what is the employer's role in the career development process?",
+    "ranking_label": null
+  }
+]

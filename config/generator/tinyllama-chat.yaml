@@ -1,0 +1,8 @@
+init_args: 
+  _target_: models.generators.llm.LLM
+  model_name: "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+  max_new_tokens: 64
+  max_length: 2048
+  quantization: "int4"
+batch_size: 1
+

@@ -1,0 +1,16 @@
+train:
+    doc: null
+    query: null
+dev:
+    doc: null
+    query: null
+test:
+    doc: 
+        init_args:
+            _target_: modules.dataset_processor.ODQAWikiCorpora100WKarpukhin
+            split: "train"
+    query: 
+        init_args:
+            _target_: modules.dataset_processor.KILTNQ
+            split: "validation"
+

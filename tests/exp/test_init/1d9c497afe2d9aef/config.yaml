@@ -1,0 +1,40 @@
+retrieve_top_k: 10
+rerank_top_k: 5
+generation_top_k: 5
+pyserini_num_threads: 4
+run_name: null
+dataset_folder: tests/dataset/test_init/
+index_folder: tests/index/test_init/
+runs_folder: tests/run/test_init/
+experiments_folder: tests/exp/test_init
+processing_num_proc: 40
+overwrite_run: true
+dataset:
+  train:
+    doc: null
+    query: null
+  dev:
+    doc:
+      init_args:
+        _target_: modules.dataset_processor.UT1Docs
+        split: fake
+    query:
+      init_args:
+        _target_: modules.dataset_processor.UT1Queries
+        split: faketest
+  test:
+    doc:
+      init_args:
+        _target_: modules.dataset_processor.UT1Docs
+        split: fake
+    query:
+      init_args:
+        _target_: modules.dataset_processor.UT1Queries
+        split: faketest
+prompt:
+  system: You are a helpful assistant. Your task is to extract relevant information
+    from provided documents and to answer to questions as short as possible.
+  user: f"Background:\n{docs}\n\nQuestion:\ {question}"
+  system_without_docs: You are a helpful assistant. Answer the questions as short
+    as possible.
+  user_without_docs: f"Question:\ {question}"

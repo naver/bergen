@@ -1,0 +1,3 @@
+init_args: 
+  _target_: models.retrievers.oracle_provenance.OracleProvenance
+  model_name: "oracle_provenance"

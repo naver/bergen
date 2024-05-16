@@ -1,0 +1,29 @@
+train:
+    doc: 
+        init_args:
+            _target_: modules.dataset_processor.KILT100w
+            split: "full"
+    query: 
+        init_args:
+            _target_: modules.dataset_processor.SCIQ
+            split: "train"
+dev:
+    doc: 
+        init_args:
+            _target_: modules.dataset_processor.KILT100w
+            split: "full"
+    query: 
+        init_args:
+            _target_: modules.dataset_processor.SCIQ
+            split: "test" #Not Clear if we should use valid 
+
+test:
+    doc: 
+        init_args:
+            _target_: modules.dataset_processor.KILT100w
+            split: "full"
+    query: 
+        init_args:
+            _target_: modules.dataset_processor.SCIQ
+            split: "test"
+

@@ -1,0 +1,25 @@
+train:
+    doc: 
+        init_args:
+            _target_: modules.dataset_processor.ReproduceWikiCorpora63
+            split: "train"
+            data_path: "/beegfs/scratch/user/nchirkov/myrag/data/wiki_jan2024-6-3.tsv"
+    
+    query: 
+        init_args:
+            _target_: modules.dataset_processor.KILTNQ
+            split: "train"
+dev:
+    doc: 
+        init_args:
+            _target_: modules.dataset_processor.ReproduceWikiCorpora63
+            split: "train"
+            data_path: "/beegfs/scratch/user/nchirkov/myrag/data/wiki_jan2024-6-3.tsv"
+    
+    query: 
+        init_args:
+            _target_: modules.dataset_processor.KILTNQ
+            split: "validation"
+test:
+    doc: null
+    query: null

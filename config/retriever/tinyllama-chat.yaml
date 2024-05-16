@@ -1,0 +1,5 @@
+init_args: 
+  _target_: models.retrievers.repllama.RepLlama
+  model_name: "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+batch_size: 1024
+batch_size_sim: 256

@@ -1,0 +1,22 @@
+train:
+    doc:
+        init_args:
+            _target_: modules.dataset_processor.KILT100w
+            split: "full"
+    query: 
+        init_args:
+            _target_: modules.dataset_processor.ASQA
+            split: "train"
+dev:
+    doc: 
+        init_args:
+            _target_: modules.dataset_processor.KILT100w
+            split: "full"
+    
+    query: 
+        init_args:
+            _target_: modules.dataset_processor.ASQA
+            split: "dev"
+test:
+    doc: null
+    query: null

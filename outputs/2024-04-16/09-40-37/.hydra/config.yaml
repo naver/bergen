@@ -1,0 +1,57 @@
+retrieve_top_k: 50
+rerank_top_k: 50
+generation_top_k: 5
+pyserini_num_threads: 20
+run_name: null
+dataset_folder: /beegfs/scratch/project/calmar/rag-benchmark/V0/datasets/
+index_folder: /beegfs/scratch/project/calmar/rag-benchmark/V0/indexes/
+runs_folder: /beegfs/scratch/project/calmar/rag-benchmark/V0/runs/
+experiments_folder: experiments_v3/
+processing_num_proc: 40
+retriever:
+  init_args:
+    _target_: models.retrievers.dense.Dense
+    model_name: Shitao/RetroMAE_MSMARCO_distill
+    max_len: 256
+    pooler:
+      _target_: models.retrievers.dense.ClsPooler
+    similarity:
+      _target_: models.retrievers.dense.DotProduct
+  batch_size: 464
+reranker:
+  init_args:
+    _target_: models.rerankers.crossencoder.CrossEncoder
+    model_name: naver/trecdl22-crossencoder-debertav3
+    max_len: 256
+  batch_size: 256
+generator:
+  init_args:
+    _target_: models.generators.llm.LLM
+    model_name: meta-llama/Llama-2-7b-chat-hf
+    max_new_tokens: 128
+    max_length: 2048
+    quantization: int4
+  batch_size: 1
+dataset:
+  train:
+    doc: null
+    query: null
+  dev:
+    doc:
+      init_args:
+        _target_: modules.dataset_processor.KILT100w
+        split: full
+    query:
+      init_args:
+        _target_: modules.dataset_processor.KILTWow
+        split: validation
+  test:
+    doc: null
+    query: null
+prompt:
+  system: You are a helpful assistant. Your task is to extract relevant information
+    from provided documents and to answer to questions as short as possible.
+  user: f"Background:\n{docs}\n\nQuestion:\ {question}"
+  system_without_docs: You are a helpful assistant. Answer the questions as short
+    as possible.
+  user_without_docs: f"Question:\ {question}"

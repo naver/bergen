@@ -1,0 +1,25 @@
+train:
+    doc: null
+    query: null
+dev:
+    doc: 
+        init_args:
+            _target_: modules.dataset_processor.UT1Docs
+            split: "fake"
+    
+    query: 
+        init_args:
+            _target_: modules.dataset_processor.UT1Queries
+            split: "faketest"
+
+test:
+    doc: 
+        init_args:
+            _target_: modules.dataset_processor.UT1Docs
+            split: "fake"
+    
+    query: 
+        init_args:
+            _target_: modules.dataset_processor.UT1Queries
+            split: "faketest"
+

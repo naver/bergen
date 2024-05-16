@@ -1,0 +1,9 @@
+init_args: 
+  _target_: models.retrievers.dense.Dense
+  model_name: "intfloat/simlm-base-msmarco-finetuned"
+  max_len: 256
+  pooler:
+    _target_: models.retrievers.dense.ClsPooler
+  similarity: 
+    _target_: models.retrievers.dense.CosineSim
+batch_size: 464

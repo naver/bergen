@@ -1,0 +1,4 @@
+- retriever=retromae
+- reranker=debertav3
+- generator=llama-2-7b-chat
+- dataset=kilt_wow

@@ -1,0 +1,12 @@
+init_args: 
+  _target_: models.retrievers.dense.Dense
+  model_name: "intfloat/e5-large-v2"
+  max_len: 256
+  pooler:
+    _target_: models.retrievers.dense.MeanPooler
+  similarity: 
+    _target_: models.retrievers.dense.CosineSim
+  prompt_q: "query: "
+  prompt_d: "passage: "
+  
+batch_size: 464

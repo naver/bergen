@@ -1,0 +1,11 @@
+init_args: 
+  _target_: models.retrievers.dense.Dense
+  model_name: "Luyu/co-condenser-marco-retriever"
+  max_len: 256
+  pooler:
+    _target_: models.retrievers.dense.ClsPooler
+  similarity: 
+    _target_: models.retrievers.dense.DotProduct
+  
+
+batch_size: 464

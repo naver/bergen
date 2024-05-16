@@ -1,0 +1,4 @@
+system: "You are a helpful assistant. Your task is to extract relevant information from provided documents and to answer to questions as short as possible."
+user: f"Question:\ {question}\nBackground:\n"
+system_without_docs: "You are a helpful assistant. Answer the questions as short as possible."
+user_without_docs: f"Question:\ {question}"

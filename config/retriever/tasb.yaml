@@ -1,0 +1,10 @@
+init_args: 
+  _target_: models.retrievers.dense.Dense
+  model_name: "sebastian-hofstaetter/distilbert-dot-tas_b-b256-msmarco"
+  max_len: 256
+  pooler:
+    _target_: models.retrievers.dense.ClsPooler
+  similarity: 
+    _target_: models.retrievers.dense.DotProduct
+batch_size: 648
+batch_size_sim: 256
