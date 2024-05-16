@@ -399,7 +399,7 @@ class RAG:
 
         print("Preprocessing data...")
         train_test_datasets['train'] = Tokenized_Sorted_Dataset(train_test_datasets['train'], self.generator.model, training=True)
-        train_test_datasets['test'] = Tokenized_Sorted_Dataset(train_test_datasets['test'], self.generator.model, training=True)
+        train_test_datasets['test'] = Tokenized_Sorted_Dataset(train_test_datasets['test'], self.generator.model, training=False)
         call_back_data = Tokenized_Sorted_Dataset(train_test_datasets['test'], self.generator.model, training=False)
         call_back_data_select = DataLoader(call_back_data.select(range(self.training_config.generate_test_samples)), batch_size=self.training_config.trainer.per_device_eval_batch_size, collate_fn=lambda l: self.generator.model.collate_fn(l, eval=True))
 
