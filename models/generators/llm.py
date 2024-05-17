@@ -21,7 +21,8 @@ class LLM(Generator):
                 max_doc_len=100,
                 max_length=None,
                 prompt=None,
-                quantization=None
+                quantization=None,
+                attn_implementation="flash_attention_2"
                  ):
 
         # device_index = Accelerator().process_index
@@ -71,7 +72,7 @@ class LLM(Generator):
             self.model = model_class.from_pretrained(
                 self.model_name,
                 quantization_config=quant_config,
-                attn_implementation="flash_attention_2",
+                attn_implementation=attn_implementation,
                 torch_dtype=torch.bfloat16,
                 device_map='auto',
             )
@@ -87,7 +88,7 @@ class LLM(Generator):
             self.model = model_class.from_pretrained(
                 self.model_name,
                 quantization_config=quant_config,
-                attn_implementation="flash_attention_2",
+                attn_implementation=attn_implementation,
                 torch_dtype=torch.bfloat16,
                 device_map='auto',
             )
