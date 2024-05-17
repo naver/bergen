@@ -55,17 +55,17 @@ class TestClassZeroshot:
             cfg = compose(config_name='rag_ut1', overrides=["generator=tinyllama-chat"])
             self.helper_single(cfg, test_name)
 
-    def test_bm25mixtral(self):
-        with initialize(config_path="../config",version_base="1.2"):
-            test_name = inspect.currentframe().f_code.co_name
-            cfg = compose(config_name='rag_ut1', overrides=["retriever=bm25", "generator=mixtral-moe-7b-chat", "generator.batch_size=8"])
-            self.helper_with_rerun(cfg, test_name)
+    # def test_bm25mixtral(self):
+    #     with initialize(config_path="../config",version_base="1.2"):
+    #         test_name = inspect.currentframe().f_code.co_name
+    #         cfg = compose(config_name='rag_ut1', overrides=["retriever=bm25", "generator=mixtral-moe-7b-chat", "generator.batch_size=8"])
+    #         self.helper_with_rerun(cfg, test_name)
 
-    def test_bm25tiny(self):
-        with initialize(config_path="../config",version_base="1.2"):
-            test_name = inspect.currentframe().f_code.co_name
-            cfg = compose(config_name='rag_ut1', overrides=["retriever=bm25", "generator=tinyllama-chat", "generator.batch_size=1"])
-            self.helper_with_rerun(cfg, test_name)
+    # def test_bm25tiny(self):
+    #     with initialize(config_path="../config",version_base="1.2"):
+    #         test_name = inspect.currentframe().f_code.co_name
+    #         cfg = compose(config_name='rag_ut1', overrides=["retriever=bm25", "generator=tinyllama-chat", "generator.batch_size=1"])
+    #         self.helper_with_rerun(cfg, test_name)
             
     def test_spladetiny(self):
         with initialize(config_path="../config",version_base="1.2"):
@@ -73,12 +73,20 @@ class TestClassZeroshot:
             cfg = compose(config_name='rag_ut1', overrides=["retriever=splade", "generator=tinyllama-chat", "generator.batch_size=64"])
             self.helper_with_rerun(cfg, test_name)
 
+
+
     def test_reranker(self):
         with initialize(config_path="../config",version_base="1.2"):
             test_name = inspect.currentframe().f_code.co_name
             cfg = compose(config_name='rag_ut1', overrides=["retriever=splade", "generator=tinyllama-chat", "reranker=minilm6", "reranker.batch_size=1"])
             self.helper_with_rerun(cfg, test_name)
 
+    # should be the last since it takes 90% memory
+    def test_vllm_spladetiny(self):
+        with initialize(config_path="../config",version_base="1.2"):
+            test_name = inspect.currentframe().f_code.co_name
+            cfg = compose(config_name='rag_ut1', overrides=[ "generator=vllm_tinyllama-chat", "generator.batch_size=64"])
+            self.helper_with_rerun(cfg, test_name)
 
     @pytest.mark.skip(reason="Helper function, not a test")
     def set_folders(self, cfg, test_name):

@@ -1,6 +1,7 @@
 init_args: 
   _target_: models.generators.vllm.LLM
-  model_name: "Upstage/SOLAR-10.7B-Instruct-v1.0"
-  max_new_tokens: 128
+  model_name: "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+  max_new_tokens: 64
   max_length: 2048
 batch_size: 256
+

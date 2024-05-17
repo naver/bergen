@@ -35,14 +35,8 @@ class LLM(Generator):
         self.tokenizer = AutoTokenizer.from_pretrained(model_name, padding_side='left')
         self.tokenizer.pad_token = self.tokenizer.bos_token
 
-        quant_config = { "zero_point": True, "q_group_size": 128, "w_bit": 4, "version": "GEMM" }
-        # model = AutoAWQForCausalLM.from_pretrained(model_path, **{
-        #             "low_cpu_mem_usage": True,
-        #             "device_map": "auto"
-        #             })
-        # model.quantize(tokenizer, quant_config=quant_config)
         if self.quantization is None:
-            self.model = vllm(model=self.model_name,tensor_parallel_size=torch.cuda.device_count(),dtype=torch.float16,gpu_memory_utilization=0.9,max_model_len=4096,enforce_eager=False,kv_cache_dtype="fp8_e5m2")        
+            self.model = vllm(model=self.model_name,tensor_parallel_size=torch.cuda.device_count(),dtype=torch.float16,gpu_memory_utilization=0.9,max_model_len=self.max_length,enforce_eager=True,kv_cache_dtype="fp8")        
         else:
             self.model = vllm(model=self.model_name,tensor_parallel_size=torch.cuda.device_count(),quantization=self.quantization)
         self.sampling_params =  SamplingParams(temperature=1,max_tokens=max_new_tokens,best_of=1, top_p=1, top_k=-1)
