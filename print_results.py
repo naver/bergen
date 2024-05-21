@@ -94,7 +94,7 @@ def main(args):
                             ranking_metric = get_ranking_metrics(file_in_subfolder)
                         # except:
                         #     print(f'Failed to load {current_folder}!')       
-                    ltuple.append([current_folder, retriever, ranking_metric, reranker, generator, prompt, gen_time, dataset_query, retrieve_top_k, rerank_top_k, m, em, f1, precision, recall, rouge1, rouge2, rougel, bem, mix7b])
+                    ltuple.append([current_folder.name, retriever, ranking_metric, reranker, generator,  gen_time, dataset_query, retrieve_top_k, rerank_top_k, m, em, f1, precision, recall, rouge1, rouge2, rougel, bem, mix7b])
                     #ltuple.append([current_folder, retriever, reranker, generator, gen_time, dataset_query, retrieve_top_k, rerank_top_k, m, em, f1, precision, recall, rouge1, rouge2, rougel, bem, ll7b, ll7bs, ll13b, ll13b_short, ll13bswoq, mix7b, mix7bswoq])
         except:
             print(f'Skipping {current_folder} due to parsing errors!')
@@ -103,7 +103,7 @@ def main(args):
         print(f'No results in folder "{args.folder}" yet!')
         exit()
     df= pd.DataFrame(ltuple)
-    df.columns = ['exp_folder', 'Retriever', 'P_1', 'Reranker', 'Generator', 'prompt', 'gen_time', 'query_dataset', "r_top", "rr_top", "M", "EM", "F1", "P", "R", "Rg-1", "Rg-2", "Rg-L", "BEM", "Mix7b"]
+    df.columns = ['exp_folder', 'Retriever', 'P_1', 'Reranker', 'Generator',  'gen_time', 'query_dataset', "r_top", "rr_top", "M", "EM", "F1", "P", "R", "Rg-1", "Rg-2", "Rg-L", "BEM", "Mix7b"]
     #df.columns = ['exp_folder', 'Retriever', 'Reranker', 'Generator', 'gen_time', 'query_dataset', "r_top", "rr_top", "M", "EM", "F1", "P", "R", "Rg-1", "Rg-2", "Rg-L", "BEM", "ll7b", "ll7bs", "ll13b", "ll13bs","ll13bswoq" , "mix7b", "mix7bswoq"]
 
     df=df.sort_values(by=[args.sort])
