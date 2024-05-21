@@ -14,10 +14,10 @@ rerank_top_k: 50
 generation_top_k: 5
 pyserini_num_threads: 20
 run_name: null
-dataset_folder: '/local/calmar/rag/datasets/'
-index_folder: '/local/calmar/rag/indexes/'
+dataset_folder: 'datasets/'
+index_folder: 'indexes/'
 runs_folder: 'runs/'
-experiments_folder: 'experiments_emb/'
+experiments_folder: 'experiments/'
 processing_num_proc: 40
 hydra:
     job:
