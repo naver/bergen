@@ -28,7 +28,6 @@ class LLM(Generator):
         # device_index = Accelerator().process_index
         # device_map = {"": device_index}
 
-        print(model_name)
         self.max_length = max_length
         self.model_name = model_name
         self.max_doc_len = max_doc_len
