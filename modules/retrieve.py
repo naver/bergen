@@ -37,7 +37,6 @@ class Retrieve:
         dataset = dataset[query_or_doc]
         # if dataset has not been encoded before
         if not os.path.exists(index_path) or self.continue_batch != None or overwrite_index:
-            print(self.model.model_name )
             if self.model.model_name == 'bm25' and query_or_doc == 'doc':
                 self.model.index(dataset, index_path, num_threads=self.pyserini_num_threads)
             elif self.model.model_name == 'oracle_provenance':

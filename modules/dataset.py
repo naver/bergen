@@ -16,7 +16,6 @@ class Tokenized_Sorted_Dataset(Dataset):
 
         # Preprocess, tokenize and store lengths
         processed_data = []
-        print("Tokenizing data")
         if self.training:
             for item in tqdm(data):
                 formatted_instr = self.model.format_instruction(item) + (item['label'] if isinstance(item['label'], str) else random.choice(item['label'])) + self.tokenizer.eos_token
