@@ -74,11 +74,12 @@ class Evaluate:
             #model_name, short_name = 'meta-llama/Llama-2-13b-chat-hf', 'LLM_ll13b'
             #model_name, short_name = 'meta-llama/Llama-2-13b-chat-hf', 'LLM_ll13b_short_wo_question'
             #model_name, short_name = 'TinyLlama/TinyLlama-1.1B-Chat-v1.0', 'LLM_tll'
-            model_name, short_name = 'mistralai/Mixtral-8x7B-Instruct-v0.1', 'LLM_mix7b'
+            #model_name, short_name = 'mistralai/Mixtral-8x7B-Instruct-v0.1', 'LLM_mix7b'
             #model_name, short_name = 'mistralai/Mixtral-8x7B-Instruct-v0.1', 'LLM_mix7b_sem_or_lex'
             #model_name, short_name = 'meta-llama/Llama-2-13b-chat-hf', 'LLM_ll13b_score'
             #model_name, short_name = 'meta-llama/Llama-2-70b-chat-hf', 'LLM_ll70b_score'
             #model_name, short_name = 'meta-llama/Llama-2-13b-chat-hf', 'LLM_ll13b_sem_or_lex'
+            model_name, short_name = "Upstage/SOLAR-10.7B-Instruct-v1.0", "LLMeval"
             model = LLM(model_name, batch_size=llm_batch_size)
             
             eval_single(experiment_folder, folder, split, model, short_name)
@@ -93,7 +94,8 @@ class Evaluate:
             eval_single(experiment_folder, folder, split, model, "Clova")            
         if vllm:
             from models.evaluators.vllm import LLM
-            model_name, short_name = 'mistralai/Mixtral-8x7B-Instruct-v0.1', 'vLLM_mix7b'
+            #model_name, short_name = 'mistralai/Mixtral-8x7B-Instruct-v0.1', 'vLLM_mix7b'
+            model_name, short_name = "Upstage/SOLAR-10.7B-Instruct-v1.0", "LLMeval"
             model = LLM(model_name, batch_size=llm_batch_size)
             eval_single(experiment_folder, folder, split, model, short_name)
 
