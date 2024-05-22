@@ -3,6 +3,7 @@
 (see vllm install for CUDA <12)
 ```
 conda create -n "bergen" python=3.10
+conda activate bergen
 pip install torch 
 pip install packaging
 pip install ninja
