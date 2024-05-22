@@ -26,7 +26,7 @@ def get_by_id(dataset, ids, field=None):
     # if single id is passed cast it to list
     if not isinstance(ids, list):
         ids = [ids]
-    idxs = [ dataset.id2index[id_] for id_ in ids]
+    idxs = [ dataset.id2index[id_] for id_ in ids if id_ in dataset.id2index]
     if field != None:
         return dataset[idxs][field] if field in dataset[idxs] else []
     else:
