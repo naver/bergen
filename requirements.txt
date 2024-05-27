@@ -13,7 +13,8 @@ regex
 rouge
 scikit_learn
 scipy
-torch
+tensorflow==2.8.0
+protobuf==3.20.*
 tqdm
 transformers
 trl
