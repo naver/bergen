@@ -9,6 +9,9 @@ pip install packaging
 pip install ninja
 pip install flash-attn --no-build-isolation   #skip it for V100
 pip install vllm
+
+git clone https://github.com/naver/bergen.git
+cd bergen
 pip install -r requirements.txt
 ```
 
