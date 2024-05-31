@@ -8,16 +8,22 @@ defaults:
     - dataset: ??
     - train: null
     - prompt: basic
-    
-retrieve_top_k: 50
-rerank_top_k: 50
-generation_top_k: 5
-pyserini_num_threads: 20
+
+# main variables locating the local data folder and index
 run_name: null
 dataset_folder: 'datasets/'
 index_folder: 'indexes/'
 runs_folder: 'runs/'
-experiments_folder: 'experiments/'
+experiments_folder: 'experiments/'    
+
+# topk documents to retrieve, rerank and to use for generation
+retrieve_top_k: 50
+rerank_top_k: 50
+generation_top_k: 5
+
+
+#
+pyserini_num_threads: 20
 processing_num_proc: 40
 hydra:
     job:
