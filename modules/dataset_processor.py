@@ -139,13 +139,15 @@ class BIOASQ11B(Processor):
     
 class TimeSensitiveQA(Processor):
 
-    def __init__(self, data_path, *args, **kwargs):
+    def __init__(self,  *args, **kwargs):
         self.dataset_name = 'TimeSensitiveQA'
-        self.path = data_path
+        #self.path = data_path
         super().__init__(*args, **kwargs, dataset_name=self.dataset_name)
     
     def process(self):
-        dataset = datasets.load_dataset("json", data_files=[self.path])[self.split]
+        hf_name = "diwank/time-sensitive-qa"
+        #dataset = datasets.load_dataset("json", data_files=[self.path])[self.split]
+        dataset = datasets.load_dataset(hf_name, num_proc=self.num_proc)[self.split]
         #['id','docs','question','type','ideal_answer','exact_answer','snippets']
         dataset = dataset.map(lambda example: {'label': example['targets']})
         dataset = dataset.rename_column("question", "content")
@@ -864,16 +866,52 @@ class PubMed2023(Processor):
         def map_fn(example):
             example['content'] = f"{example['MedlineCitation']['Article']['ArticleTitle']}: {example['MedlineCitation']['Article']['Abstract']['AbstractText']}"
             example['id'] = str(example['MedlineCitation']['PMID'])
-            #example['ArticleIdList'] = example['PubmedData']['ArticleIdList']
             return example
         
         dataset = dataset.map(map_fn, num_proc=self.num_proc)
         dataset = dataset.remove_columns(['MedlineCitation', 'PubmedData'])
         return dataset
+
+class Wikipedia2023_section(Processor):
+
+    def __init__(self, *args, **kwargs):
+        self.dataset_name = 'wikipedia-2023-section'
+        super().__init__(*args, **kwargs, dataset_name=self.dataset_name)
     
+    def process(self):
+        hf_name = 'rasdani/cohere-wikipedia-2023-11-en'  #from Cohere/wikipedia-2023-11-embed-multilingual-v3 w/o embeddings
+        dataset = datasets.load_dataset(hf_name, num_proc=self.num_proc)[self.split]
+                
+        def map_fn(example):
+            example['content'] = f"{example['title']}: {example['text']}"
+            return example
+        
+        dataset = dataset.map(map_fn, num_proc=self.num_proc)
+        dataset = dataset.remove_columns(['text', 'title'])
+        dataset = dataset.rename_column("_id", "id")
+        return dataset    
     
 
 
+class Wikipedia2023_full(Processor):
+
+    def __init__(self, *args, **kwargs):
+        self.dataset_name = 'wikipedia-2023-full'
+        super().__init__(*args, **kwargs, dataset_name=self.dataset_name)
+    
+    def process(self):
+        hf_name = 'wikimedia/wikipedia'
+        dataset = datasets.load_dataset(hf_name, '20231101.en',num_proc=self.num_proc)[self.split]
+                
+        def map_fn(example):
+            example['content'] = f"{example['title']}: {example['text']}"
+            return example
+        
+        dataset = dataset.map(map_fn, num_proc=self.num_proc)
+        dataset = dataset.remove_columns(['id','text', 'title'])
+        dataset = dataset.rename_column("url", "id")
+        return dataset    
+    
 
  
 class MsMarcoCollection(Processor):
