@@ -1,5 +1,5 @@
 init_args: 
   _target_: models.retrievers.bm25.BM25
   model_name: "bm25"
-batch_size: 1024
-batch_size_sim: 256
+batch_size: 512
+batch_size_sim: 2048

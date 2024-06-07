@@ -1,10 +1,11 @@
 init_args: 
   _target_: models.retrievers.dense.Dense
-  model_name: "intfloat/simlm-base-msmarco-finetuned"
+  model_name: "BAAI/bge-small-en-v1.5"
   max_len: 256
   pooler:
     _target_: models.retrievers.dense.ClsPooler
   similarity: 
     _target_: models.retrievers.dense.CosineSim
+  prompt_q: "Represent this sentence for searching relevant passages: "
 batch_size: 512
 batch_size_sim: 2048
