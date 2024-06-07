@@ -1,0 +1,11 @@
+init_args: 
+  _target_: models.retrievers.dense.Dense
+  model_name: "facebook/dragon-plus-context-encoder"
+  query_encoder_name: "facebook/dragon-plus-query-encoder"
+  max_len: 256
+  pooler:
+    _target_: models.retrievers.dense.ClsPooler
+  similarity: 
+    _target_: models.retrievers.dense.DotProduct
+batch_size: 512
+batch_size_sim: 2048

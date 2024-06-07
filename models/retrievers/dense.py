@@ -9,14 +9,22 @@ import torch
 from models.retrievers.retriever import Retriever
 
 class Dense(Retriever):
+    #low_cpu_mem_usage=True,
 
-    def __init__(self, model_name, max_len, pooler, similarity, prompt_q=None, prompt_d=None):
+    def __init__(self, model_name, max_len, pooler, similarity, prompt_q=None, prompt_d=None, query_encoder_name=None):
         self.model_name = model_name
-        self.model = AutoModel.from_pretrained(self.model_name, low_cpu_mem_usage=True, torch_dtype=torch.float16, trust_remote_code=True)
+        self.model = AutoModel.from_pretrained(self.model_name, torch_dtype=torch.float16, trust_remote_code=True)
+        if query_encoder_name:
+            self.query_encoder = AutoModel.from_pretrained(query_encoder_name, torch_dtype=torch.float16, trust_remote_code=True)
+        else:
+            self.query_encoder = self.model  # otherwise symmetric
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = self.model.to(self.device)
         self.model.eval()
+        if query_encoder_name:
+            self.query_encoder = self.query_encoder.to(self.device)
+            self.query_encoder.eval()
         self.max_len = max_len
         self.similarity = similarity
         self.pooler = pooler
@@ -24,10 +32,15 @@ class Dense(Retriever):
         self.prompt_d = "" if prompt_d is None else prompt_d 
         if torch.cuda.device_count() > 1 and torch.cuda.is_available():
             self.model = torch.nn.DataParallel(self.model)
+            if query_encoder_name:
+                self.query_encoder = torch.nn.DataParallel(self.query_encoder)
 
-    def __call__(self, kwargs):
+    def __call__(self, query_or_doc, kwargs):
         kwargs = {key: value.to(self.device) for key, value in kwargs.items()}
-        outputs = self.model(**kwargs)
+        if query_or_doc == "doc":
+            outputs = self.model(**kwargs)
+        else:  # query_or_doc == "query"
+            outputs = self.query_encoder(**kwargs)
         # pooling over hidden representations
         emb = self.pooler.pool(outputs[0], kwargs['attention_mask'])
         return {
