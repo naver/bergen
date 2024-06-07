@@ -197,14 +197,22 @@ class SCIQ(Processor):
     def process(self):
         hf_name = 'sciq' 
         dataset = datasets.load_dataset(hf_name, num_proc=self.num_proc)[self.split]
-        dataset = dataset.rename_column("question", "content")
-        #dataset = dataset.rename_column("correct_answer", "label")
-        dataset = dataset.map(lambda example: {'label': [example['correct_answer']]})
-        dataset = dataset.remove_columns(["correct_answer","distractor1", "distractor2","distractor3","support"])
+        
+        ###dataset = dataset.map(lambda example: {'label': [example['correct_answer']]})
+        #dataset = dataset.remove_columns(["correct_answer","distractor1", "distractor2","distractor3","support"])
         #generating the id, train_0 ... validation_0 validation_1
         cid= [self.split+str(i) for i in range(len(dataset))]
         dataset = dataset.add_column("id", cid)
-
+        if self.oracle_provenance:
+            # document
+            dataset = dataset.rename_column('support','content')
+            dataset = dataset.remove_columns(["question","correct_answer","distractor1", "distractor2","distractor3"])            
+            #dataset = datasets.Dataset.from_dict({'content': paragraphs, 'id': ids})
+        else:
+            # query
+            dataset = dataset.rename_column("question", "content")
+            dataset = dataset.map(lambda example: {'label': [example['correct_answer']]})
+            dataset = dataset.remove_columns(["support","correct_answer","distractor1", "distractor2","distractor3"])        
         return dataset
 
 
