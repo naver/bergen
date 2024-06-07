@@ -1,28 +1,39 @@
-# BERGEN  Library
-We present here a library to benchmark RAG systems, with a focus on Question Answering. Inconsistent benchmarking poses a major challenge in comparing approaches and understanding the impact of each
+# BERGEN Library
+We present a library to benchmark RAG systems, focusing on question-answering (QA). Inconsistent benchmarking poses a major challenge in comparing approaches and understanding the impact of each
 component in a RAG pipeline.
-BERGEN was designed to ease reproducibility and integration of new datasets and models thanks to HuggingFace.
+BERGEN was designed to ease the reproducibility and integration of new datasets and models thanks to HuggingFace.
 
 
 
 ## Quick Start
-```
-# A RAG setup is  typically a pipeline
-# input >> retriever >> reranker >> LLMs >> output
-# ideally we want something like that
-python3 bergen.py retriever=$retriever reranker=$reranker generator=$LLMS dataset=$dataset 
-```
-To do so, one can write simple config files (yaml), configuring a retriever, reranker and LLMS for generations. All those configurations can be chained together as follows: am experiment with retrieval using `BM25`, reranking using `MiniLM6`, generation using `tinyllama-chat` in debug mode (using 15 queries) on `kilt_nq`.
+A RAG setup is typically a pipeline
+
+`input` >> `retriever` >> `reranker` >> LLM >> `output`
+
+One can write simple config files (yaml), configuring a retriever, reranker and LLMS for generations. All those configurations can be chained together as follows: am experiment with retrieval using `BM25`, reranking using `MiniLM6`, generation using `tinyllama-chat` in debug mode (using 15 queries) on `kilt_nq`.
 
 ```bash
-  python3 bergen.py retriever="bm25" reranker="minilm6" generator='tinyllama-chat' dataset='kilt_nq' +debug=True
+  python3 bergen.py retriever="bm25" reranker="minilm6" generator='tinyllama-chat' dataset='kilt_nq'
 ```
 
-## Overview
-BERGEN contains simple wrappers over the following datasets:
- - KILT Benchmkarck: Natural Questions, HotPotQA, Wow,TriviaQA, TRec,..., FEVER
- - POPQA,SCIQ, ASQA,TruthfulQA
-- Retriever, Rerankers
+## Supported Features
+BERGEN contains simple wrappers for the following features:
+| Category        | Name               |   Argument                     |
+|-|-|-|
+| **Datasets**    | NQ                 | `dataset="kilt_nq"`            |
+|                 | TriviaQA           | `dataset="kilt_triviaqa"`      |
+| **Generators**  | Llama 2 7B Chat    | `generator="llama-2-7b-chat"`  |
+|                 | Llama 2 13B Chat   | `generator="llama-2-13b-chat"` |
+| **Retrievers**  | BM25               | `retriever="bm25"`             |
+|                 | SPLADE-v3          | `retriever="spladev3"`         |
+|                 | BGE                | `retriever="bge"`              |
+| **Rerankers**   | DeBERTa-v3         | `reranker="debertav3"`         |
+
+Supported Metrics:
+| Metric |
+| - |
+| F1 Score |
+| ROUGE  |  
 
 All the  configuration files are located in the config dir.
 The main config file is located in in config/rag.yaml
@@ -37,26 +48,8 @@ experiments_folder: 'experiments/'    # where the generations from LLMs and metr
 
 ```
 
-For the main command line:  `retriever`, `reranker` and `generator` are optional and can be `None`, the `dataset` argument must always be provided. 
-```bash
- 
-  # no rag setup
-  python3 bergen.py  generator='tinyllama-chat' dataset='kilt_nq' +debug=True
 
-  # Retriever - only first stage
-  python3 bergen.py retriever="splade-v3" generator='tinyllama-chat' dataset='kilt_nq' +debug=True
-
-  # Retriever Reranker 
-  python3 bergen.py retriever="splade-v3" reranker="debertav3"  generator='tinyllama-chat' dataset='kilt_nq' +debug=True
-
-  # using vllm for the generator part with SOLAR
-  python3 bergen.py retriever="splade-v3" reranker="debertav3"  generator='vllm_SOLAR-107B' dataset='kilt_nq' +debug=True
-
-```
-
-
-
-Datasets will be downloaded, pre-processed, indexed and saved if they do not exist yet, otherwise they will be loaded from `dataset_folder` and `index_folder` respectively. 
+Datasets will be downloaded, pre-processed, indexed, and saved if they do not exist yet, otherwise, they will be loaded from `dataset_folder` and `index_folder` respectively. 
 
 ```bash
 ls config/dataset/
@@ -79,40 +72,27 @@ To print the results in a table run. By default this will print all experiments 
 python3 print_results.py --folder experiments/
 TODO Give an example here
 ```
-
-
-## Code Structure
+## Pipeline Examples
+For the main command line:  `retriever`, `reranker`, and `generator` are optional and can be `None`, the `dataset` argument must always be provided. 
+ 
+Generation without Retrieval (Closed Book)
+```bash
+python3 bergen.py  generator='tinyllama-chat' dataset='kilt_nq' 
 ```
-|-- config
-|   |-- dataset/
-|   |-- generator/
-|   |-- prompt/
-|   |-- reranker/
-|   |-- retriever/
-|   |-- train/
-|   |-- rag.yaml
-|-- evaluation
-|-- eval.py
-|-- main.py
-|-- models/
-|   |-- evaluators/
-|   |-- generators/
-|   |-- rerankers/
-|   |-- retrievers/
-|-- modules/
-|   |-- dataset_processor.py
-|   |-- evaluation.py
-|   |-- generate.py
-|   |-- rag.py
-|   |-- rerank.py
-|   |-- retrieve.py
-|   `-- utils.py
-|-- scripts/
-|-- README.md
-|-- requirements.py
-|-- utils.py
-
+Retriever - only first stage:
+```bash
+python3 bergen.py retriever="splade-v3" generator='tinyllama-chat' dataset='kilt_nq'
 ```
+Retriever + Reranker
+```bash
+python3 bergen.py retriever="splade-v3" reranker="debertav3"  generator='tinyllama-chat' dataset='kilt_nq'
+```
+
+Using vllm to speed up generation:
+```bash
+python3 bergen.py retriever="splade-v3" reranker="debertav3"  generator='vllm_SOLAR-107B' dataset='kilt_nq'
+```
+
 
 ## Evaluation
 Non-neural metrics will be calculated automatically. Neural metrics such as `BEM` and `LLM` need to be evoked seperately.
