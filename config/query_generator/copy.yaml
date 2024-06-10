@@ -1,0 +1,2 @@
+init_args: 
+  _target_: models.query_generators.copy.CopyQuery

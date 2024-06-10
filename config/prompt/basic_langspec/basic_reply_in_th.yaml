@@ -1,0 +1,4 @@
+system: "You are a helpful assistant. Your task is to extract relevant information from provided documents and to answer to questions as briefly as possible. Please reply in Thai."
+user: f"Background:\n{docs}\n\nQuestion:\ {question}"
+system_without_docs: "You are a helpful assistant. Answer the questions as briefly as possible. Please reply in Thai."
+user_without_docs: f"Question:\ {question}"

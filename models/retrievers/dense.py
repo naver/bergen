@@ -35,7 +35,8 @@ class Dense(Retriever):
             }
 
     def collate_fn(self, batch, query_or_doc=None):
-        content = [sample['content'] for sample in batch]
+        key = 'generated_query' if query_or_doc=="query" else "content"
+        content = [sample[key] for sample in batch]
         # some retrieval models have a "prompt" prefix, e.g. intfloat/e5-large-v2
         if query_or_doc == "query":
             content = ["{}{}".format(self.prompt_q, text) for text in content]

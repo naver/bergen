@@ -50,7 +50,7 @@ class RepLlama(Retriever):
         if query_or_doc == 'doc':
             content = [f"query: {sample['content']}{self.tokenizer.eos_token}" for sample in batch]
         else:
-            content = [f"passage: {sample['content']}{self.tokenizer.eos_token}" for sample in batch]
+            content = [f"passage: {sample['generated_query']}{self.tokenizer.eos_token}" for sample in batch]
 
         return_dict = self.tokenizer(content, padding=True, truncation=True, max_length=self.max_len,return_tensors='pt')
         return return_dict

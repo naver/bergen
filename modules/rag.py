@@ -7,18 +7,20 @@ CC BY-NC-SA 4.0 license
 from modules.retrieve import Retrieve
 from modules.rerank import Rerank
 from modules.generate import Generate
+from modules.generate_query import GenerateQueries
 from modules.dataset_processor import ProcessDatasets
 from modules.metrics import RAGMetrics
 import time 
 import shutil
 import os 
 from tqdm import tqdm
+import json
 from hydra.utils import instantiate
 from utils import (
     eval_retrieval_kilt, init_experiment, move_finished_experiment,
     write_trec, prepare_dataset_from_ids, load_trec,
     print_generate_out, print_rag_model,
-    write_generated, write_dict, get_by_id, get_index_path, 
+    write_generated, write_dict, get_by_id, get_index_path, get_query_generation_filename,
     get_reranking_filename, format_time, get_ranking_filename, get_finished_experiment_name
 )
 
@@ -27,6 +29,7 @@ class RAG:
                 generator=None, 
                 retriever=None, 
                 reranker=None,
+                query_generator=None, 
                 
                 runs_folder=None,
                 run_name=None, 
@@ -34,6 +37,7 @@ class RAG:
                 processing_num_proc=1,
                 dataset_folder='datasets/',
                 index_folder='indexes/',
+                generated_query_folder='generated_queries/',
                 experiments_folder='experiments/', 
                 qrels_folder='qrels/',
                 overwrite_datasets=False,
@@ -54,6 +58,7 @@ class RAG:
         retriever_config = retriever
         reranker_config = reranker
         generator_config = generator
+        query_generator_config = query_generator
         dataset_config = dataset
 
 
@@ -62,17 +67,23 @@ class RAG:
         #if none, then load from config
         if generator_config == None:
             generator_config = config.generator if hasattr(config, 'generator') else None
+        if query_generator_config == None:
+            query_generator_config = config.query_generator if hasattr(config, 'query_generator') else None
         if retriever_config == None:
             retriever_config = config.retriever if hasattr(config, 'retriever') else None
         if reranker_config == None:
             reranker_config = config.reranker if hasattr(config, 'reranker') else None
         if dataset_config == None:
             dataset_config = config.dataset if hasattr(config, 'dataset') else None
+
+        if query_generator_config is None:
+            query_generator_config = {"init_args": {"_target_": "models.query_generators.copy.CopyQuery"}}
         
         self.debug = debug
         self.dataset_folder = dataset_folder
         self.experiments_folder = experiments_folder
         self.runs_folder = runs_folder
+        self.generated_query_folder = generated_query_folder
         self.qrels_folder = qrels_folder
         self.run_name = run_name
         self.processing_num_proc = processing_num_proc
@@ -121,6 +132,7 @@ class RAG:
 
         self.generator = Generate(**generator_config, prompt=prompt) if generator_config != None else None
 
+        self.query_generator = GenerateQueries(**query_generator_config) if generator_config != None else None
         
                 # print RAG model
         print_rag_model(self, retriever_config, reranker_config, generator_config)
@@ -130,6 +142,14 @@ class RAG:
         query_dataset_name = self.datasets[dataset_split]['query'].name
         doc_dataset_name = self.datasets[dataset_split]['doc'].name
 
+        # query generation (or copying in case query_generator="copy")
+        if self.retriever != None:
+            dataset = self.generate_query(
+                dataset,
+                query_dataset_name, 
+                dataset_split, 
+            )
+        
         # retrieve
         if self.retriever != None:
             query_ids, doc_ids, _ = self.retrieve(
@@ -172,6 +192,29 @@ class RAG:
         move_finished_experiment(self.experiment_folder)
 
 
+    def generate_query(self, dataset, query_dataset_name, dataset_split):
+        id2index = dataset['query'].id2index
+        if self.query_generator.get_clean_model_name() == "copy":
+            dataset['query'] = dataset['query'].add_column("generated_query", dataset['query']["content"])
+        else:
+            gen_query_file = get_query_generation_filename(
+                self.generated_query_folder, 
+                query_dataset_name, 
+                self.query_generator.get_clean_model_name(), 
+                dataset_split
+            )
+            if not os.path.exists(gen_query_file) or self.overwrite_exp or self.overwrite_index:
+                generated_queries = self.query_generator.eval(dataset['query'])
+                os.makedirs(self.generated_query_folder, exist_ok=True)
+                with open(gen_query_file, 'w') as fp: 
+                    json.dump({"generated_queries": generated_queries}, fp)
+            else:
+                with open(gen_query_file, 'r') as fp: 
+                    generated_queries = json.load(fp)["generated_queries"]
+            dataset['query'] = dataset['query'].add_column("generated_query", generated_queries)
+        dataset['query'].id2index = id2index
+        return dataset
+    
     def retrieve(self, 
                  dataset, 
                  query_dataset_name, 
@@ -188,12 +231,12 @@ class RAG:
             self.retriever.get_clean_model_name(),
             dataset_split, 
             retrieve_top_k,
-
+            self.query_generator.get_clean_model_name()
         )
         #if return_embeddings:
                 #raise NotImplementedError('For returning Embeddings is not yet fully implemented!')
         doc_embeds_path = get_index_path(self.index_folder, doc_dataset_name, self.retriever.get_clean_model_name(), 'doc')
-        query_embeds_path = get_index_path(self.index_folder, query_dataset_name, self.retriever.get_clean_model_name(), 'query', dataset_split=dataset_split)
+        query_embeds_path = get_index_path(self.index_folder, query_dataset_name, self.retriever.get_clean_model_name(), 'query', dataset_split=dataset_split, query_generator_name=self.query_generator.get_clean_model_name())
         if not os.path.exists(ranking_file) or self.overwrite_exp or self.overwrite_index:
             print(f'Run {ranking_file} does not exists, running retrieve...')
              # retrieve
@@ -218,6 +261,7 @@ class RAG:
                     self.experiment_folder, 
                     self.qrels_folder, 
                     query_dataset_name, 
+                    doc_dataset_name,
                     dataset_split, query_ids, 
                     wiki_doc_ids, scores, 
                     top_k=self.generation_top_k, 
@@ -247,6 +291,7 @@ class RAG:
             self.retrieve_top_k,
             self.reranker.get_clean_model_name(),
             self.rerank_top_k,
+            self.query_generator.get_clean_model_name()
         )
 
         if not os.path.exists(reranking_file) or self.overwrite_exp:
@@ -255,6 +300,7 @@ class RAG:
                     query_ids, 
                     doc_ids,
                     multi_doc=False,
+                    query_field="generated_query"
                 )
             out_ranking = self.reranker.eval(rerank_dataset, return_embeddings=return_embeddings)
             query_ids, doc_ids, scores = out_ranking['q_id'], out_ranking['doc_id'], out_ranking['score']
@@ -270,6 +316,7 @@ class RAG:
                 self.experiment_folder, 
                 self.qrels_folder, 
                 query_dataset_name, 
+                doc_dataset_name,
                 dataset_split, 
                 query_ids, 
                 wiki_doc_ids, 
@@ -294,6 +341,7 @@ class RAG:
             query_ids, 
             doc_ids,
             multi_doc=True, 
+            query_field="content",
             )
 
         generation_start = time.time()

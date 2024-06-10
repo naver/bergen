@@ -1,0 +1,4 @@
+system: "أنت مساعد مفيد. مهمتك هي استخراج المعلومات ذات الصلة من الوثائق المقدمة والإجابة على الأسئلة في أقصر وقت ممكن."
+user: f"Background:\n{docs}\n\nQuestion:\ {question}"
+system_without_docs: "أنت مساعد مفيد. أجب عن الأسئلة باختصار قدر الإمكان."
+user_without_docs: f"Question:\ {question}"

@@ -13,7 +13,8 @@ import pickle
 from hydra.utils import instantiate
 import urllib.request
 import json
-import requests   
+import requests  
+from functools import partial
 
 
 # Base class that every processor interhits from 
@@ -680,13 +681,76 @@ class MsMarcoQueries(Processor):
         dataset = datasets.Dataset.from_dict({"id":ids, "content": queries})  # no need for split?
         return dataset
 
+class MKQA(Processor):
+
+    def __init__(self, lang, *args, **kwargs):
+        dataset_name = f'mkqa_{lang}'
+        super().__init__(*args, **kwargs, dataset_name=dataset_name)
+        self.lang = lang
+        
+    def process(self):
+        mkqa = datasets.load_dataset('mkqa')
+        kilt_nq = datasets.load_dataset("kilt_tasks", "nq")
+
+        mkqa_ids = {s['example_id']:i for i, s in enumerate(mkqa[self.split])}
+        kilt_nq_train_ids = {s['id']:i for i, s in enumerate(kilt_nq[self.split])}
+
+        overlap_ids = set(mkqa_ids.keys()).intersection(set(kilt_nq_train_ids.keys()))
+        overlap_mkqa = mkqa['train'].select([mkqa_ids[i] for i in overlap_ids])
+        overlap_kilt_nq = kilt_nq['train'].select([kilt_nq_train_ids[i] for i in overlap_ids])        
+        dataset = overlap_kilt_nq.add_column(f"content", [sample['queries'][self.lang] for sample in overlap_mkqa])    
+        # discarding empty answers
+        dataset = dataset.add_column(f"label", [[a['text'] for a in sample['answers'][self.lang] if not a['text']==None] for sample in overlap_mkqa])
+        # filter out samples with empty answer
+        dataset = dataset.filter(lambda example: len(example['label'])>0)
+
+        # ranking_label: list of wikipedia_ids per answer, empty list if no provenances are present or answer is empty
+        dataset = dataset.map(lambda example: {'ranking_label': [[provenance['wikipedia_id'] for provenance in el['provenance']] if len(el[f'answer']) > 0 and len(el['provenance']) > 0 else [] for el in example['output']]})        
+        dataset = dataset.remove_columns(['meta'])
+        return dataset
+
+class XORQA(Processor):
+
+    def __init__(self, lang, *args, **kwargs):
+        dataset_name = f'xor_tydiqa_{lang}'
+        self.lang = lang
+        super().__init__(*args, **kwargs, dataset_name=dataset_name)
+
+    def process(self):
+        os.system("wget https://nlp.cs.washington.edu/xorqa/XORQA_site/data/xor_dev_full_v1_1.jsonl")
+        dataset = datasets.load_dataset("json", data_files="xor_dev_full_v1_1.jsonl")["train"] # the file should be already .dev, and train is just default hf label
+        dataset = dataset.filter(lambda example: example['lang']==self.lang)
+        # discarding empty answers 
+        dataset = dataset.map(lambda example: {'label': [el for el in example['answers'] if len(el) > 0]})
+        dataset = dataset.rename_column("question", "content")
+        #dataset = dataset.remove_columns(['meta', 'output'])
+        os.system("rm xor_dev_full_v1_1.jsonl")
+        return dataset
+
+class TydiQA(Processor):
+
+    def __init__(self, langcode="en", language="english", *args, **kwargs):
+        dataset_name = f'tydiqa_{langcode}'
+        self.language = language
+        super().__init__(*args, **kwargs, dataset_name=dataset_name)
+
+    def process(self):
+        dataset =  datasets.load_dataset("google-research-datasets/tydiqa", "secondary_task")[self.split] 
+        dataset = dataset.filter(lambda example: example['id'].startswith(self.language))
+        dataset = dataset.map(lambda example: {'label': [el for el in example['answers']["text"] if len(el) > 0]})
+        dataset = dataset.rename_column("question", "content")
+        dataset = dataset.remove_columns(['title', 'context', 'answers'])
+        return dataset
+
 # ---------------------------------------- #
 # Document processors
 # ---------------------------------------- #
 class ReproduceWikiCorpora63(Processor):
 
-    def __init__(self, data_path, *args, **kwargs):
+    def __init__(self, data_path, label="", *args, **kwargs):
         self.dataset_name = 'reproduce-wiki-corpora-63'
+        if label != "":
+            self.dataset_name = self.dataset_name + label
         self.path = data_path
         super().__init__(*args, **kwargs, dataset_name=self.dataset_name)
     
@@ -700,7 +764,6 @@ class ReproduceWikiCorpora63(Processor):
         dataset = dataset.map(map_fn, num_proc=self.num_proc)
         dataset = dataset.remove_columns(['title', 'text'])
         return dataset
-    
     
 class ODQAWikiCorpora100WTamber(Processor):
     def __init__(self, *args, **kwargs):
@@ -765,6 +828,38 @@ class KILT100w(Processor):
         del kilt_dataset
         return dataset
 
+class Wiki_monolingual_100w(Processor):
+
+    def __init__(self, lang, *args, **kwargs):
+        dataset_name = 'wiki-100w-' + lang
+        super().__init__(*args, **kwargs, dataset_name=dataset_name)
+        self.lang = lang
+
+    def process(self):
+        hf_name = 'wikimedia/wikipedia'
+        subset = "20231101." + self.lang
+        dataset = datasets.load_dataset(hf_name, subset, num_proc=self.num_proc)[self.split]
+
+        def map_100w(sample, num_words=100):
+            wiki_id = sample['id']
+            title = sample['title']
+            doc = sample["text"]
+            if self.lang not in ["zh", "ja", "th"]:
+                words = doc.split()
+            else:
+                words = list(doc)
+            paragraphs = [title + '. ' + " ".join(words[i:i + num_words]) for i in range(0, len(words), num_words)]
+            wiki_ids = [wiki_id] * len(paragraphs)
+            return {'paragraphs': paragraphs, "wiki_ids": wiki_ids}
+        
+        kilt_dataset = dataset.map(map_100w, num_proc=self.num_proc)
+        paragraphs = [el for sublist in kilt_dataset['paragraphs'] for el in sublist]
+        wiki_ids = [el for sublist in kilt_dataset['wiki_ids'] for el in sublist]
+        dataset = datasets.Dataset.from_dict({'content': paragraphs, 'wikipedia_id': wiki_ids})
+        dataset = dataset.map(lambda example, idx: {'id': str(idx), **example}, with_indices=True)
+
+        del kilt_dataset
+        return dataset
 
 class ODQAWikiCorpora100WKarpukhin(Processor):
 
@@ -912,6 +1007,47 @@ class UT1Docs(Processor):
             data_d['id'].append(did)
             data_d['content'].append(dt)
         dataset=datasets.Dataset.from_dict(data_d)
+        return dataset
+
+
+class MergedDocDataset(Processor):
+    def __init__(self, out_dataset_name, in_dataset_names, in_dataset_splits, *args, **kwargs):
+        dataset_name = out_dataset_name
+        super().__init__(*args, **kwargs, dataset_name=dataset_name)
+        self.in_dataset_names = in_dataset_names
+        self.in_dataset_splits = in_dataset_splits
+        assert len(in_dataset_names) == len(in_dataset_splits)
+
+    def process(self):
+        raise NotImplementedError("Datasets for merging should be preprocessed independently before runing experiments with the merged dataset.")
+
+    def get_dataset(self):
+        def prepend_label(example, label):
+            example['id'] = f"{label}_{example['id']}"
+            return example
+        print(f"Processing dataset {self.dataset_name} in {self.split} split ")
+        debug_str = '_debug' if self.debug else ''
+        assert self.dataset_name != None # dataset name needs to be set in processor class
+        oracle_provenance_str = '_oracle_provenance' if self.oracle_provenance else ''
+        out_folder = os.path.join(f'{self.out_folder}', f'{self.dataset_name}_{self.split}{oracle_provenance_str}')
+
+        loaded_datasets = []
+        for dataset_name, split in zip(self.in_dataset_names, self.in_dataset_splits):
+            in_folder = os.path.join(f'{self.out_folder}', f'{dataset_name}_{split}{oracle_provenance_str}')
+            if not os.path.exists(in_folder): raise ValueError(f"Dataset {in_folder} not found")
+            dataset = datasets.load_from_disk(in_folder)
+            dataset = dataset.map(partial(prepend_label, label=dataset_name), num_proc=self.num_proc)
+            loaded_datasets.append(dataset)
+            
+        dataset = datasets.concatenate_datasets(loaded_datasets)
+        
+        id2index = self.get_index_to_id(dataset) 
+        dataset.id2index = id2index
+        if self.debug:
+            dataset = dataset.select(range(15))
+        if self.shuffle_labels:
+            dataset = self.shuffled_labels_as_content(dataset)
+        dataset.name = self.dataset_name + debug_str + oracle_provenance_str
         return dataset
 
 

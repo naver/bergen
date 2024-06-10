@@ -88,12 +88,12 @@ def get_doc_embeds_from_dataset(d_ids, embeds_dataset):
 # horrible function :/ needs to be refactored into mult_doc and single doc
 # gets q_ids and d_ids and does a lookup by id to get the content
 # then constructs hf_dataset out of it
-def prepare_dataset_from_ids(dataset, q_ids, d_ids, multi_doc=False, query_embeds_path=None, doc_embeds_path=None):
+def prepare_dataset_from_ids(dataset, q_ids, d_ids, multi_doc=False, query_embeds_path=None, doc_embeds_path=None, query_field="content"):
 
     # if query _ids and doc_ids are None only return queries and optional labels /ranking labels
     if q_ids == d_ids == None:
         dataset_dict = {
-            'query': dataset['query']['content'], 
+            'query': dataset['query'][query_field], 
             'q_id': dataset['query']['id'],
             }
         # if labels or ranking_labels are in query dataset add them to the dataset
@@ -107,7 +107,7 @@ def prepare_dataset_from_ids(dataset, q_ids, d_ids, multi_doc=False, query_embed
         # get ranking_labels
         ranking_labels = get_by_id(dataset['query'], q_ids, 'ranking_label') 
         # get queries
-        queries = get_by_id(dataset['query'], q_ids, 'content')
+        queries = get_by_id(dataset['query'], q_ids, query_field)
         # put together dataset_dict for each query
         for i, q_id in tqdm(enumerate(q_ids), desc='Fetching data from dataset...', total=len(q_ids)):
             docs = get_by_id(dataset['doc'], d_ids[i], 'content') 
@@ -226,14 +226,18 @@ def load_trec(fname):
 
 
 
-def eval_retrieval_kilt(experiment_folder, qrels_folder, dataset_name, split, query_ids, doc_ids, scores, top_k=5, reranking=False, debug=False, write_trec=True):
+def eval_retrieval_kilt(experiment_folder, qrels_folder, query_dataset_name, doc_dataset_name, split, query_ids, doc_ids, scores, top_k=5, reranking=False, debug=False, write_trec=True):
     #only evaluate if wikipedia ids are in dataset
     # if all(sublist for sublist in doc_ids):
     #     return
     scores = scores.tolist() if torch.is_tensor(scores) else scores
     reranking_str = 're' if reranking else ''
-    qrels_file = get_qrel_ranking_filename(qrels_folder, dataset_name, split, debug)
+    qrels_file = get_qrel_ranking_filename(qrels_folder, query_dataset_name, split, debug)
+    if not os.path.exists(qrels_file): return
     qrel = json.load(open(qrels_file))
+    if "doc_dataset_name" in qrel:
+        if qrel["doc_dataset_name"] != doc_dataset_name: return
+        qrel.pop("doc_dataset_name")
     evaluator = pytrec_eval.RelevanceEvaluator(qrel, {'P_1', f'recall_{top_k}'})
     run = defaultdict(dict)
     for i, q_id in enumerate(query_ids):
@@ -264,7 +268,7 @@ def eval_retrieval_kilt(experiment_folder, qrels_folder, dataset_name, split, qu
 
 def init_experiment(config, experiments_folder, index_folder, runs_folder, run_name, overwrite_exp=False, continue_batch=None):
     # if run_name != None hash self to get run_name to avoid overwriting and exp. folder mess
-    run_name = f'tmp_{Hasher.hash(str(config))}' if run_name == None else run_name
+    run_name = f'tmp_{Hasher.hash(str(config))}' if run_name == None else f'tmp_{run_name}'
     experiment_folder = os.path.join(experiments_folder, run_name)
     print(f'Unfinished experiment_folder: {experiment_folder}')
     # get name of finished experiment
@@ -309,18 +313,24 @@ def get_qrel_ranking_filename(qrels_folder, dataset_name, split, debug=False):
     dataset_name = dataset_name.replace('_debug', '') if debug else dataset_name
     return f'{qrels_folder}/qrel.{dataset_name}.{split}.json'
 
-def get_index_path(index_folder, dataset_name, model_name, query_or_doc, dataset_split=''):
+def get_index_path(index_folder, dataset_name, model_name, query_or_doc, dataset_split='', query_generator_name='copy'):
     dataset_split = dataset_split + '_' if dataset_split != '' else ''
-    return os.path.join(index_folder,f'{dataset_name}_{dataset_split}{query_or_doc}_{model_name}')
+    query_gen_add = "" if query_generator_name == "copy" or query_or_doc=="doc" else f".{query_generator_name}"
+    return os.path.join(index_folder,f'{dataset_name}_{dataset_split}{query_or_doc}_{model_name}{query_gen_add}')
 
-def get_reranking_filename(runs_folder, query_dataset, doc_dataset, dataset_split, retriever_name, retrieve_top_k, reranker_name, rerank_top_k):
-    return f'{runs_folder}/run.rerank.retriever.top_{retrieve_top_k}.{retriever_name}.rerank.top_{rerank_top_k}.{query_dataset}.{doc_dataset}.{dataset_split}.{reranker_name}.trec'
+def get_reranking_filename(runs_folder, query_dataset, doc_dataset, dataset_split, retriever_name, retrieve_top_k, reranker_name, rerank_top_k, query_generator_name):
+    query_gen_add = "" if query_generator_name == "copy" else f".{query_generator_name}"
+    return f'{runs_folder}/run.rerank.retriever.top_{retrieve_top_k}.{retriever_name}.rerank.top_{rerank_top_k}.{query_dataset}.{doc_dataset}.{dataset_split}.{reranker_name}{query_gen_add}.trec'
 
-def get_ranking_filename(runs_folder, query_dataset, doc_dataset, retriever_name, dataset_split, retrieve_top_k):
+def get_ranking_filename(runs_folder, query_dataset, doc_dataset, retriever_name, dataset_split, retrieve_top_k, query_generator_name):
     if retriever_name == 'oracle_provenance':
         return get_oracle_ranking_filename(runs_folder, query_dataset, dataset_split)
     else:
-        return f'{runs_folder}/run.retrieve.top_{retrieve_top_k}.{query_dataset}.{doc_dataset}.{dataset_split}.{retriever_name}.trec'
+        query_gen_add = "" if query_generator_name == "copy" else f".{query_generator_name}"
+        return f'{runs_folder}/run.retrieve.top_{retrieve_top_k}.{query_dataset}.{doc_dataset}.{dataset_split}.{retriever_name}{query_gen_add}.trec'
+
+def get_query_generation_filename(query_generation_folder, query_dataset, query_generator_name, split):
+    return f'{query_generation_folder}/generated_queries.{query_dataset}.{split}.{query_generator_name}.json'
         
 def get_embedding_datasets_path(embeddings_path):
     embeddings_path = embeddings_path.rstrip('/')
