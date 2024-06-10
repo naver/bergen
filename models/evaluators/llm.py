@@ -16,7 +16,7 @@ class LLM:
         load_in_4bit=True,
         bnb_4bit_quant_type='nf4',
         bnb_4bit_compute_dtype='bfloat16',
-        bnb_4bit_use_dobule_quant=False
+        bnb_4bit_use_double_quant=False
         )
         self.custom_format_instruction = custom_format_instruction
 
