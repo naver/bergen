@@ -6,4 +6,5 @@ init_args:
     _target_: models.retrievers.dense.ClsPooler
   similarity: 
     _target_: models.retrievers.dense.CosineSim
-batch_size: 464
+batch_size: 512
+batch_size_sim: 2048

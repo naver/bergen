@@ -23,10 +23,9 @@ class LLM:
         self.tokenizer.pad_token = self.tokenizer.bos_token
         self.quantization = None
         if self.quantization is None:
-            self.model = vllm(model=self.model_name,tensor_parallel_size=torch.cuda.device_count(),gpu_memory_utilization=0.9,max_model_len=4096,enforce_eager=False,kv_cache_dtype="fp8_e5m2")        
+            self.model = vllm(model=self.model_name,tensor_parallel_size=torch.cuda.device_count(),gpu_memory_utilization=0.9,max_model_len=4096,enforce_eager=False,kv_cache_dtype="fp8")        
         else:
             self.model = vllm(model=self.model_name,tensor_parallel_size=torch.cuda.device_count(),quantization=self.quantization)
-        #self.sampling_params =  SamplingParams(temperature=1,best_of=1, top_p=1, top_k=-1, max_tokens=10)
         self.sampling_params =  SamplingParams(temperature=1,max_tokens=100,best_of=1, top_p=1, top_k=-1)
 
 

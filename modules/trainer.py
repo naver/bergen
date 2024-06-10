@@ -18,15 +18,16 @@ class RAGTrainer(Trainer):
         call_back_data = kwargs.pop('call_back_data')
         super().__init__(*args, **kwargs)
         self.model_prediction_step = model_prediction_step
-        #write sample  generation to wandb
-        progress_callback = WandbPredictionProgressCallback(
-            trainer=self,
-            tokenizer=self.tokenizer,
-            generation_step= model_generate,
-            dataloader=call_back_data,
-        )
-        # Add the callback to the trainer
-        self.add_callback(progress_callback)
+        if self.args.report_to =="wandb":
+            #write sample  generation to wandb
+            progress_callback = WandbPredictionProgressCallback(
+                trainer=self,
+                tokenizer=self.tokenizer,
+                generation_step= model_generate,
+                dataloader=call_back_data,
+            )
+            # Add the callback to the trainer
+            self.add_callback(progress_callback)
 
     def compute_loss(self, model, inputs):
         model_input, label_ids = inputs['model_input'], inputs['label_ids']

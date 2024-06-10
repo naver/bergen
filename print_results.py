@@ -45,6 +45,7 @@ def get_scores(file, decimals=2):
     ll13b = float(data['LLM_ll13b']) if 'LLM_ll13b' in data else None
     ll70b = float(data['LLM_ll70b']) if 'LLM_ll70bsol' in data else None
     mix7b = float(data['LLM_mix7b']) if 'LLM_mix7b' in data else None
+    LLMeval = float(data['LLMeval']) if 'LLMeval' in data else None
     m = float(data['M'])
     em = float(data['EM'])
     f1 = float(data['F1'])
@@ -54,7 +55,7 @@ def get_scores(file, decimals=2):
     rouge2 = float(data['Rouge-2'])
     rougel = float(data['Rouge-L'])
 
-    return m, em, f1, precision, recall, rouge1, rouge2, rougel, bem, ll7b,ll13b,ll70b,  mix7b
+    return m, em, f1, precision, recall, rouge1, rouge2, rougel, bem, LLMeval #ll7b,ll13b,ll70b,  mix7b
 
 def get_generation_time(file):
     data = json.load(open(file))
@@ -86,7 +87,7 @@ def main(args):
                             dataset_query, dataset_doc, retriever, reranker, generator, prompt, retrieve_top_k, rerank_top_k = get_config(file_in_subfolder, split)
 
                         if f'eval_{split}_metrics.json' in str(file_in_subfolder):
-                            m, em, f1, precision, recall, rouge1, rouge2, rougel, bem, ll7b,ll13b,ll70b,  mix7b= get_scores(file_in_subfolder)
+                            m, em, f1, precision, recall, rouge1, rouge2, rougel, bem, LLMeval= get_scores(file_in_subfolder)
                         if f'eval_{split}_generation_time.json' in str(file_in_subfolder) :
                             gen_time = get_generation_time(file_in_subfolder) 
 
@@ -94,7 +95,7 @@ def main(args):
                             ranking_metric = get_ranking_metrics(file_in_subfolder)
                         # except:
                         #     print(f'Failed to load {current_folder}!')       
-                    ltuple.append([current_folder.name, retriever, ranking_metric, reranker, generator,  gen_time, dataset_query, retrieve_top_k, rerank_top_k, m, em, f1, precision, recall, rouge1, rouge2, rougel, bem, mix7b])
+                    ltuple.append([current_folder.name, retriever, ranking_metric, reranker, generator,  gen_time, dataset_query, retrieve_top_k, rerank_top_k, m, em, f1, precision, recall, rouge1, rouge2, rougel, bem, LLMeval])
                     #ltuple.append([current_folder, retriever, reranker, generator, gen_time, dataset_query, retrieve_top_k, rerank_top_k, m, em, f1, precision, recall, rouge1, rouge2, rougel, bem, ll7b, ll7bs, ll13b, ll13b_short, ll13bswoq, mix7b, mix7bswoq])
         except:
             print(f'Skipping {current_folder} due to parsing errors!')
@@ -103,7 +104,7 @@ def main(args):
         print(f'No results in folder "{args.folder}" yet!')
         exit()
     df= pd.DataFrame(ltuple)
-    df.columns = ['exp_folder', 'Retriever', 'P_1', 'Reranker', 'Generator',  'gen_time', 'query_dataset', "r_top", "rr_top", "M", "EM", "F1", "P", "R", "Rg-1", "Rg-2", "Rg-L", "BEM", "Mix7b"]
+    df.columns = ['exp_folder', 'Retriever', 'P_1', 'Reranker', 'Generator',  'gen_time', 'query_dataset', "r_top", "rr_top", "M", "EM", "F1", "P", "R", "Rg-1", "Rg-2", "Rg-L", "BEM", "LLMeval"]
     #df.columns = ['exp_folder', 'Retriever', 'Reranker', 'Generator', 'gen_time', 'query_dataset', "r_top", "rr_top", "M", "EM", "F1", "P", "R", "Rg-1", "Rg-2", "Rg-L", "BEM", "ll7b", "ll7bs", "ll13b", "ll13bs","ll13bswoq" , "mix7b", "mix7bswoq"]
 
     df=df.sort_values(by=[args.sort])

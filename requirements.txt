@@ -8,7 +8,6 @@ numpy
 omegaconf
 pandas
 peft
-pyserini
 pytrec_eval
 regex
 rouge
@@ -16,13 +15,9 @@ scikit_learn
 scipy
 tensorflow==2.8.0
 protobuf==3.20.*
-tensorflow_hub
-torch
 tqdm
 transformers
 trl
 bitsandbytes
 tabulate
-wandb
 pytest
-flash_attn

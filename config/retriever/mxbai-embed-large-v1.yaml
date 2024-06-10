@@ -1,0 +1,11 @@
+init_args: 
+  _target_: models.retrievers.dense.Dense
+  model_name: "mixedbread-ai/mxbai-embed-large-v1"
+  max_len: 256
+  pooler:
+    _target_: models.retrievers.dense.ClsPooler
+  similarity: 
+    _target_: models.retrievers.dense.CosineSim
+  prompt_q: "Represent this sentence for searching relevant passages: "
+batch_size: 512
+batch_size_sim: 2048

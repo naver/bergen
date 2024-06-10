@@ -1,0 +1,10 @@
+init_args: 
+  _target_: models.retrievers.dense.Dense
+  model_name: "Alibaba-NLP/gte-large-en-v1.5"
+  max_len: 256
+  pooler:
+    _target_: models.retrievers.dense.ClsPooler
+  similarity: 
+    _target_: models.retrievers.dense.CosineSim
+batch_size: 512
+batch_size_sim: 2048
