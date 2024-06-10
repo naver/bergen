@@ -1,5 +1,5 @@
 # BERGEN Library
-We present a library to benchmark RAG systems, focusing on question-answering (QA). Inconsistent benchmarking poses a major challenge in comparing approaches and understanding the impact of each
+We present BERGEN (BEnchmarking Retrieval-augmented GENeration), a library to benchmark RAG systems, focusing on question-answering (QA). Inconsistent benchmarking poses a major challenge in comparing approaches and understanding the impact of each
 component in a RAG pipeline.
 BERGEN was designed to ease the reproducibility and integration of new datasets and models thanks to HuggingFace.
 
@@ -62,7 +62,7 @@ All datasets can be overwritten by adding `+overwrite_datasets=True` as an argum
 Indexing will be automatically launched if needed: retrieval, reranking runs will be loaded from files if they already exist in `runs`, otherwise they will be created.  Retrieval will only be evaluated if the `query` dataset contains the field `ranking_label`.
 For details about indexing, please refer to [indexing.md](documentations/indexing.md)
 
-Experiments are saved under `experiments_folder`. The experiments folder is named after the hash of the config, unless the experiment is finished the folder name will contain the prefix `tmp_`. The script will be aborted if an experiment with the exact same parameters has been run before. To overwrite the experiment add `+overwrite_exp=True` as an argument.
+Experiments are saved under `experiments_folder`. The experiment folder is named after the hash of the config, unless the experiment is finished the folder name will contain the prefix `tmp_`. You can provide a custom name for the experiment folder by adding `+run_name={YOUR_NAME}`. The script will be aborted if an experiment with the exact same parameters has been run before. To overwrite the experiment add `+overwrite_exp=True` as an argument.
 
 To overwrite an existing index (and subsequently the ranking run) add `+overwrite_index=True` as an argument.
 
@@ -124,6 +124,8 @@ python3 print_results.py --folder experiments/
 ## Extensions
 See here our [reference guide](documentations/extensions.md) to add new datasets, models or configure prompts
 
+## Multilingual experiments
+See here our [multilingual RAG guide](documentations/multilingual.md) to run experiments with multilingual user queries and/or multilingual Wikipedia as a datastore.
 
 ### Oracle Provenances as Answer
 Generating answers using oracle provenances directly as an answer. 

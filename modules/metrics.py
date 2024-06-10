@@ -48,20 +48,28 @@ def normalize(s: str) -> str:
 
     return white_space_fix(remove_articles(remove_punc(lower(s))))
 
-
-
-def f1_single(prediction, ground_truth):
-    prediction_tokens = prediction.split()
-    ground_truth_tokens = ground_truth.split()
+def f1_single(prediction, ground_truth, tokenfun=lambda x: x.split()):
+    prediction_tokens = tokenfun(normalize_answer(prediction))
+    ground_truth_tokens = tokenfun(normalize_answer(ground_truth))
     common = Counter(prediction_tokens) & Counter(ground_truth_tokens)
     num_same = sum(common.values())
-
     if num_same == 0:
         return 0, 0, 0
     precision = 1.0 * num_same / len(prediction_tokens)
     recall = 1.0 * num_same / len(ground_truth_tokens)
     f1 = (2 * precision * recall) / (precision + recall)
     return f1, precision, recall
+
+def ngrams(s, n=3):
+    tokens = []
+    for w in s.split():
+        l = len(w)
+        if l < n:
+            tokens.append(w)
+        else:
+            for i in range(l-n+1):
+                tokens.append(w[i:i+n])
+    return tokens
 
 def rouge_wrapper(prediction, ground_truth):
     try:
@@ -92,10 +100,10 @@ def rouge_score(predictions, references):
     return np.mean(rouge1), np.mean(rouge2), np.mean(rougel)
 
 
-def f1_score(predictions, references):
+def f1_score(predictions, references, tokenfun=lambda x: x.split()):
     f1, precision, recall = list(), list(), list()
     for ground_truths, prediction in zip(references, predictions):
-        f1_, precision_, recall_ = [max(values) for values in zip(*[f1_single(prediction, gt) for gt in ground_truths])]
+        f1_, precision_, recall_ = [max(values) for values in zip(*[f1_single(prediction, gt, tokenfun) for gt in ground_truths])]
         f1.append(f1_)
         precision.append(precision_)
         recall.append(recall_)
@@ -123,12 +131,14 @@ class RAGMetrics:
 
         rouge1, rouge2, rougel = rouge_score(predictions, references)
         f1, precision, recall = f1_score(predictions, references)
+        f1_char3gram, precision_char3gram, recall_char3gram = f1_score(predictions, references, ngrams)
         return {    "M": match_score(predictions, references),
                     "EM": exact_match_score(predictions, references),
                     #"BEM": self.bem(predictions, references, questions),
                     "F1": f1,
                     "Precision": precision, 
                     "Recall": recall,
+                    "Recall_char3gram": recall_char3gram,
                     "Rouge-1": rouge1,
                     "Rouge-2": rouge2,
                     "Rouge-L": rougel,
