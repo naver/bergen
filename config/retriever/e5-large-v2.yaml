@@ -8,5 +8,5 @@ init_args:
     _target_: models.retrievers.dense.CosineSim
   prompt_q: "query: "
   prompt_d: "passage: "
-  
-batch_size: 464
+batch_size: 512
+batch_size_sim: 2048

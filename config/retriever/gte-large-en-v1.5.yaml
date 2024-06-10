@@ -1,6 +1,6 @@
 init_args: 
   _target_: models.retrievers.dense.Dense
-  model_name: "intfloat/simlm-base-msmarco-finetuned"
+  model_name: "Alibaba-NLP/gte-large-en-v1.5"
   max_len: 256
   pooler:
     _target_: models.retrievers.dense.ClsPooler

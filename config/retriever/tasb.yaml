@@ -6,5 +6,5 @@ init_args:
     _target_: models.retrievers.dense.ClsPooler
   similarity: 
     _target_: models.retrievers.dense.DotProduct
-batch_size: 648
-batch_size_sim: 256
+batch_size: 512
+batch_size_sim: 2048

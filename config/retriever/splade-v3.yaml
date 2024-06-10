@@ -3,5 +3,5 @@ init_args:
   model_name: naver/splade-v3
   max_len: 128
 batch_size: 512
-batch_size_sim: 1024
+batch_size_sim: 512
 
