@@ -123,7 +123,7 @@ class Retrieve:
             if self.continue_batch != None:
                 if i <= self.continue_batch:
                     continue
-            outputs = self.model(batch)
+            outputs = self.model(query_or_doc, batch)
             emb = outputs['embedding']
             if save_path != None:
                 emb = emb.detach().cpu()
@@ -152,8 +152,9 @@ class Retrieve:
             emb_chunk = torch.load(emb_file)
             emb_chunk = emb_chunk.to('cuda')
             scores_q = self.model.similarity_fn(emb_q.float(), emb_chunk.float())
-            if detach_and_cpu:
-                scores_q = scores_q.detach().cpu().float()
+            # slows down inference too much
+            # if detach_and_cpu:
+            #     scores_q = scores_q.detach().cpu().float()
             scores_sorted_q, indices_sorted_q = torch.topk(scores_q, top_k_documents, dim=1)
             top_k_scores_list.append(scores_sorted_q)
             top_k_indices_list.append(indices_sorted_q+num_emb)

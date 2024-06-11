@@ -12,7 +12,7 @@ import os
 def openai_api_calculate_cost(usage,model="gpt-4-1106-preview"):
     pricing = {
         'gpt-3.5-turbo': {
-            'prompt': 0.0015 ,
+            'prompt': 0.0015 ,  #US$1.50 / 1M tokens
             'completion': 0.0020,
         },
         'gpt-4-1106-preview': {
@@ -26,7 +26,11 @@ def openai_api_calculate_cost(usage,model="gpt-4-1106-preview"):
         'gpt-4': {
             'prompt': 0.03,
             'completion': 0.06,
-        }
+        },
+        'gpt-4o': {
+            'prompt': 0.005,  #US$5.00 / 1M tokens
+            'completion': 0.015,  #US$15.00 / 1M tokens
+        }        
     }
 
     try:

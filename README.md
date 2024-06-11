@@ -8,9 +8,9 @@ BERGEN was designed to ease the reproducibility and integration of new datasets 
 ## Quick Start
 A RAG setup is typically a pipeline
 
-`input` >> `retriever` >> `reranker` >> LLM >> `output`
+`input` >> `retriever` >> `reranker` >> `LLM` >> `output`
 
-One can write simple config files (yaml), configuring a retriever, reranker and LLMS for generations. All those configurations can be chained together as follows: am experiment with retrieval using `BM25`, reranking using `MiniLM6`, generation using `tinyllama-chat` in debug mode (using 15 queries) on `kilt_nq`.
+One can write simple config files (yaml), configuring a retriever, reranker, and LLMS for generations. All those configurations can be chained together as follows: am experiment with retrieval using `BM25`, reranking using `MiniLM6`, and generation using `tinyllama-chat` on `kilt_nq`.
 
 ```bash
   python3 bergen.py retriever="bm25" reranker="minilm6" generator='tinyllama-chat' dataset='kilt_nq'
@@ -36,15 +36,15 @@ Supported Metrics:
 | ROUGE  |  
 
 All the  configuration files are located in the config dir.
-The main config file is located in in config/rag.yaml
+The main config file is located in config/rag.yaml
 
 ```
 # main variables locating the local data folder and index
 run_name: null
-dataset_folder: 'datasets/' # where to dowload,save and preprocess dataset
-index_folder: 'indexes/' # where to search index ared saved
+dataset_folder: 'datasets/' # where to download, save and preprocess the dataset
+index_folder: 'indexes/' # where to search index are saved
 runs_folder: 'runs/' # where the text search runs are saved, ie (query and document id lists)
-experiments_folder: 'experiments/'    # where the generations from LLMs and metrices are saved
+experiments_folder: 'experiments/'    # where the generations from LLMs and metrics are saved
 
 ```
 
@@ -66,7 +66,7 @@ Experiments are saved under `experiments_folder`. The experiment folder is named
 
 To overwrite an existing index (and subsequently the ranking run) add `+overwrite_index=True` as an argument.
 
-To print the results in a table run. By default this will print all experiments that contain generation metric files in `experiments/` and sort them by the `generator`.
+To print the results in a table run. By default, this will print all experiments that contain generation metric files in `experiments/` and sort them by the `generator`.
 
 ```bash
 python3 print_results.py --folder experiments/

@@ -27,8 +27,12 @@ class Generate():
         self.model = instantiate(init_args, prompt=prompt)
 
     def eval(self, dataset):
-        tokenized_and_sorted_dataset = Tokenized_Sorted_Dataset(dataset, self.model, training=False)
-        dataloader = DataLoader(tokenized_and_sorted_dataset, batch_size=self.batch_size, collate_fn=lambda l: self.model.collate_fn(l, eval=True), num_workers=4)
+        if self.model.tokenizer:
+            tokenized_and_sorted_dataset = Tokenized_Sorted_Dataset(dataset, self.model, training=False)
+            dataloader = DataLoader(tokenized_and_sorted_dataset, batch_size=self.batch_size, collate_fn=lambda l: self.model.collate_fn(l, eval=True), num_workers=4)
+        else:
+            dataloader = DataLoader(dataset, batch_size=self.batch_size, collate_fn=lambda l: self.model.collate_fn(l, eval=True), num_workers=4)
+
 
 
         responses, instructions, query_ids, queries, labels, ranking_labels = list(), list(), list(), list(), list(), list()
