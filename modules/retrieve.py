@@ -123,7 +123,7 @@ class Retrieve:
             if self.continue_batch != None:
                 if i <= self.continue_batch:
                     continue
-            outputs = self.model(batch)
+            outputs = self.model(query_or_doc, batch)
             emb = outputs['embedding']
             if save_path != None:
                 emb = emb.detach().cpu()
