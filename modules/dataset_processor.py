@@ -740,11 +740,17 @@ class XORQA(Processor):
         super().__init__(*args, **kwargs, dataset_name=dataset_name)
 
     def process(self):
+        def extend(label, lang):
+            if "yes" in label:
+                label += {"ru": ["да"], "ko": ["예"], "ja": ["はい"], "fi": ["kyllä", "joo"], "ar": ["نعم", "أجل", "بلى"]}[lang]
+            if "no" in label:
+                label += {"ru": ["нет"], "ko": ["아니요"], "ja": ["いいえ"], "fi": ["ei"], "ar": ["لا"]}[lang]
+            return label
         os.system("wget https://nlp.cs.washington.edu/xorqa/XORQA_site/data/xor_dev_full_v1_1.jsonl")
         dataset = datasets.load_dataset("json", data_files="xor_dev_full_v1_1.jsonl")["train"] # the file should be already .dev, and train is just default hf label
         dataset = dataset.filter(lambda example: example['lang']==self.lang)
         # discarding empty answers 
-        dataset = dataset.map(lambda example: {'label': [el for el in example['answers'] if len(el) > 0]})
+        dataset = dataset.map(lambda example: {'label': extend([el for el in example['answers'] if len(el) > 0], self.lang)})
         dataset = dataset.rename_column("question", "content")
         #dataset = dataset.remove_columns(['meta', 'output'])
         os.system("rm xor_dev_full_v1_1.jsonl")

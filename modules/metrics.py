@@ -49,8 +49,8 @@ def normalize(s: str) -> str:
     return white_space_fix(remove_articles(remove_punc(lower(s))))
 
 def f1_single(prediction, ground_truth, tokenfun=lambda x: x.split()):
-    prediction_tokens = tokenfun(normalize_answer(prediction))
-    ground_truth_tokens = tokenfun(normalize_answer(ground_truth))
+    prediction_tokens = tokenfun(prediction)
+    ground_truth_tokens = tokenfun(ground_truth)
     common = Counter(prediction_tokens) & Counter(ground_truth_tokens)
     num_same = sum(common.values())
     if num_same == 0:
@@ -61,6 +61,8 @@ def f1_single(prediction, ground_truth, tokenfun=lambda x: x.split()):
     return f1, precision, recall
 
 def ngrams(s, n=3):
+    exclude = set(string.punctuation)
+    s = ''.join(ch if ch not in exclude else " " for ch in s.lower())
     tokens = []
     for w in s.split():
         l = len(w)

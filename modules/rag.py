@@ -212,6 +212,7 @@ class RAG:
                 with open(gen_query_file, 'r') as fp: 
                     generated_queries = json.load(fp)["generated_queries"]
             dataset['query'] = dataset['query'].add_column("generated_query", generated_queries)
+            shutil.copyfile(gen_query_file, f'{self.experiment_folder}/{gen_query_file.split("/")[-1]}')
         dataset['query'].id2index = id2index
         return dataset
     

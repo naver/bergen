@@ -12,8 +12,10 @@ Example of launching evaluation on the MKQA dataset in French, with retrieval fr
 python3 bergen.py generator='command-r-35b' retriever='bge-m3' reranker='bge-m3' dataset='mkqa/mkqa_fr.retrieve_en' prompt='basic_translated_langspec/fr'
 ```
 
-You can add `++experiments_folder=$exp_folder` to specify a custom folder to save results and `+run_name=$label"` to specify a custom experiment name. 
+You can add `++experiments_folder=$exp_folder` to specify a custom folder to save results and `+run_name=$label"` to specify a custom experiment name. We also provide a [script](https://github.com/naver/bergen/blob/main/scripts/multilingual/launch_all_exps.sh) with commands to run our main experiments for all considered languages.
+
 For more details on installing BEGREN and running experiments, please refer to the [main readme](https://github.com/naver/bergen/tree/main). 
+
 
 ## Datasets
 
@@ -35,7 +37,9 @@ Usage:
     * `retrieve_en_${lang}`: retrieve from concatenation of English wikipedia and Wikipedia in user language
     * `retrieve_all`: retrieve from concatenation of Wikipedia in all supported languages (same as for MKQA).
 * Example: `dataset="mkqa/mkqa_fr.retrieve_en_fr"` sets testing on MKQA in French with retrieval from Wikipedia in English and French.
-* Since XOR TyDI QA does not include English, we use the initial TyDI QA English set: `dataset="tydiqa"` or  `dataset="tydiqa.retrieve_all"`. For MKQA, use English MKQA subset: `dataset="mkqa/mkqa_en.retrieve_en"` or `dataset="mkqa/mkqa_en.retrieve_all"`.
+* Since XOR TyDI QA does not include English, we use the initial TyDI QA English set: `dataset="tydiqa_en"` or  `dataset="tydiqa_en.retrieve_all"`. For MKQA, use English MKQA subset: `dataset="mkqa/mkqa_en.retrieve_en"` or `dataset="mkqa/mkqa_en.retrieve_all"`.
+
+To run experiments with `retrieve_en_${lang}` and `retrieve_all`, you first need to run `retrieve_en` and `retrieve_${lang}` so that the corresponding Wikipedia datasets are preprocessed and saved before merging them in `retrieve_en_${lang}` and `retrieve_all`.
 
 ## Prompts
 
@@ -64,13 +68,29 @@ Multilingual generation model, [Command-R-35B](https://huggingface.co/CohereForA
 With the use of advanced prompts, such as `prompt="basic_translated_langspec/{lang}"`, you can also try English-centric models such as `generator="SOLAR-107B"` (or its vllm version "vllm_SOLAR-107B") or `generator="mixtral-moe-7b-chat"` (or its vllm version "vllm_mixtral-moe-7b-chat").
 Their performance depends on the language, e.g. Solar replies well in French but has troubles in Korean. VLLM version is much faster but we recommend checking that it performs well on the considered language.
 
+## Evaluation
+
+We use _character 3-gram recall_ as our main metric, as it is more robust to spelling variations in named entities than word-based match metrics. All match-based metrics are automatically saved in `eval_dev_metrics.json` in experiment folders. 
+
+We also use _correct language rate_ as an auxiliary metric controlling that model responses are in the same language as the user language. You can compute this metric as follows:
+
+```bash
+python3 eval.py --folder ${folder_to_evaluate} --lid ${language_code}
+```
+
+Here language code should follow [Flores language codes](https://github.com/facebookresearch/flores/blob/main/flores200/README.md). We also provide a [script]( https://github.com/naver/bergen/blob/main/scripts/multilingual/eval_lid.sh) to run LID evaluation for all experiments in a given folder:
+
+```bash
+bash eval_lid.sh ${experiments_folder}
+```
+
 ## Adding a new language
 
-To add a new language supported in MKQA or XOR TyDi QA, you will need to add corresponding config files in `config/dataset` (modify field `lang` in `query` according to [MKQA language codes](https://huggingface.co/datasets/apple/mkqa) and in `doc` according to [Wikimedia language codes](https://huggingface.co/datasets/wikimedia/wikipedia)) and 
-in `config/prompt` (if you use language-dependent prompt, which usually leads to better results, see section "Prompts" above). 
-In case the language uses the non-alphabetic writing system, you can also specify it in `modules/dataset_processor/Wiki_monolingual_100w/process/map_100w` function so that articles are splitted by characters and not words.
-
-
-In case you use query translation, also add a new config in `config/query_generator/translate` (change `src_lang` field according to [Flores language codes](https://github.com/facebookresearch/flores/blob/main/flores200/README.md)).
+To add a new language supported in MKQA or XOR TyDi QA:
+* add corresponding config files in `config/dataset`: modify field `lang` in `query` according to [MKQA language codes](https://huggingface.co/datasets/apple/mkqa) and in `doc` according to [Wikimedia language codes](https://huggingface.co/datasets/wikimedia/wikipedia)
+* add corresponding config files in `config/prompt` (if you use language-dependent prompt, which usually leads to better results, see section "Prompts" above)
+* check language-specific processing in  `modules/dataset_processor/Wiki_monolingual_100w/process` and `modules/dataset_processor/XORQA/process`
+* \[in case you use query translation\], also add a new config in `config/query_generator/translate` (change `src_lang` field according to [Flores language codes](https://github.com/facebookresearch/flores/blob/main/flores200/README.md)).
+* \[in case you use [scripts](https://github.com/naver/bergen/blob/main/scripts/multilingual)\], add your language in them as well
 
 In case you need to add a new dataset, retriever, or generator, please refer to the [BERGEN extensions guide](https://github.com/naver/bergen/blob/main/documentations/extensions.md).

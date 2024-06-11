@@ -6,7 +6,7 @@ import os
 
 class Evaluate:
     @staticmethod
-    def eval(experiment_folder, split, bem=False, llm=False, vllm=False,gpt=None,clova=False,bem_batch_size=1, llm_batch_size=1, folder=None, force=False):
+    def eval(experiment_folder, split, bem=False, llm=False, vllm=False, gpt=None, clova=False, lid=False, bem_batch_size=1, llm_batch_size=1, folder=None, force=False):
         def eval_single(experiment_folder, folder, split, model, metric_name):
             if folder != None:
                 folders = [folder]
@@ -56,7 +56,7 @@ class Evaluate:
                     print (metrics_dict,metric_name,model_score)
                     # save to _ tmp file
                     with open(metrics_file + '_', 'w') as fp:
-                        json.dump(metrics_dict, fp)
+                        json.dump(metrics_dict, fp, indent=2)
                     # when writing successful remove tmp file
                     shutil.move(metrics_file + '_', metrics_file)
     
@@ -86,11 +86,11 @@ class Evaluate:
         
         if gpt is not None:
             from models.evaluators.openai import OpenAI
-            model=OpenAI(gpt)
+            model = OpenAI(gpt)
             eval_single(experiment_folder, folder, split, model, gpt)
         if clova:
             from models.evaluators.clova import ClovaAI
-            model=ClovaAI()
+            model = ClovaAI()
             eval_single(experiment_folder, folder, split, model, "Clova")            
         if vllm:
             from models.evaluators.vllm import LLM
@@ -98,6 +98,10 @@ class Evaluate:
             model_name, short_name = "Upstage/SOLAR-10.7B-Instruct-v1.0", "LLMeval"
             model = LLM(model_name, batch_size=llm_batch_size)
             eval_single(experiment_folder, folder, split, model, short_name)
+        if lid is not None:
+            from models.evaluators.lid import LID
+            model = LID(lid)
+            eval_single(experiment_folder, folder, split, model, "lid")
 
     
 
@@ -111,8 +115,9 @@ if __name__ == "__main__":
     parser.add_argument('--bem', action='store_true')
     parser.add_argument('--llm', action='store_true')
     parser.add_argument('--vllm', action='store_true')
-    parser.add_argument('--gpt', type=str,default=None)
+    parser.add_argument('--gpt', type=str, default=None)
     parser.add_argument('--clova', action='store_true')
+    parser.add_argument('--lid', type=str, default=None)
     parser.add_argument('--bem_batch_size', type=int, default=1024)
     parser.add_argument('--llm_batch_size', type=int, default=1)
     parser.add_argument('--force', action='store_true')
@@ -125,6 +130,7 @@ if __name__ == "__main__":
         vllm=args.vllm, 
         gpt=args.gpt,
         clova=args.clova,
+        lid=args.lid,
         bem_batch_size=args.bem_batch_size,
         llm_batch_size=args.llm_batch_size,
         folder=args.folder, 
