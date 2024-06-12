@@ -70,7 +70,7 @@ class Retrieve:
             
             return bm25_out
         else:
-            self.model.model = self.model.model.to('cuda')
+            #self.model.model = self.model.model.to('cuda')
 
             query_embeds = load_embeddings(query_embeds_path)
             query_embeds = query_embeds.to_dense().to('cuda')
@@ -118,7 +118,7 @@ class Retrieve:
             num_workers=4
             )
         embs_list = list()
-        self.model.model = self.model.model.to('cuda')
+        #self.model.model = self.model.model.to('cuda')
         for i, batch in tqdm(enumerate(dataloader), total=total_n_batches , desc=f'Encoding: {self.model.model_name}', file=sys.stderr):
             if self.continue_batch != None:
                 if i <= self.continue_batch:

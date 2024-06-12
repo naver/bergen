@@ -4,4 +4,3 @@ init_args:
   max_len: 128
 batch_size: 512
 batch_size_sim: 512
-
