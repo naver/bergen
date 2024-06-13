@@ -38,13 +38,12 @@ class Evaluate:
                         references.append(sample['label'])
                         questions.append(sample['question'])
 
-                    try:
+                    if gpt is not None:
                         # openai costs
                         model_score, scores, cost = model(predictions, references, questions)
                         costs_out_file = f'{experiment_folder}/eval_{split}_cost_{metric_name}_out.json'
                         with open(costs_out_file, 'w') as fout: fout.write(json.dumps(cost))
-                    except:
-                        model_score, scores = model(predictions, references, questions)
+                        
                     metrics_out_file = f'{experiment_folder}/eval_{split}_metrics_{metric_name}_out.json'
                     with open(metrics_out_file, 'w') as fout:
 
@@ -67,18 +66,6 @@ class Evaluate:
             eval_single(experiment_folder, folder, split, model, 'BEM')
         if llm:
             from models.evaluators.llm import LLM
-            #model_name, short_name = 'mistralai/Mixtral-8x7B-Instruct-v0.1', 'LLM_mix7b_short_wo_question'
-            #model_name, short_name = 'meta-llama/Llama-2-7b-chat-hf', 'LLM_ll7b'
-            #model_name, short_name = 'meta-llama/Llama-2-7b-chat-hf', 'LLM_ll7b_score'
-            #model_name, short_name = 'meta-llama/Llama-2-7b-chat-hf', 'LLM_ll7b_sem_or_lex'
-            #model_name, short_name = 'meta-llama/Llama-2-13b-chat-hf', 'LLM_ll13b'
-            #model_name, short_name = 'meta-llama/Llama-2-13b-chat-hf', 'LLM_ll13b_short_wo_question'
-            #model_name, short_name = 'TinyLlama/TinyLlama-1.1B-Chat-v1.0', 'LLM_tll'
-            #model_name, short_name = 'mistralai/Mixtral-8x7B-Instruct-v0.1', 'LLM_mix7b'
-            #model_name, short_name = 'mistralai/Mixtral-8x7B-Instruct-v0.1', 'LLM_mix7b_sem_or_lex'
-            #model_name, short_name = 'meta-llama/Llama-2-13b-chat-hf', 'LLM_ll13b_score'
-            #model_name, short_name = 'meta-llama/Llama-2-70b-chat-hf', 'LLM_ll70b_score'
-            #model_name, short_name = 'meta-llama/Llama-2-13b-chat-hf', 'LLM_ll13b_sem_or_lex'
             model_name, short_name = "Upstage/SOLAR-10.7B-Instruct-v1.0", "LLMeval"
             model = LLM(model_name, batch_size=llm_batch_size)
             
@@ -86,15 +73,11 @@ class Evaluate:
         
         if gpt is not None:
             from models.evaluators.openai import OpenAI
-            model=OpenAI(gpt)
+            model = OpenAI(gpt)
             eval_single(experiment_folder, folder, split, model, gpt)
-        if clova:
-            from models.evaluators.clova import ClovaAI
-            model=ClovaAI()
-            eval_single(experiment_folder, folder, split, model, "Clova")            
+
         if vllm:
             from models.evaluators.vllm import LLM
-            #model_name, short_name = 'mistralai/Mixtral-8x7B-Instruct-v0.1', 'vLLM_mix7b'
             model_name, short_name = "Upstage/SOLAR-10.7B-Instruct-v1.0", "LLMeval"
             model = LLM(model_name, batch_size=llm_batch_size)
             eval_single(experiment_folder, folder, split, model, short_name)

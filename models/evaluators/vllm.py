@@ -35,29 +35,29 @@ class LLM:
         prediction=sample['candidate']
         if 'system' in self.tokenizer.chat_template:
             prefix =  [{'role': 'system',
-                'content': "You are an evaluation tool. Just answer by [Yes] or [No]."}]
+                'content': "You are an evaluation tool. Just answer by {{Yes}} or {{No}}."}]
             prefix.extend([{'role': 'user',
                 'content': f"Here is a question, a golden answer and an AI-generated answer. Can you judge whether the AI-generated answer is correct according to the question and golden answer, simply answer Yes or No.\n Question: {question}. \ngolden answer: {answer} \n Generated answer: {prediction}"}
                 ]
                 )            
         else:
             prefix = [{'role': 'user',
-                'content': f"You are an evaluation tool. Just answer by [Yes] or [No]. Here is a question, a golden answer and an AI-generated answer. Can you judge whether the AI-generated answer is correct according to the question and golden answer, simply answer Yes or No.\n Question: {question}. \ngolden answer: {answer} \n Generated answer: {prediction}"}
+                'content': f"You are an evaluation tool. Just answer by {{Yes}} or {{No}}. Here is a question, a golden answer and an AI-generated answer. Judge whether the AI-generated answer is correct according to the question and golden answer, answer with {{Yes}} or {{No}}.\nQuestion: {question}.\nGolden answer: {answer}\nGenerated answer: {prediction}"}
                 ]
-        return self.tokenizer.apply_chat_template(prefix,  add_generation_prompt=True, tokenize=False)
+        return self.tokenizer.apply_chat_template(prefix,  add_generation_prompt=True, tokenize=False) +'Response: {'
 
-    def format_instruction(self, sample):
-        reference = sample['reference']
-        if isinstance(reference, str):
-            reference = [reference]
-        # reference = ', '.join(reference)
-        #return f"Here is a question, a golden answer and an AI-generated answer. Can you judge whether the AI-generated answer is correct according to the question and golden answer, simply answer Yes or No.\n Question: {sample['question']}. \ngolden answer: {reference} \n Generated answer: {sample['candidate']}"
+#     def format_instruction(self, sample):
+#         reference = sample['reference']
+#         if isinstance(reference, str):
+#             reference = [reference]
+#         # reference = ', '.join(reference)
+#         #return f"Here is a question, a golden answer and an AI-generated answer. Can you judge whether the AI-generated answer is correct according to the question and golden answer, simply answer Yes or No.\n Question: {sample['question']}. \ngolden answer: {reference} \n Generated answer: {sample['candidate']}"
 
-        return f"""Assess whether the candidate answer effectively answers the question in comparison to at least one of the provided reference answers. Consider factors such as relevance, correctness, and completeness in your
-Question: {sample['question']}
-Reference Answers: {reference}
-Candidate Answer: {sample['candidate']}
-Output: {{"""
+#         return f"""Assess whether the candidate answer effectively answers the question in comparison to at least one of the provided reference answers. Consider factors such as relevance, correctness, and completeness in your
+# Question: {sample['question']}
+# Reference Answers: {reference}
+# Candidate Answer: {sample['candidate']}
+# Output: {{"""
 
     # def collate_fn(self, examples, max_length=512):
     #     instr = [self.create_instruction(sample) if self.custom_format_instruction == None else self.custom_format_instruction(sample) for sample in examples]  # Add prompt to each text
