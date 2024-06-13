@@ -1,0 +1,7 @@
+experiments/
+__pycache__
+*.swp
+tests/dataset/
+tests/index/
+tests/exp/
+tests/run/
