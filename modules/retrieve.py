@@ -114,7 +114,7 @@ class Retrieve:
             }
 
     @torch.no_grad() 
-    def encode_and_save(self, dataset, save_path, query_or_doc=None, chunk_size=150000):
+    def encode_and_save(self, dataset, save_path, query_or_doc, chunk_size=150000):
         save_every_n_batches = chunk_size // self.batch_size
         total_n_batches = len(dataset)//self.batch_size + int(bool(len(dataset)%self.batch_size))
         # make index folder if save_path is provided
@@ -132,7 +132,7 @@ class Retrieve:
             if self.continue_batch != None:
                 if i <= self.continue_batch:
                     continue
-            outputs = self.model(batch)
+            outputs = self.model(query_or_doc, batch)
             emb = outputs['embedding']
             if save_path != None:
                 emb = emb.detach().cpu()
