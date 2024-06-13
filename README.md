@@ -10,7 +10,7 @@ A RAG setup is typically a pipeline
 
 `input` >> `retriever` >> `reranker` >> `LLM` >> `output`
 
-One can write simple config files (yaml), configuring a retriever, reranker, and LLMS for generations. All those configurations can be chained together as follows: am experiment with retrieval using `BM25`, reranking using `MiniLM6`, and generation using `tinyllama-chat` on `kilt_nq`.
+One can write simple config files (yaml), configuring a retriever, reranker, and LLMs for generations. All those configurations can be chained together as follows: am experiment with retrieval using `BM25`, reranking using `MiniLM6`, and generation using `tinyllama-chat` on `kilt_nq`.
 
 ```bash
   python3 bergen.py retriever="bm25" reranker="minilm6" generator='tinyllama-chat' dataset='kilt_nq'
