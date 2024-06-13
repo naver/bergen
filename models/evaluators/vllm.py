@@ -26,7 +26,7 @@ class LLM:
             self.model = vllm(model=self.model_name,tensor_parallel_size=torch.cuda.device_count(),gpu_memory_utilization=0.9,max_model_len=4096,enforce_eager=False,kv_cache_dtype="fp8")        
         else:
             self.model = vllm(model=self.model_name,tensor_parallel_size=torch.cuda.device_count(),quantization=self.quantization)
-        self.sampling_params =  SamplingParams(temperature=1,max_tokens=100,best_of=1, top_p=1, top_k=-1)
+        self.sampling_params =  SamplingParams(temperature=0,max_tokens=10,best_of=1, top_p=1, top_k=-1)
 
 
     def create_instruction(self,sample):
@@ -46,24 +46,6 @@ class LLM:
                 ]
         return self.tokenizer.apply_chat_template(prefix,  add_generation_prompt=True, tokenize=False) +'Response: {'
 
-#     def format_instruction(self, sample):
-#         reference = sample['reference']
-#         if isinstance(reference, str):
-#             reference = [reference]
-#         # reference = ', '.join(reference)
-#         #return f"Here is a question, a golden answer and an AI-generated answer. Can you judge whether the AI-generated answer is correct according to the question and golden answer, simply answer Yes or No.\n Question: {sample['question']}. \ngolden answer: {reference} \n Generated answer: {sample['candidate']}"
-
-#         return f"""Assess whether the candidate answer effectively answers the question in comparison to at least one of the provided reference answers. Consider factors such as relevance, correctness, and completeness in your
-# Question: {sample['question']}
-# Reference Answers: {reference}
-# Candidate Answer: {sample['candidate']}
-# Output: {{"""
-
-    # def collate_fn(self, examples, max_length=512):
-    #     instr = [self.create_instruction(sample) if self.custom_format_instruction == None else self.custom_format_instruction(sample) for sample in examples]  # Add prompt to each text
-    #     #instr_tokenized = self.tokenizer(instr, padding=True, truncation=True, return_tensors="pt")
-    #     return instr #instr_tokenized, instr
-
     @torch.no_grad()
     def __call__(self, predictions, references, questions):
         # Loading the TensorFlow Hub model
@@ -71,11 +53,13 @@ class LLM:
         examples = [{'question': questions[i], 'reference': references[i], 'candidate': predictions[i]}  for i in range(len(predictions))]
         instrs = [self.create_instruction(sample) if self.custom_format_instruction == None else self.custom_format_instruction(sample) for sample in examples]
         scores = list()
+        weird = list() 
         # Perform batch inference
         for i in (tq:=tqdm(range(0, len(instrs), self.batch_size), desc=f'LLM evaluation with {self.model_name}...')):
             outputs = self.model.generate(instrs[i:i+self.batch_size], self.sampling_params)
             decoded = [output.outputs[0].text for output in outputs]
             scores.extend([ 1 if "yes" in rep.lower() else 0 for rep in decoded ])
-            tq.set_description(f" score: {np.mean(scores)* 100:4.1f}%")
+            weird.extend([ 1 if ("no" not in rep.lower() and "yes" not in rep.lower()) else 0 for rep in decoded ])
+            tq.set_description(f"score: {np.mean(scores)* 100:4.1f}%: weird {np.mean(weird)* 100:4.1f}%")
         return np.mean(scores), scores
 

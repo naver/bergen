@@ -29,6 +29,7 @@ class Evaluate:
                     except: continue
 
                     if metric_name in metrics_dict and not force:
+                        print (f"{experiment_folder}\t{metric_name}\talready done")
                         continue
                     
                     predictions, references, questions = list(), list(), list()
@@ -43,7 +44,9 @@ class Evaluate:
                         model_score, scores, cost = model(predictions, references, questions)
                         costs_out_file = f'{experiment_folder}/eval_{split}_cost_{metric_name}_out.json'
                         with open(costs_out_file, 'w') as fout: fout.write(json.dumps(cost))
-                        
+                    else:
+                        model_score, scores = model(predictions, references, questions)
+
                     metrics_out_file = f'{experiment_folder}/eval_{split}_metrics_{metric_name}_out.json'
                     with open(metrics_out_file, 'w') as fout:
 
