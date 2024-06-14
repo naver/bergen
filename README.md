@@ -16,6 +16,9 @@ One can write simple config files (yaml), configuring a retriever, reranker, and
   python3 bergen.py retriever="bm25" reranker="minilm6" generator='tinyllama-chat' dataset='kilt_nq'
 ```
 
+### Installation
+ Check  the [installation guide](documentations/INSTALL.md)
+
 ## Supported Features
 BERGEN contains simple wrappers for the following features:
 | Category        | Name               |   Argument                     |
@@ -42,7 +45,7 @@ The main config file is located in config/rag.yaml
 # main variables locating the local data folder and index
 run_name: null
 dataset_folder: 'datasets/' # where to download, save and preprocess the dataset
-index_folder: 'indexes/' # where to search index are saved
+index_folder: 'indexes/' # where the search index are saved
 runs_folder: 'runs/' # where the text search runs are saved, ie (query and document id lists)
 experiments_folder: 'experiments/'    # where the generations from LLMs and metrics are saved
 
@@ -93,6 +96,12 @@ Using vllm to speed up generation:
 python3 bergen.py retriever="splade-v3" reranker="debertav3"  generator='vllm_SOLAR-107B' dataset='kilt_nq'
 ```
 
+To specify another config file:
+```bash
+# create a config file located in the config dir
+# (the default config is rag)
+CONFIG=myownconfig python3 bergen.py retriever="splade-v3" reranker="debertav3"  generator='vllm_SOLAR-107B' dataset='kilt_nq'
+```
 
 ## Evaluation
 Non-neural metrics will be calculated automatically. Neural metrics such as `BEM` and `LLM` need to be evoked seperately.
