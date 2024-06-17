@@ -1,7 +1,7 @@
 init_args: 
   _target_: models.generators.llm.LLM
-  model_name: "Upstage/SOLAR-10.7B-Instruct-v1.0"
+  model_name: "microsoft/Phi-3-mini-4k-instruct"
   max_new_tokens: 128
   max_length: 2048
   quantization: "int4"
-batch_size: 1
+batch_size: 24
