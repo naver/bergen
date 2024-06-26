@@ -38,8 +38,13 @@ BERGEN contains simple wrappers for the following features:
 Supported Metrics:
 | Metric |
 | - |
+|Match|
+|Exact Match|
+|Recall|
+|Precision|
 | F1 Score |
-| ROUGE  |  
+| ROUGE-1,2,L  |  
+|LLMeval|
 
 All the  configuration files are located in the config dir.
 The main config file is located in config/rag.yaml
