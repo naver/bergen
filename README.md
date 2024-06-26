@@ -27,6 +27,9 @@ BERGEN contains simple wrappers for the following features:
 |                 | TriviaQA           | `dataset="kilt_triviaqa"`      |
 | **Generators**  | Llama 2 7B Chat    | `generator="llama-2-7b-chat"`  |
 |                 | Llama 2 13B Chat   | `generator="llama-2-13b-chat"` |
+|                 | Llama 2 70B Chat   | `generator="llama-2-70b-chat"` |
+|                 | Mixtral-8x7B-Instruct-v0.1   | `generator="mixtral-moe-7b-chat"` |
+|                 | SOLAR-10.7B-Instruct-v1.0   | `generator="SOLAR-107B"` |
 | **Retrievers**  | BM25               | `retriever="bm25"`             |
 |                 | SPLADE-v3          | `retriever="spladev3"`         |
 |                 | BGE                | `retriever="bge"`              |
