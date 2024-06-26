@@ -1,4 +1,4 @@
-# BERGEN Library
+# BERGEN: Benchmarking RAG
 We present a library to benchmark RAG systems, focusing on question-answering (QA). Inconsistent benchmarking poses a major challenge in comparing approaches and understanding the impact of each
 component in a RAG pipeline.
 BERGEN was designed to ease the reproducibility and integration of new datasets and models thanks to HuggingFace.
