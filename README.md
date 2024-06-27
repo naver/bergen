@@ -59,7 +59,7 @@ experiments_folder: 'experiments/'    # where the generations from LLMs and metr
 
 ```
 
-
+### Datasets
 Datasets will be downloaded, pre-processed, indexed, and saved if they do not exist yet, otherwise, they will be loaded from `dataset_folder` and `index_folder` respectively. 
 
 ```bash
@@ -67,21 +67,28 @@ ls config/dataset/
 2wikimultihopqa.yaml  kilt_cweb.yaml   kilt_hotpotqa.yaml     kilt_structured_zeroshot.yaml  kilt_wned.yaml  msmarco.yaml  pubmed_bioasq.yaml  ut1.yaml asqa.yaml kilt_eli5.yaml   kilt_nq_wiki2024.yaml  kilt_trex.yaml   kilt_wow.yaml   nq_open.yaml  sciq.yaml  wiki_qa.yaml kilt_aidayago2.yaml   kilt_fever.yaml  kilt_nq.yaml kilt_triviaqa.yaml mmlu.yaml popqa.yaml  truthful_qa.yaml
 ```
 
+To add a new datasets, please refer to an following guide:[extensions](documentations/extensions.md)
 
-All datasets can be overwritten by adding `+overwrite_datasets=True` as an argument (`Caution`: This might overwrite collections that take long long to encode). In case the indexing is interrupted you can continue encoding a collection from batch 1000 by additionally using the argument `+continue_batch=1000`.
-
-Indexing will be automatically launched if needed: retrieval, reranking runs will be loaded from files if they already exist in `runs`, otherwise they will be created.  Retrieval will only be evaluated if the `query` dataset contains the field `ranking_label`.
+### Retrieval
+Indexing of the document collections will be automatically launched if needed: retrieval, reranking runs will be loaded from files if they already exist in `runs`, otherwise they will be created.  Retrieval will only be evaluated if the `query` dataset contains the field `ranking_label`.
 For details about indexing, please refer to [indexing.md](documentations/indexing.md)
 
-Experiments are saved under `experiments_folder`. The experiments folder is named after the hash of the config, unless the experiment is finished the folder name will contain the prefix `tmp_`. The script will be aborted if an experiment with the exact same parameters has been run before. To overwrite the experiment add `+overwrite_exp=True` as an argument.
+Experiments are saved under `experiments_folder`. The experiments folder is named after the hash of the config, unless the experiment is finished the folder name will contain the prefix `tmp_`. The script will be aborted if an experiment with the exact same parameters has been run before. 
 
-To overwrite an existing index (and subsequently the ranking run) add `+overwrite_index=True` as an argument.
 
-To print the results in a table run. By default, this will print all experiments that contain generation metric files in `experiments/` and sort them by the `generator`.
+- To overwrite the experiment add `+overwrite_exp=True` as an argument, due to a bug or another update in the config 
+- To overwrite an existing retrieval run, `+overwrite_run=True` as an argument.
+-  To rebuild the index (and subsequently the ranking run) add `+overwrite_index=True` as an argument.
+
+To print the results in a table run the following commands. By default, this will print all experiments that contain generation metric files in `experiments/` and sort them by the `generator`.
 
 ```bash
-python3 print_results.py --folder experiments/
-TODO Give an example here
+# will print a markdown of the results and save a csv file under the results directory
+python3 print_results.py --csv --folder experiments/
+
+#csv files with all the metrics
+exp_folder,Retriever,P_1,Reranker,Generator,gen_time,query_dataset,r_top,rr_top,M,EM,F1,P,R,Rg-1,Rg-2,Rg-L,BEM,LLMeval
+216567b3d48ef3fc,naver/splade-v3/,,naver/trecdl22-crossencoder-debertav3,TinyLlama/TinyLlama-1.1B-Chat-v1.0,00:03:53.19,KILTTriviaqa,100,100,0.6763772175536882,0.00018674136321195143,0.11749967712256401,0.07122756370055569,0.5380933823321367,0.1505780809175042,0.055962386132169924,0.14611799602749245,0.47356051206588745,
 ```
 ## Pipeline Examples
 For the main command line:  `retriever`, `reranker`, and `generator` are optional and can be `None`, the `dataset` argument must always be provided. 
