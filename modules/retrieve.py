@@ -70,17 +70,26 @@ class Retrieve:
             
             return bm25_out
         else:
-            self.model.model = self.model.model.to('cuda')
-
+            
             query_embeds = load_embeddings(query_embeds_path)
             query_embeds = query_embeds.to_dense().to('cuda')
-
+            #query_embeds = query_embeds.to('cuda')
+            self.model.model = self.model.model.to('cpu')
 
             # separate query embedding in chunks
             chunks = torch.split(query_embeds, self.batch_size_sim, dim=0)
             scores_sorted_topk, indices_sorted_topk, embeds_sorted_top_k = list(), list(), list()
+
+            emb_files = glob.glob(f'{doc_embeds_path}/*.pt')
+            sorted_emb_files = sorted(emb_files, key=lambda x: int(''.join(filter(str.isdigit, x))))
+
+            doc_embeds = list()
+            for emb_file in tqdm(sorted_emb_files, total=len(sorted_emb_files), desc=f'Load embeddings and retrieve...'):
+                emb_chunk = torch.load(emb_file)
+                doc_embeds.append(emb_chunk)
+
             for chunk in tqdm(chunks, desc=f'Retrieving docs...', total=len(chunks)):
-                scores_sorted_topk_chunk, indices_sorted_topk_chunk, embeds_sorted_top_k_chunk   = self.load_collection_and_retrieve(chunk, doc_embeds_path, top_k_documents, dataset_size=len(dataset['doc']),return_embeddings=self.return_embeddings)
+                scores_sorted_topk_chunk, indices_sorted_topk_chunk, embeds_sorted_top_k_chunk   = self.load_collection_and_retrieve(chunk, doc_embeds, top_k_documents, dataset_size=len(dataset['doc']),return_embeddings=self.return_embeddings)
                 scores_sorted_topk.append(scores_sorted_topk_chunk)
                 indices_sorted_topk.append(indices_sorted_topk_chunk)
                 if self.return_embeddings:
@@ -90,7 +99,7 @@ class Retrieve:
             indices_sorted_topk = torch.cat(indices_sorted_topk, dim=0)
             if self.return_embeddings:
                 embeds_sorted_top_k = torch.cat(embeds_sorted_top_k, dim=0)
-            self.model.model = self.model.model.to('cpu')
+            
 
 
             # Use sorted top-k indices indices to retrieve corresponding document IDs
@@ -105,7 +114,7 @@ class Retrieve:
             }
 
     @torch.no_grad() 
-    def encode_and_save(self, dataset, save_path, query_or_doc=None, chunk_size=150000):
+    def encode_and_save(self, dataset, save_path, query_or_doc, chunk_size=150000):
         save_every_n_batches = chunk_size // self.batch_size
         total_n_batches = len(dataset)//self.batch_size + int(bool(len(dataset)%self.batch_size))
         # make index folder if save_path is provided
@@ -141,18 +150,14 @@ class Retrieve:
         return None
 
     @torch.no_grad()
-    def load_collection_and_retrieve(self, emb_q, doc_embeds_path, top_k_documents, detach_and_cpu=True, return_embeddings=False, dataset_size=None):
-        emb_files = glob.glob(f'{doc_embeds_path}/*.pt')
-        sorted_emb_files = sorted(emb_files, key=lambda x: int(''.join(filter(str.isdigit, x))))
+    def load_collection_and_retrieve(self, emb_q, doc_embeds, top_k_documents, detach_and_cpu=True, return_embeddings=False, dataset_size=None):
 
         top_k_scores_list, top_k_indices_list, top_k_embed_list= [], [], []
 
         num_emb = 0
-        for emb_file in tqdm(sorted_emb_files, total=len(sorted_emb_files), desc=f'Load embeddings and retrieve...'):
-            emb_chunk = torch.load(emb_file)
+        for emb_chunk in doc_embeds:
             emb_chunk = emb_chunk.to('cuda')
             scores_q = self.model.similarity_fn(emb_q, emb_chunk)
-            # slows down inference too much
             # if detach_and_cpu:
             #     scores_q = scores_q.detach().cpu().float()
             scores_sorted_q, indices_sorted_q = torch.topk(scores_q, top_k_documents, dim=1)
@@ -163,18 +168,17 @@ class Retrieve:
                 top_k_embeddings = emb_chunk_dense[indices_sorted_q]
                 top_k_embed_list.append(top_k_embeddings)
             num_emb += emb_chunk.shape[0]
-
         if num_emb != dataset_size:
             raise IOError(f'!!! Index is not complete. Please re-index. Missing {dataset_size-num_emb} documents in the index. !!!')
 
         # Concatenate top-k scores and indices from each chunk
-        all_top_k_scores = torch.cat(top_k_scores_list, dim=1)
-        all_top_k_indices = torch.cat(top_k_indices_list, dim=1)
+        all_top_k_scores = torch.cat(top_k_scores_list, dim=1).detach().cpu()
+        all_top_k_indices = torch.cat(top_k_indices_list, dim=1).detach().cpu()
 
         if return_embeddings:
             all_top_k_embeds = torch.cat(top_k_embed_list, dim=1).to('cpu')
         # Get final top-k scores and indices across all chunks
-        final_top_k_scores, top_k_indices = torch.topk(all_top_k_scores, top_k_documents, dim=1)
+        final_top_k_scores, top_k_indices = torch.topk(all_top_k_scores.float(), top_k_documents, dim=1)
         # Extract corresponding indices for final top-k scores
         final_top_k_indices = torch.gather(all_top_k_indices, 1, top_k_indices)
 
@@ -186,6 +190,7 @@ class Retrieve:
         else:
             return final_top_k_scores, final_top_k_indices, None
 
+    
    
 
     def tokenize(self, example):

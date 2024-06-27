@@ -6,7 +6,7 @@ CC BY-NC-SA 4.0 license
 
 import shutil
 from hydra import initialize, compose
-from main import main
+from bergen import main
 from omegaconf import OmegaConf
 import pytest
 import inspect 
@@ -70,7 +70,7 @@ class TestClassZeroshot:
     def test_spladetiny(self):
         with initialize(config_path="../config",version_base="1.2"):
             test_name = inspect.currentframe().f_code.co_name
-            cfg = compose(config_name='rag_ut1', overrides=["retriever=splade", "generator=tinyllama-chat", "generator.batch_size=64"])
+            cfg = compose(config_name='rag_ut1', overrides=["retriever=splade-v3", "generator=tinyllama-chat", "generator.batch_size=64"])
             self.helper_with_rerun(cfg, test_name)
 
 
@@ -78,7 +78,7 @@ class TestClassZeroshot:
     def test_reranker(self):
         with initialize(config_path="../config",version_base="1.2"):
             test_name = inspect.currentframe().f_code.co_name
-            cfg = compose(config_name='rag_ut1', overrides=["retriever=splade", "generator=tinyllama-chat",  "reranker=minilm6", "reranker.batch_size=1"])
+            cfg = compose(config_name='rag_ut1', overrides=["retriever=splade-v3", "generator=tinyllama-chat",  "reranker=minilm6", "reranker.batch_size=1"])
             self.helper_with_rerun(cfg, test_name)
 
     # should be the last since it takes 90% memory
