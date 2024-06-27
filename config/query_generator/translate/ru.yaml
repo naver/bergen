@@ -1,0 +1,7 @@
+init_args: 
+  _target_: models.query_generators.translate_query.TranslateQuery
+  model_name: "facebook/nllb-200-3.3B"
+  src_lang: rus_Cyrl
+  tgt_lang: eng_Latn
+  batch_size: 4
+  

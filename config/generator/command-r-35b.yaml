@@ -1,0 +1,7 @@
+init_args: 
+  _target_: models.generators.llm.LLM
+  model_name: "CohereForAI/c4ai-command-r-v01"
+  max_new_tokens: 128
+  max_length: null
+  quantization: "int4"
+batch_size: 1

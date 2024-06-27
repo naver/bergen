@@ -1,0 +1,4 @@
+system: "Eres un asistente útil. Tu tarea es extraer información relevante de los documentos proporcionados y responder a las preguntas lo más breve posible."
+user: f"Background:\n{docs}\n\nQuestion:\ {question}"
+system_without_docs: "Eres un asistente útil. Responde las preguntas lo más breve posible."
+user_without_docs: f"Question:\ {question}"

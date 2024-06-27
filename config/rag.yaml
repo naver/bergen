@@ -14,6 +14,7 @@ run_name: null
 dataset_folder: 'datasets/'
 index_folder: 'indexes/'
 runs_folder: 'runs/'
+generated_query_folder: 'generated_queries/'
 experiments_folder: 'experiments/'    
 
 # topk documents to retrieve, rerank and to use for generation
@@ -28,4 +29,3 @@ processing_num_proc: 40
 hydra:
     job:
         chdir: False
-

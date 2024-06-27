@@ -1,0 +1,19 @@
+train:
+    doc: null
+    query: null
+dev:
+    doc:
+      init_args:
+        _target_: modules.dataset_processor.MergedDocDataset
+        in_dataset_names: ["kilt-100w", "wiki-100w-ar", "wiki-100w-zh", "wiki-100w-fi", "wiki-100w-fr", "wiki-100w-de", "wiki-100w-ja", "wiki-100w-it", "wiki-100w-ko", "wiki-100w-pt", "wiki-100w-ru", "wiki-100w-es", "wiki-100w-th"]
+        in_dataset_splits: ["full", "train", "train", "train", "train", "train", "train", "train", "train", "train", "train", "train", "train"]
+        out_dataset_name: "wiki-100w-multilingual-alllangs"
+        split: "train"
+    query:
+      init_args:
+        _target_: modules.dataset_processor.MKQA
+        split: train
+        lang: fr
+test:
+    doc: null
+    query: null
