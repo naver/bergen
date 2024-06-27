@@ -151,7 +151,7 @@ class Retrieve:
         for emb_file in tqdm(sorted_emb_files, total=len(sorted_emb_files), desc=f'Load embeddings and retrieve...'):
             emb_chunk = torch.load(emb_file)
             emb_chunk = emb_chunk.to('cuda')
-            scores_q = self.model.similarity_fn(emb_q.float(), emb_chunk.float())
+            scores_q = self.model.similarity_fn(emb_q, emb_chunk)
             # slows down inference too much
             # if detach_and_cpu:
             #     scores_q = scores_q.detach().cpu().float()

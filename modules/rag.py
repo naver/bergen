@@ -132,7 +132,7 @@ class RAG:
 
         self.generator = Generate(**generator_config, prompt=prompt) if generator_config != None else None
 
-        self.query_generator = GenerateQueries(**query_generator_config) if generator_config != None else None
+        self.query_generator = GenerateQueries(**query_generator_config) if query_generator_config != None else None
         
                 # print RAG model
         print_rag_model(self, retriever_config, reranker_config, generator_config)
