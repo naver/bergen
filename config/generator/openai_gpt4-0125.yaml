@@ -1,6 +1,0 @@
-init_args: 
-  _target_: models.generators.llm_openai.OpenAI
-  model_name: "gpt-4-0125-preview"
-  max_new_tokens: 128
-  max_length: 2048
-batch_size: 2
