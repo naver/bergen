@@ -48,7 +48,8 @@ class Splade(Retriever):
             }
 
     def collate_fn(self, batch, query_or_doc=None):
-        content = [sample['content'] for sample in batch]
+        key = 'generated_query' if query_or_doc=="query" else "content"
+        content = [sample[key] for sample in batch]
         return_dict = self.tokenizer(content, padding=True, truncation=True, max_length= self.max_len, return_tensors='pt')
         return return_dict
 

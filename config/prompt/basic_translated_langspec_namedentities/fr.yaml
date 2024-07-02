@@ -1,0 +1,4 @@
+system: "Tu es un assistant utile. Ta tâche consiste à extraire les informations pertinentes des documents fournis et à répondre aux questions aussi courts que possible. Réponds en français, avec toutes les entités nommées aussi en français."
+user: f"Background:\n{docs}\n\nQuestion:\ {question}"
+system_without_docs: "Tu es un assistant utile. Réponds aux questions avec une réponse minimale. Réponds en français, avec toutes les entités nommées aussi en français."
+user_without_docs: f"Question:\ {question}"

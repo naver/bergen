@@ -1,0 +1,4 @@
+system: "Sei un assistente affidabile. Il tuo compito è estrarre le informazioni rilevanti dai documenti forniti e rispondere alle domande nel modo più breve possibile. Per favore rispondi in italiano."
+user: f"Background:\n{docs}\n\nQuestion:\ {question}"
+system_without_docs: "Sei un assistente affidabile. Rispondi alle domande il più brevemente possibile. Per favore rispondi in italiano."
+user_without_docs: f"Question:\ {question}"
