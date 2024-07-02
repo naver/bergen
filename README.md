@@ -1,9 +1,6 @@
-# BERGEN Library
-We present a library to benchmark RAG systems, focusing on question-answering (QA). Inconsistent benchmarking poses a major challenge in comparing approaches and understanding the impact of each
-component in a RAG pipeline.
+# BERGEN: Benchmarking RAG
+We present BERGEN (BEnchmarking Retrieval-augmented GENeration), a library to benchmark RAG systems, focusing on question-answering (QA). Inconsistent benchmarking poses a major challenge in comparing approaches and understanding the impact of each component in a RAG pipeline.
 BERGEN was designed to ease the reproducibility and integration of new datasets and models thanks to HuggingFace.
-
-
 
 ## Quick Start
 A RAG setup is typically a pipeline
@@ -16,6 +13,9 @@ One can write simple config files (yaml), configuring a retriever, reranker, and
   python3 bergen.py retriever="bm25" reranker="minilm6" generator='tinyllama-chat' dataset='kilt_nq'
 ```
 
+### Installation
+ Check  the [installation guide](documentations/INSTALL.md)
+
 ## Supported Features
 BERGEN contains simple wrappers for the following features:
 | Category        | Name               |   Argument                     |
@@ -24,6 +24,9 @@ BERGEN contains simple wrappers for the following features:
 |                 | TriviaQA           | `dataset="kilt_triviaqa"`      |
 | **Generators**  | Llama 2 7B Chat    | `generator="llama-2-7b-chat"`  |
 |                 | Llama 2 13B Chat   | `generator="llama-2-13b-chat"` |
+|                 | Llama 2 70B Chat   | `generator="llama-2-70b-chat"` |
+|                 | Mixtral-8x7B-Instruct-v0.1   | `generator="mixtral-moe-7b-chat"` |
+|                 | SOLAR-10.7B-Instruct-v1.0   | `generator="SOLAR-107B"` |
 | **Retrievers**  | BM25               | `retriever="bm25"`             |
 |                 | SPLADE-v3          | `retriever="spladev3"`         |
 |                 | BGE                | `retriever="bge"`              |
@@ -32,8 +35,13 @@ BERGEN contains simple wrappers for the following features:
 Supported Metrics:
 | Metric |
 | - |
+|Match|
+|Exact Match|
+|Recall|
+|Precision|
 | F1 Score |
-| ROUGE  |  
+| ROUGE-1,2,L  |  
+|LLMeval|
 
 All the  configuration files are located in the config dir.
 The main config file is located in config/rag.yaml
@@ -42,13 +50,13 @@ The main config file is located in config/rag.yaml
 # main variables locating the local data folder and index
 run_name: null
 dataset_folder: 'datasets/' # where to download, save and preprocess the dataset
-index_folder: 'indexes/' # where to search index are saved
+index_folder: 'indexes/' # where the search index are saved
 runs_folder: 'runs/' # where the text search runs are saved, ie (query and document id lists)
 experiments_folder: 'experiments/'    # where the generations from LLMs and metrics are saved
 
 ```
 
-
+### Datasets
 Datasets will be downloaded, pre-processed, indexed, and saved if they do not exist yet, otherwise, they will be loaded from `dataset_folder` and `index_folder` respectively. 
 
 ```bash
@@ -56,21 +64,29 @@ ls config/dataset/
 2wikimultihopqa.yaml  kilt_cweb.yaml   kilt_hotpotqa.yaml     kilt_structured_zeroshot.yaml  kilt_wned.yaml  msmarco.yaml  pubmed_bioasq.yaml  ut1.yaml asqa.yaml kilt_eli5.yaml   kilt_nq_wiki2024.yaml  kilt_trex.yaml   kilt_wow.yaml   nq_open.yaml  sciq.yaml  wiki_qa.yaml kilt_aidayago2.yaml   kilt_fever.yaml  kilt_nq.yaml kilt_triviaqa.yaml mmlu.yaml popqa.yaml  truthful_qa.yaml
 ```
 
+To add a new datasets, please refer to an following guide:[extensions](documentations/extensions.md)
 
-All datasets can be overwritten by adding `+overwrite_datasets=True` as an argument (`Caution`: This might overwrite collections that take long long to encode). In case the indexing is interrupted you can continue encoding a collection from batch 1000 by additionally using the argument `+continue_batch=1000`.
-
-Indexing will be automatically launched if needed: retrieval, reranking runs will be loaded from files if they already exist in `runs`, otherwise they will be created.  Retrieval will only be evaluated if the `query` dataset contains the field `ranking_label`.
+### Retrieval
+Indexing of the document collections will be automatically launched if needed: retrieval, reranking runs will be loaded from files if they already exist in `runs`, otherwise they will be created.  Retrieval will only be evaluated if the `query` dataset contains the field `ranking_label`.
 For details about indexing, please refer to [indexing.md](documentations/indexing.md)
 
-Experiments are saved under `experiments_folder`. The experiments folder is named after the hash of the config, unless the experiment is finished the folder name will contain the prefix `tmp_`. The script will be aborted if an experiment with the exact same parameters has been run before. To overwrite the experiment add `+overwrite_exp=True` as an argument.
 
-To overwrite an existing index (and subsequently the ranking run) add `+overwrite_index=True` as an argument.
+Experiments are saved under `experiments_folder`. The experiment folder is named after the hash of the config, unless the experiment is finished the folder name will contain the prefix `tmp_`. You can provide a custom name for the experiment folder by adding `+run_name={YOUR_NAME}`. The script will be aborted if an experiment with the exact same parameters has been run before. To overwrite the experiment add `+overwrite_exp=True` as an argument.
 
-To print the results in a table run. By default, this will print all experiments that contain generation metric files in `experiments/` and sort them by the `generator`.
+
+- To overwrite the experiment add `+overwrite_exp=True` as an argument, due to a bug or another update in the config 
+- To overwrite an existing retrieval run, `+overwrite_run=True` as an argument.
+-  To rebuild the index (and subsequently the ranking run) add `+overwrite_index=True` as an argument.
+
+To print the results in a table run the following commands. By default, this will print all experiments that contain generation metric files in `experiments/` and sort them by the `generator`.
 
 ```bash
-python3 print_results.py --folder experiments/
-TODO Give an example here
+# will print a markdown of the results and save a csv file under the results directory
+python3 print_results.py --csv --folder experiments/
+
+#csv files with all the metrics
+exp_folder,Retriever,P_1,Reranker,Generator,gen_time,query_dataset,r_top,rr_top,M,EM,F1,P,R,Rg-1,Rg-2,Rg-L,BEM,LLMeval
+216567b3d48ef3fc,naver/splade-v3/,,naver/trecdl22-crossencoder-debertav3,TinyLlama/TinyLlama-1.1B-Chat-v1.0,00:03:53.19,KILTTriviaqa,100,100,0.6763772175536882,0.00018674136321195143,0.11749967712256401,0.07122756370055569,0.5380933823321367,0.1505780809175042,0.055962386132169924,0.14611799602749245,0.47356051206588745,
 ```
 ## Pipeline Examples
 For the main command line:  `retriever`, `reranker`, and `generator` are optional and can be `None`, the `dataset` argument must always be provided. 
@@ -93,6 +109,12 @@ Using vllm to speed up generation:
 python3 bergen.py retriever="splade-v3" reranker="debertav3"  generator='vllm_SOLAR-107B' dataset='kilt_nq'
 ```
 
+To specify another config file:
+```bash
+# create a config file located in the config dir
+# (the default config is rag)
+CONFIG=myownconfig python3 bergen.py retriever="splade-v3" reranker="debertav3"  generator='vllm_SOLAR-107B' dataset='kilt_nq'
+```
 
 ## Evaluation
 Non-neural metrics will be calculated automatically. Neural metrics such as `BEM` and `LLM` need to be evoked seperately.
@@ -124,6 +146,8 @@ python3 print_results.py --folder experiments/
 ## Extensions
 See here our [reference guide](documentations/extensions.md) to add new datasets, models or configure prompts
 
+## Multilingual experiments
+See here our [multilingual RAG guide](documentations/multilingual.md) to run experiments with multilingual user queries and/or multilingual Wikipedia as a datastore.
 
 ### Oracle Provenances as Answer
 Generating answers using oracle provenances directly as an answer. 

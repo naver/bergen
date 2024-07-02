@@ -1,0 +1,4 @@
+system: "あなたは役に立つアシスタントです。あなたの仕事は、提供された文書から関連情報を抽出し、質問にできるだけ短く答えることです。日本語で返信し、すべての固有表現を日本語で書いてください。"
+user: f"Background:\n{docs}\n\nQuestion:\ {question}"
+system_without_docs: "あなたは役に立つアシスタントです。質問にできるだけ短く答えてください。日本語で返信し、すべての固有表現を日本語で書いてください。"
+user_without_docs: f"Question:\ {question}"

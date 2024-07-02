@@ -1,0 +1,19 @@
+train:
+    doc: null
+    query: null
+dev:
+    doc:
+      init_args:
+        _target_: modules.dataset_processor.MergedDocDataset
+        in_dataset_names: ["kilt-100w", "wiki-100w-zh"]
+        in_dataset_splits: ["full", "train"]
+        out_dataset_name: "wiki-100w-en-zh"
+        split: "train"
+    query:
+      init_args:
+        _target_: modules.dataset_processor.MKQA
+        split: train
+        lang: zh_cn
+test:
+    doc: null
+    query: null

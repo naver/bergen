@@ -29,6 +29,7 @@ class Evaluate:
                     except: continue
 
                     if metric_name in metrics_dict and not force:
+                        print (f"{experiment_folder}\t{metric_name}\talready done")
                         continue
                     
                     predictions, references, questions = list(), list(), list()
@@ -45,6 +46,7 @@ class Evaluate:
                         with open(costs_out_file, 'w') as fout: fout.write(json.dumps(cost))
                     else:
                         model_score, scores = model(predictions, references, questions)
+
                     metrics_out_file = f'{experiment_folder}/eval_{split}_metrics_{metric_name}_out.json'
                     with open(metrics_out_file, 'w') as fout:
 
@@ -56,7 +58,7 @@ class Evaluate:
                     print (metrics_dict,metric_name,model_score)
                     # save to _ tmp file
                     with open(metrics_file + '_', 'w') as fp:
-                        json.dump(metrics_dict, fp)
+                        json.dump(metrics_dict, fp, indent=2)
                     # when writing successful remove tmp file
                     shutil.move(metrics_file + '_', metrics_file)
     
@@ -65,55 +67,59 @@ class Evaluate:
             from models.evaluators.bem import BEM
             model = BEM(batch_size=bem_batch_size)
             eval_single(experiment_folder, folder, split, model, 'BEM')
+        if gpt is not None:
+            from models.evaluators.openai import OpenAI
+            model = OpenAI(gpt)
+            eval_single(experiment_folder, folder, split, model, gpt)
         if llm is not None:
             from models.evaluators.llm import LLM
             if len(llm) == 0:
                 full_name, short_name = "Upstage/SOLAR-10.7B-Instruct-v1.0", "LLMeval"            
-            if len(llm)==1:
+            elif len(llm)==1:
                 full_name = llm[0]
                 short_name = full_name
+                short_name = f"LLMeval_{short_name}"        
                 short_name = f"LLMeval_{short_name}"        
             elif len(llm)==2:
                 full_name = llm[0]
                 short_name = llm[1]
                 short_name = f"LLMeval_{short_name}"        
+                short_name = f"LLMeval_{short_name}"                    
+            model = LLM(full_name, batch_size=llm_batch_size, prompt=llm_prompt)
+            eval_single(experiment_folder, folder, split, model, short_name)
+        
+        if vllm:
+            from models.evaluators.vllm import LLM
+            if len(vllm) == 0:
+                # corresponds to default LLMeval setting, results reported in the paper
+                full_name, short_name = "Upstage/SOLAR-10.7B-Instruct-v1.0", "LLMeval"             
+            elif len(vllm)==1:
+                full_name = vllm[0]
+                short_name = f"LLMeval_{full_name}"
+            else len(vllm)==2:
+                full_name = vllm[0]
+                short_name = f"LLMeval_{vllm[1]}"        
+            
             model = LLM(full_name, batch_size=llm_batch_size, prompt=llm_prompt)
             eval_single(experiment_folder, folder, split, model, short_name)
         if llm_ollama is not None:
             from models.evaluators.llm_ollama import LLM
+            
             if len(llm_ollama)==1:
                 full_name = llm_ollama[0]
                 short_name = full_name
+                short_name = f"LLMeval_{short_name}"        
             elif len(llm_ollama)==2:
                 full_name = llm_ollama[0]
-                short_name = llm_ollama[1]
-
-            short_name = f"LLMeval_{short_name}"        
+                short_name = llm_ollama[1] 
+                short_name = f"LLMeval_{short_name}"        
             model = LLM(full_name, batch_size=llm_batch_size, prompt=llm_prompt, basic_url=ollama_url)
             eval_single(experiment_folder, folder, split, model, short_name)
-
-            
-            
-        if gpt is not None:
-            from models.evaluators.openai import OpenAI
-            model = OpenAI(gpt)
-            eval_single(experiment_folder, folder, split, model, gpt)
-
-        if vllm is not None:
-            from models.evaluators.vllm import LLM
-            if len(vllm) == 0:
-                full_name, short_name = "Upstage/SOLAR-10.7B-Instruct-v1.0", "LLMeval"
-            
-            if len(vllm)==1:
-                full_name = vllm[0]
-                short_name = full_name
-            elif len(vllm)==2:
-                full_name = vllm[0]
-                short_name = vllm[1]
-            #model_name, short_name = 
-            short_name = f"LLMeval_{short_name}"        
-            model = LLM(full_name, batch_size=llm_batch_size, prompt=llm_prompt)
-            eval_single(experiment_folder, folder, split, model, short_name)
+ 
+        if lid is not None:
+            from models.evaluators.lid import LID
+            model = LID(lid)
+            eval_single(experiment_folder, folder, split, model, "lid")
 
     
 
@@ -165,7 +171,7 @@ if __name__ == "__main__":
         llm_ollama=args.llm_ollama,
         vllm=args.vllm, 
         gpt=args.gpt,
-        clova=args.clova,
+        lid=args.lid,
         bem_batch_size=args.bem_batch_size,
         llm_batch_size=args.llm_batch_size,
         llm_prompt=args.llm_prompt,
