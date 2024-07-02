@@ -6,7 +6,7 @@ import os
 
 class Evaluate:
     @staticmethod
-    def eval(experiment_folder, split, bem=False, llm=None, llm_ollama=None, vllm=None,gpt=None,clova=False,bem_batch_size=1, llm_batch_size=1, llm_prompt="default", ollama_url=None, folder=None, force=False):
+    def eval(experiment_folder, split, bem=False, llm=None, llm_ollama=None, vllm=None,gpt=None,bem_batch_size=1, llm_batch_size=1, llm_prompt="default", ollama_url=None, folder=None, force=False):
         def eval_single(experiment_folder, folder, split, model, metric_name):
             if folder != None:
                 folders = [folder]
@@ -154,7 +154,6 @@ if __name__ == "__main__":
                 - if short name is missing: use full name in naming
                 """ )
     parser.add_argument('--gpt', type=str,default=None)
-    parser.add_argument('--clova', action='store_true')
     parser.add_argument('--bem_batch_size', type=int, default=1024)
     parser.add_argument('--llm_batch_size', type=int, default=1)
     parser.add_argument('--force', action='store_true')
