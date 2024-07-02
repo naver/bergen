@@ -16,6 +16,10 @@ import omegaconf
 
 
 class LLM:
+    """
+    - uses existing ollama server for inference, need to specify the url of the server via basic_url parameter 
+    - output score for each sample is 1 (when positive word is present in llm output) or 0  (otherwise) 
+    """
     def __init__(self, model_name, batch_size=1, custom_format_instruction=None, pos_word="Yes", neg_word="No", prompt="default_prompt", basic_url="http://localhost:11434"):
         self.batch_size = batch_size
         self.custom_format_instruction = custom_format_instruction
@@ -25,8 +29,6 @@ class LLM:
         self.model_name = model_name
         self.model = Ollama(model=model_name, base_url=f"{basic_url}", system=eval(self.prompt.system))
        
-
-
 
     def create_instruction(self,sample):
         answer = sample['reference']
