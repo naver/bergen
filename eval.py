@@ -6,7 +6,7 @@ import os
 
 class Evaluate:
     @staticmethod
-    def eval(experiment_folder, split, bem=False, llm=None, llm_ollama=None, vllm=None,gpt=None,bem_batch_size=1, llm_batch_size=1, llm_prompt="default", ollama_url=None, folder=None, force=False):
+    def eval(experiment_folder, split, bem=False, llm=None, llm_ollama=None, vllm=None,gpt=None,bem_batch_size=1, lid=False, llm_batch_size=1, llm_prompt="default", ollama_url=None, folder=None, force=False):
         def eval_single(experiment_folder, folder, split, model, metric_name):
             if folder != None:
                 folders = [folder]
@@ -96,7 +96,7 @@ class Evaluate:
             elif len(vllm)==1:
                 full_name = vllm[0]
                 short_name = f"LLMeval_{full_name}"
-            else len(vllm)==2:
+            elif len(vllm)==2:
                 full_name = vllm[0]
                 short_name = f"LLMeval_{vllm[1]}"        
             
@@ -131,6 +131,7 @@ if __name__ == "__main__":
     parser.add_argument('--folder', type=str, default=None)
     parser.add_argument('--split', type=str, default='dev')
     parser.add_argument('--bem', action='store_true')
+    parser.add_argument('--lid', type=str, default=None)
     parser.add_argument('--llm', type=str, nargs='*', default=None, 
             help="""
                 Uses default HF inference mechanism for LLM evaluation.  Requires up to 2 arguments: 
