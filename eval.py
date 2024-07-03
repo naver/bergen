@@ -79,12 +79,10 @@ class Evaluate:
                 full_name = llm[0]
                 short_name = full_name
                 short_name = f"LLMeval_{short_name}"        
-                short_name = f"LLMeval_{short_name}"        
             elif len(llm)==2:
                 full_name = llm[0]
                 short_name = llm[1]
                 short_name = f"LLMeval_{short_name}"        
-                short_name = f"LLMeval_{short_name}"                    
             model = LLM(full_name, batch_size=llm_batch_size, prompt=llm_prompt)
             eval_single(experiment_folder, folder, split, model, short_name)
         

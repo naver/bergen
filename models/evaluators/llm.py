@@ -63,6 +63,7 @@ class LLM:
    
     def collate_fn(self, examples, max_length=512):
         instr = [self.create_instruction(sample) if self.custom_format_instruction == None else self.custom_format_instruction(sample) for sample in examples]  # Add prompt to each text
+        self.tokenizer.add_special_tokens({'pad_token': '[PAD]'})
         instr_tokenized = self.tokenizer(instr, padding=True, truncation=True, return_tensors="pt")
         return instr_tokenized, instr
 

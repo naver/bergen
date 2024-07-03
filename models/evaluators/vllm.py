@@ -67,8 +67,8 @@ class LLM:
         for i in (tq:=tqdm(range(0, len(instrs), self.batch_size), desc=f'LLM evaluation with {self.model_name}...')):
             outputs = self.model.generate(instrs[i:i+self.batch_size], self.sampling_params)
             decoded = [output.outputs[0].text for output in outputs]
-            scores.extend([ 1 if self.pos_word in rep.lower() else 0 for rep in decoded ])
-            weird.extend([ 1 if (self.neg_word not in rep.lower() and self.pos_word not in rep.lower()) else 0 for rep in decoded ])
+            scores.extend([ 1 if self.pos_word.lower() in rep.lower() else 0 for rep in decoded ])
+            weird.extend([ 1 if (self.neg_word.lower() not in rep.lower() and self.pos_word not in rep.lower()) else 0 for rep in decoded ])
             tq.set_description(f"score: {np.mean(scores)* 100:4.1f}%: weird {np.mean(weird)* 100:4.1f}%")
         return np.mean(scores), scores
 
