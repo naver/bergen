@@ -8,6 +8,7 @@ from modules.retrieve import Retrieve
 from modules.rerank import Rerank
 from modules.generate import Generate
 from modules.generate_query import GenerateQueries
+from modules.process_context import ProcessContext
 from modules.dataset_processor import ProcessDatasets
 from modules.metrics import RAGMetrics
 import time 
@@ -21,6 +22,7 @@ from utils import (
     write_trec, prepare_dataset_from_ids, load_trec,
     print_generate_out, print_rag_model,
     write_generated, write_dict, get_by_id, get_index_path, get_query_generation_filename,
+    get_context_processing_filename,
     get_reranking_filename, format_time, get_ranking_filename, get_finished_experiment_name
 )
 
@@ -30,6 +32,7 @@ class RAG:
                 retriever=None, 
                 reranker=None,
                 query_generator=None, 
+                context_processor=None,
                 
                 runs_folder=None,
                 run_name=None, 
@@ -38,6 +41,7 @@ class RAG:
                 dataset_folder='datasets/',
                 index_folder='indexes/',
                 generated_query_folder='generated_queries/',
+                processed_context_folder='processed_contexts/',
                 experiments_folder='experiments/', 
                 qrels_folder='qrels/',
                 overwrite_datasets=False,
@@ -59,6 +63,7 @@ class RAG:
         reranker_config = reranker
         generator_config = generator
         query_generator_config = query_generator
+        context_processor_config = context_processor
         dataset_config = dataset
 
 
@@ -73,6 +78,8 @@ class RAG:
             retriever_config = config.retriever if hasattr(config, 'retriever') else None
         if reranker_config == None:
             reranker_config = config.reranker if hasattr(config, 'reranker') else None
+        if context_processor_config == None:
+            context_processor_config = config.context_processor if hasattr(config, 'context_processor') else None
         if dataset_config == None:
             dataset_config = config.dataset if hasattr(config, 'dataset') else None
 
@@ -84,6 +91,7 @@ class RAG:
         self.experiments_folder = experiments_folder
         self.runs_folder = runs_folder
         self.generated_query_folder = generated_query_folder
+        self.processed_context_folder = processed_context_folder
         self.qrels_folder = qrels_folder
         self.run_name = run_name
         self.processing_num_proc = processing_num_proc
@@ -133,6 +141,8 @@ class RAG:
         self.generator = Generate(**generator_config, prompt=prompt) if generator_config != None else None
 
         self.query_generator = GenerateQueries(**query_generator_config) if query_generator_config != None else None
+
+        self.context_processor = ProcessContext(**context_processor_config) if context_processor_config != None else None
         
                 # print RAG model
         print_rag_model(self, retriever_config, reranker_config, generator_config)
@@ -177,9 +187,11 @@ class RAG:
         if self.generator !=  None:
             questions, _, predictions, references = self.generate(
                 dataset, 
-                dataset_split,
+                dataset_split, 
+                query_dataset_name, 
+                doc_dataset_name, 
                 query_ids, 
-                doc_ids
+                doc_ids,
                 )
             # eval metrics
             self.eval_metrics(
@@ -328,10 +340,38 @@ class RAG:
                 )
         return query_ids, doc_ids, scores
 
-
+    def process_context(self, gen_dataset, 
+                       query_dataset_name, 
+                       doc_dataset_name, 
+                       dataset_split):
+        process_context_file = get_context_processing_filename(
+            self.processed_context_folder, 
+            query_dataset_name,
+            doc_dataset_name,
+            dataset_split,
+            self.retriever.get_clean_model_name(),
+            self.retrieve_top_k,
+            self.reranker.get_clean_model_name() if self.reranker is not None else None,
+            self.rerank_top_k,
+            self.query_generator.get_clean_model_name()
+        )
+        if not os.path.exists(process_context_file) or self.overwrite_exp or self.overwrite_index:
+            processed_contexts = self.context_processor.eval(gen_dataset['doc'], gen_dataset['query'])
+            os.makedirs(self.processed_context_folder, exist_ok=True)
+            with open(process_context_file, 'w') as fp: 
+                json.dump({"processed_contexts": processed_contexts}, fp)
+        else:
+            with open(process_context_file, 'r') as fp: 
+                processed_contexts = json.load(fp)["processed_contexts"]
+        gen_dataset = gen_dataset.map(lambda ex: {"doc": processed_contexts}, batched=True)
+        shutil.copyfile(process_context_file, f'{self.experiment_folder}/{process_context_file.split("/")[-1]}')
+        return gen_dataset
+    
     def generate(self, 
                  dataset, 
                  dataset_split, 
+                 query_dataset_name, 
+                 doc_dataset_name, 
                  query_ids, 
                  doc_ids,
                  ):
@@ -345,6 +385,13 @@ class RAG:
             query_field="content",
             )
 
+        if self.context_processor is not None and self.retriever is not None:
+            gen_dataset = self.process_context(
+                                               gen_dataset, 
+                                               query_dataset_name, 
+                                               doc_dataset_name, 
+                                               dataset_split)
+        
         generation_start = time.time()
         query_ids, questions, instructions, predictions, references, ranking_labels  = self.generator.eval(gen_dataset)
         generation_time = time.time() - generation_start
@@ -409,6 +456,14 @@ class RAG:
         query_dataset_name = dataset['query'].name
         doc_dataset_name = dataset['doc'].name
 
+        # query generation (or copying in case query_generator="copy")
+        if self.retriever != None:
+            dataset = self.generate_query(
+                dataset,
+                query_dataset_name, 
+                dataset_split, 
+            )
+        
         # if no retriever don't load doc embeddings
         if self.retriever != None:
             query_ids, doc_ids, _ = self.retrieve(
@@ -443,6 +498,15 @@ class RAG:
             doc_ids, 
             multi_doc=True, 
             )
+
+        # context processing if needed
+        if self.context_processor is not None and self.retriever is not None:
+            gen_dataset = self.process_context(
+                                               gen_dataset, 
+                                               query_dataset_name, 
+                                               doc_dataset_name, 
+                                               dataset_split)
+        
         # split train into train and test
         train_test_datasets = gen_dataset.train_test_split(self.training_config.test_size_ratio, seed=42)
 
