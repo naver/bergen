@@ -125,8 +125,13 @@ By default `eval.py` will scan all folders in `experiments/` and evaluate them s
 python3 eval.py --experiments_folder experiments/ --llm_batch_size 16 --split 'dev' --llm
 ```
 
+## Training
+For training a model add a training config e.g. `train=lora` as an argument, e.g.
+```bash
+  python3 bergen.py retriever="bm25" reranker="minilm6" generator='tinyllama-chat' dataset='kilt_nq' train='lora'
+```
 
-
+For training the `dev` dataset split that is defined in the config is split in `train` and `test` splits ( default test size: `0.01`). The best model (according to the newly generated `test` split) is loaded after the training and evaluated on the `dev`  dataset split.
 
 ## Output files
 Example files generated for split `dev` using `naver_splade-cocondenser-selfdistil` as a retriever.
