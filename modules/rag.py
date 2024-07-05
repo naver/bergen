@@ -353,8 +353,10 @@ class RAG:
             self.retrieve_top_k,
             self.reranker.get_clean_model_name() if self.reranker is not None else None,
             self.rerank_top_k,
-            self.query_generator.get_clean_model_name()
+            self.query_generator.get_clean_model_name(),
+            self.context_processor.get_clean_model_name(),
         )
+        print(process_context_file)
         if not os.path.exists(process_context_file) or self.overwrite_exp or self.overwrite_index:
             processed_contexts = self.context_processor.eval(gen_dataset['doc'], gen_dataset['query'])
             os.makedirs(self.processed_context_folder, exist_ok=True)
@@ -363,6 +365,7 @@ class RAG:
         else:
             with open(process_context_file, 'r') as fp: 
                 processed_contexts = json.load(fp)["processed_contexts"]
+        print(len(gen_dataset), len(processed_contexts))
         gen_dataset = gen_dataset.map(lambda ex: {"doc": processed_contexts}, batched=True)
         shutil.copyfile(process_context_file, f'{self.experiment_folder}/{process_context_file.split("/")[-1]}')
         return gen_dataset
@@ -501,6 +504,7 @@ class RAG:
 
         # context processing if needed
         if self.context_processor is not None and self.retriever is not None:
+            print(len(dataset), len(gen_dataset))
             gen_dataset = self.process_context(
                                                gen_dataset, 
                                                query_dataset_name, 

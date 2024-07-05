@@ -332,10 +332,10 @@ def get_ranking_filename(runs_folder, query_dataset, doc_dataset, retriever_name
 def get_query_generation_filename(query_generation_folder, query_dataset, query_generator_name, split):
     return f'{query_generation_folder}/generated_queries.{query_dataset}.{split}.{query_generator_name}.json'
 
-def get_context_processing_filename(get_context_processing_filename, query_dataset, doc_dataset, dataset_split, retriever_name, retrieve_top_k, reranker_name, rerank_top_k, query_generator_name):
+def get_context_processing_filename(context_processing_folder, query_dataset, doc_dataset, dataset_split, retriever_name, retrieve_top_k, reranker_name, rerank_top_k, query_generator_name, context_processor_name):
     query_gen_add = "" if query_generator_name == "copy" else f".{query_generator_name}"
     rerank_name = f"rerank.top_{rerank_top_k}.{reranker_name}" if reranker_name is not None else "no_rerank"
-    return f'{get_context_processing_filename}/processed_contexts.retriever.top_{retrieve_top_k}.{retriever_name}.{rerank_name}.{query_dataset}.{doc_dataset}.{dataset_split}{query_gen_add}.json'
+    return f'{context_processing_folder}/processed_contexts.{context_processor_name}.retriever.top_{retrieve_top_k}.{retriever_name}.{rerank_name}.{query_dataset}.{doc_dataset}.{dataset_split}{query_gen_add}.json'
         
 def get_embedding_datasets_path(embeddings_path):
     embeddings_path = embeddings_path.rstrip('/')
