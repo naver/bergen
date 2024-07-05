@@ -5,7 +5,7 @@ BERGEN was designed to ease the reproducibility and integration of new datasets 
 ## Quick Start
 A RAG setup is typically a pipeline
 
-`prompt` >> `retriever` >> `reranker` >> `LLM` >> `answer`
+`question` >> `retriever` >> `reranker` >> `LLM` >> `answer`
 
 One can write simple config files (yaml), configuring a retriever, reranker, and LLMs for generations. All those configurations can be chained together as follows: am experiment with retrieval using `BM25`, reranking using `MiniLM6`, and generation using `tinyllama-chat` on `kilt_nq`.
 
