@@ -176,6 +176,22 @@ To run a single test (e.g. `tinyonly`) run:
 ```bash 
 pytest tests/ -k "tinyonly"
 ```
+## Cite 
+
+If you use BERGEn for your research please consider citing us: 
+
+```
+@misc{rau2024bergenbenchmarkinglibraryretrievalaugmented,
+      title={BERGEN: A Benchmarking Library for Retrieval-Augmented Generation}, 
+      author={David Rau and Hervé Déjean and Nadezhda Chirkova and Thibault Formal and
+      Shuai Wang and Vassilina Nikoulina and Stéphane Clinchant},
+      year={2024},
+      eprint={2407.01102},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2407.01102}, 
+}
+```
 
 ## License
 ```
