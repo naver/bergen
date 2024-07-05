@@ -119,10 +119,10 @@ CONFIG=myownconfig python3 bergen.py retriever="splade-v3" reranker="debertav3" 
 ## Evaluation
 Non-neural metrics will be calculated automatically. Neural metrics such as `BEM` and `LLM` need to be evoked seperately.
 
-By default `eval.py` will scan all folders in `experiments/` and evaluate them sequentially. To evaluate a single folder pass the folder using `--folder`. To avoid running out of memory either run `BEM` using `--bem` or run `LLM` using `--llm`. A csv file will automatically be saved to `results/` containing the table in `csv` format.
+By default `eval.py` will scan all folders in `experiments/` and evaluate them sequentially. To evaluate a single folder pass the folder using `--folder`. To avoid running out of memory either run `BEM` using `--bem` or run `LLM` using `--llm` or `--vllm` (for faster inference). A csv file will automatically be saved to `results/` containing the table in `csv` format.
 
 ```bash
-python3 eval.py --experiments_folder experiments/ --llm_batch_size 16 --split 'dev' --llm
+python3 eval.py --experiments_folder experiments/ --llm_batch_size 16 --split 'dev' --vllm
 ```
 
 ## Training

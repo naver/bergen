@@ -6,7 +6,7 @@ import os
 
 class Evaluate:
     @staticmethod
-    def eval(experiment_folder, split, bem=False, llm=False, vllm=False, gpt=None, lid=False, bem_batch_size=1, llm_batch_size=1, folder=None, force=False):
+    def eval(experiment_folder, split, bem=False, llm=None, llm_ollama=None, vllm=None,gpt=None,bem_batch_size=1, lid=False, llm_batch_size=1, llm_prompt="default", ollama_url=None, folder=None, force=False):
         def eval_single(experiment_folder, folder, split, model, metric_name):
             if folder != None:
                 folders = [folder]
@@ -67,21 +67,53 @@ class Evaluate:
             from models.evaluators.bem import BEM
             model = BEM(batch_size=bem_batch_size)
             eval_single(experiment_folder, folder, split, model, 'BEM')
-        if llm:
-            from models.evaluators.llm import LLM
-            model_name, short_name = "Upstage/SOLAR-10.7B-Instruct-v1.0", "LLMeval"
-            model = LLM(model_name, batch_size=llm_batch_size)
-            
-            eval_single(experiment_folder, folder, split, model, short_name)
         if gpt is not None:
             from models.evaluators.openai import OpenAI
             model = OpenAI(gpt)
             eval_single(experiment_folder, folder, split, model, gpt)
+        if llm is not None:
+            from models.evaluators.llm import LLM
+            if len(llm) == 0:
+                full_name, short_name = "Upstage/SOLAR-10.7B-Instruct-v1.0", "LLMeval"            
+            elif len(llm)==1:
+                full_name = llm[0]
+                short_name = full_name
+                short_name = f"LLMeval_{short_name}"        
+            elif len(llm)==2:
+                full_name = llm[0]
+                short_name = llm[1]
+                short_name = f"LLMeval_{short_name}"        
+            model = LLM(full_name, batch_size=llm_batch_size, prompt=llm_prompt)
+            eval_single(experiment_folder, folder, split, model, short_name)
+        
         if vllm:
             from models.evaluators.vllm import LLM
-            model_name, short_name = "Upstage/SOLAR-10.7B-Instruct-v1.0", "LLMeval"
-            model = LLM(model_name, batch_size=llm_batch_size)
+            if len(vllm) == 0:
+                # corresponds to default LLMeval setting, results reported in the paper
+                full_name, short_name = "Upstage/SOLAR-10.7B-Instruct-v1.0", "LLMeval"             
+            elif len(vllm)==1:
+                full_name = vllm[0]
+                short_name = f"LLMeval_{full_name}"
+            elif len(vllm)==2:
+                full_name = vllm[0]
+                short_name = f"LLMeval_{vllm[1]}"        
+            
+            model = LLM(full_name, batch_size=llm_batch_size, prompt=llm_prompt)
             eval_single(experiment_folder, folder, split, model, short_name)
+        if llm_ollama is not None:
+            from models.evaluators.llm_ollama import LLM
+            
+            if len(llm_ollama)==1:
+                full_name = llm_ollama[0]
+                short_name = full_name
+                short_name = f"LLMeval_{short_name}"        
+            elif len(llm_ollama)==2:
+                full_name = llm_ollama[0]
+                short_name = llm_ollama[1] 
+                short_name = f"LLMeval_{short_name}"        
+            model = LLM(full_name, batch_size=llm_batch_size, prompt=llm_prompt, basic_url=ollama_url)
+            eval_single(experiment_folder, folder, split, model, short_name)
+ 
         if lid is not None:
             from models.evaluators.lid import LID
             model = LID(lid)
@@ -97,24 +129,51 @@ if __name__ == "__main__":
     parser.add_argument('--folder', type=str, default=None)
     parser.add_argument('--split', type=str, default='dev')
     parser.add_argument('--bem', action='store_true')
-    parser.add_argument('--llm', action='store_true')
-    parser.add_argument('--vllm', action='store_true')
-    parser.add_argument('--gpt', type=str, default=None)
     parser.add_argument('--lid', type=str, default=None)
+    parser.add_argument('--llm', type=str, nargs='*', default=None, 
+            help="""
+                Uses default HF inference mechanism for LLM evaluation.  Requires up to 2 arguments: 
+                - full model name  and short name (used for naming output files and metrics): eg. -llm \"Upstage/SOLAR-10.7B-Instruct-v1.0\" solar 
+                - if short name is missing: use full name in naming, 
+                - if no arguments specified: falls back to default arguments: uses default values (\"Upstage/SOLAR-10.7B-Instruct-v1.0\" solar). 
+                """)
+    parser.add_argument('--vllm', type=str, nargs='*', default=None, 
+                help="""
+                    Calls vllm to run evalution. Requires 2 arguments: 
+                    Uses default HF inference mechanism for LLM evaluation.  Requires up to 2 arguments: 
+                    - full model name  and short name (used for naming output files and metrics): eg. -vllm \"Upstage/SOLAR-10.7B-Instruct-v1.0\" solar 
+                    - if short name is missing: use full name in naming, 
+                    -  if no arguments specified: falls back to default arguments: uses default values (\"Upstage/SOLAR-10.7B-Instruct-v1.0\" solar). 
+                """)
+                    
+    parser.add_argument('--llm_ollama',  type=str, nargs='*', default=None, 
+            help="""
+                Calls ollama server to run evaluation. Requires 1 or 2 arguments: 
+                - full model name  and short name (used for naming output files and metrics): eg. -llm_ollama llama3:default llama3 
+                - if short name is missing: use full name in naming
+                """ )
+    parser.add_argument('--gpt', type=str,default=None)
     parser.add_argument('--bem_batch_size', type=int, default=1024)
     parser.add_argument('--llm_batch_size', type=int, default=1)
     parser.add_argument('--force', action='store_true')
+    parser.add_argument('--llm_prompt', type=str, default="default_prompt", help="Provide yaml config file with updated prompt. Default prompt: config/evaluator/default_prompt.yaml")
+    parser.add_argument('--ollama_url', type=str, default="http://localhost:11434", help="")
+
+    
     args = parser.parse_args()
     e = Evaluate.eval(
         args.experiments_folder, 
         args.split, 
         bem=args.bem,
         llm=args.llm, 
+        llm_ollama=args.llm_ollama,
         vllm=args.vllm, 
         gpt=args.gpt,
         lid=args.lid,
         bem_batch_size=args.bem_batch_size,
         llm_batch_size=args.llm_batch_size,
+        llm_prompt=args.llm_prompt,
+        ollama_url=args.ollama_url,
         folder=args.folder, 
         force=args.force
         )

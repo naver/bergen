@@ -5,12 +5,18 @@ CC BY-NC-SA 4.0 license
 '''
 
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
+import omegaconf
 from tqdm import tqdm
+from models.generators.llm import LLM
 import torch
 import re
 import numpy as np
 class LLM:
-    def __init__(self, model_name, batch_size=1, custom_format_instruction=None, pos_word=None, neg_word=None):
+    """
+    - relies on default HF inference 
+    - output score is a floating number corresponding to the logit score output by model.generate for pos_word
+    """
+    def __init__(self, model_name, batch_size=1, custom_format_instruction=None, pos_word="Yes", neg_word="No", prompt="default_prompt"):
         self.batch_size = batch_size
         quant_config = BitsAndBytesConfig(
         load_in_4bit=True,
@@ -18,8 +24,12 @@ class LLM:
         bnb_4bit_compute_dtype='bfloat16',
         bnb_4bit_use_double_quant=False
         )
+        self.pos_word = pos_word 
+        self.neg_word = neg_word 
+        
         self.custom_format_instruction = custom_format_instruction
-
+        self.prompt = omegaconf.OmegaConf.load(f"config/evaluator/{prompt}.yaml")['prompt']
+        self.system_prompt = eval(self.prompt.system)
         self.model_name = model_name
         self.model = AutoModelForCausalLM.from_pretrained(self.model_name, device_map='auto', quantization_config=quant_config, attn_implementation="flash_attention_2")
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name, padding_side='left')
@@ -27,32 +37,33 @@ class LLM:
         self.model.config.use_cache = False
         self.model.eval()
 
-        self.pos_word = pos_word if pos_word != None else 'true' 
-        self.neg_word = neg_word if neg_word != None else 'false'
         
         self.pos_tokenid, self.neg_tokenid = self.tokenizer.encode(f'\n{self.pos_word}', add_special_tokens=False)[-1], self.tokenizer.encode(f'\n{self.neg_word}', add_special_tokens=False)[-1]
 
+   
+    def create_instruction(self,sample):
+        answer = sample['reference']
+        question=sample['question']
+        prediction=sample['candidate']
+        pos_word = self.pos_word
+        neg_word = self.neg_word
+        prefix = []
+        if 'system' in self.tokenizer.chat_template:
+            prefix =  [{'role': 'system',
+                'content': self.system_prompt}]
+        prefix.extend([{'role': 'user',
+            'content': eval(self.prompt.user)}]
+            )
+        prefix.extend([{'role': 'assistant',
+            'content': eval(self.prompt.assistant)}]
+            )
+        return self.tokenizer.apply_chat_template(prefix,  add_generation_prompt=True, tokenize=False) 
 
-    # def format_instruction(self, sample):
-    #      return f"""Is the candidate answer semantically or lexically equivalent to the reference answer regarding the question? The candidate should contain at least the same (or more) relevant information as the reference but should not omit any relevant information present in the reference. Output {{{self.pos_word}}} or {{{self.neg_word}}}.
-    #  Question: {sample['question']}
-    #  Reference: {sample['reference']}
-    #  Candidate: {sample['candidate']}
-    #  Output: {{"""
-
-    def format_instruction(self, sample):
-        reference = sample['reference']
-        if isinstance(reference, str):
-            reference = [reference]
-        # reference = ', '.join(reference)
-        return f"""Assess whether the candidate answer effectively answers the question in comparison to at least one of the provided reference answers. Consider factors such as relevance, correctness, and completeness in your
-Question: {sample['question']}
-Reference Answers: {reference}
-Candidate Answer: {sample['candidate']}
-Output: {{"""
-
+   
+   
     def collate_fn(self, examples, max_length=512):
-        instr = [self.format_instruction(sample) if self.custom_format_instruction == None else self.custom_format_instruction(sample) for sample in examples]  # Add prompt to each text
+        instr = [self.create_instruction(sample) if self.custom_format_instruction == None else self.custom_format_instruction(sample) for sample in examples]  # Add prompt to each text
+        self.tokenizer.add_special_tokens({'pad_token': '[PAD]'})
         instr_tokenized = self.tokenizer(instr, padding=True, truncation=True, return_tensors="pt")
         return instr_tokenized, instr
 
@@ -78,7 +89,6 @@ Output: {{"""
             #     answer = re.findall(r'\{([^}]+)\}', generated_answer)[-1]
             #     scores.append(1 if answer == 'equivalent' else 0)
             # continuous model output:
-
             model_scores = self.model.generate(input_ids=batch_input_ids, attention_mask=batch_attention_masks, max_new_tokens=1, do_sample=False, output_scores=True, return_dict_in_generate=True).scores
             model_scores = torch.stack(model_scores)
             model_scores = model_scores[0, :, [self.neg_tokenid, self.pos_tokenid]].float()
