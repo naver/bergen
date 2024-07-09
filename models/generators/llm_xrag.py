@@ -154,7 +154,6 @@ class LLM(Generator):
                 use_cache=False,
             )
         decoded = self.tokenizer.batch_decode(generated_output, skip_special_tokens=True)
-        print(decoded)
         return decoded
 
 
