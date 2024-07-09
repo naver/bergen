@@ -70,57 +70,6 @@ def stop_sequences_criteria(
         ]
     )
 
-class MultiTokenEOSCriteria(transformers.StoppingCriteria):
-    """Criteria to stop on the specified multi-token sequence."""
-
-    def __init__(
-        self,
-        sequence: str,
-        tokenizer: transformers.PreTrainedTokenizer,
-        initial_decoder_input_length: int,
-        batch_size: int,
-    ) -> None:
-        self.initial_decoder_input_length = initial_decoder_input_length
-        self.done_tracker = [False] * batch_size
-        self.sequence = sequence
-        self.sequence_ids = tokenizer.encode(sequence, add_special_tokens=False)
-        self.sequence_id_len = len(self.sequence_ids) + 2
-        self.tokenizer = tokenizer
-
-    def __call__(self, input_ids, scores, **kwargs) -> bool:
-        lookback_ids_batch = input_ids[:, self.initial_decoder_input_length:]
-        lookback_ids_batch = lookback_ids_batch[:, -self.sequence_id_len:]
-        
-        lookback_tokens_batch = self.tokenizer.batch_decode(lookback_ids_batch, skip_special_tokens=True)
-        
-        # Debugging: Print lookback tokens
-        #print("Lookback tokens batch:")
-        #for tokens in lookback_tokens_batch:
-        #    print(tokens)
-
-        for i, done in enumerate(self.done_tracker):
-            if not done:
-                self.done_tracker[i] = self.sequence in lookback_tokens_batch[i]
-                # Debugging: Print sequence check
-                #print(f"Batch {i}: Checking for sequence '{self.sequence}' in '{lookback_tokens_batch[i]}'. Done: {self.done_tracker[i]}")
-
-        return all(self.done_tracker)
-
-def stop_sequences_criteria(
-    tokenizer: transformers.PreTrainedTokenizer,
-    initial_decoder_input_length: int,
-    batch_size: int,
-    stop_sequences: List[str] = ['\n', '.', ','],
-) -> transformers.StoppingCriteriaList:
-    return transformers.StoppingCriteriaList(
-        [
-            MultiTokenEOSCriteria(
-                sequence, tokenizer, initial_decoder_input_length, batch_size
-            )
-            for sequence in stop_sequences
-        ]
-    )
-
 random.seed(42)
 class LLM(Generator):
     def __init__(self, 
