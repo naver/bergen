@@ -2,6 +2,10 @@
 We present BERGEN (BEnchmarking Retrieval-augmented GENeration), a library to benchmark RAG systems, focusing on question-answering (QA). Inconsistent benchmarking poses a major challenge in comparing approaches and understanding the impact of each component in a RAG pipeline.
 BERGEN was designed to ease the reproducibility and integration of new datasets and models thanks to HuggingFace.
 
+For more information and experimental findings, please see:
+- the initial BERGEN paper: https://arxiv.org/abs/2407.01102
+- the Multilingual RAG paper:  https://arxiv.org/abs/2407.01463
+
 ## Quick Start
 A RAG setup is typically a pipeline
 
