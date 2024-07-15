@@ -29,7 +29,7 @@ For CUDA 11.8
 conda create -n "bergen" python=3.10
 conda activate bergen
 export VLLM_VERSION=0.4.0
-export PYTHON_VERSION=39
+export PYTHON_VERSION=310
 pip install https://github.com/vllm-project/vllm/releases/download/v${VLLM_VERSION}/vllm-${VLLM_VERSION}+cu118-cp${PYTHON_VERSION}-cp${PYTHON_VERSION}-manylinux1_x86_64.whl --extra-index-url https://download.pytorch.org/whl/cu118
 
 pip install packaging
