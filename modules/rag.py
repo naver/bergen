@@ -128,9 +128,7 @@ class RAG:
             **reranker_config,
             ) if reranker_config != None else None
 
-        self.generator = instantiate(generator_config.init_args, 
-                                     prompt=prompt, 
-                                     batch_size=generator_config.batch_size) if generator_config != None else None
+        self.generator = instantiate(generator_config.init_args, prompt=prompt) if generator_config != None else None
 
         self.query_generator = GenerateQueries(**query_generator_config) if query_generator_config != None else None
         
