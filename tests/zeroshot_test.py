@@ -20,7 +20,7 @@ pytest tests/ -k "tinyonly" #to run one test
 or simply "pytest tests/ " to run all the tests in zeroshot
 """
 
-
+#FIXME Test equality/stability of output
 # run once at the beginning
 @pytest.fixture(scope="session", autouse=True)
 def init():
@@ -70,15 +70,20 @@ class TestClassZeroshot:
     def test_spladetiny(self):
         with initialize(config_path="../config",version_base="1.2"):
             test_name = inspect.currentframe().f_code.co_name
-            cfg = compose(config_name='rag_ut1', overrides=["retriever=splade-v3", "generator=tinyllama-chat", "generator.batch_size=64"])
+            cfg = compose(config_name='rag_ut1', overrides=["retriever=splade++", "generator=tinyllama-chat", "generator.batch_size=64"])
             self.helper_with_rerun(cfg, test_name)
-
+    
+    def test_dense_contriever(self):
+        with initialize(config_path="../config",version_base="1.2"):
+            test_name = inspect.currentframe().f_code.co_name
+            cfg = compose(config_name='rag_ut1', overrides=["retriever=contriever", "generator=tinyllama-chat", "generator.batch_size=64"])
+            self.helper_with_rerun(cfg, test_name)
 
 
     def test_reranker(self):
         with initialize(config_path="../config",version_base="1.2"):
             test_name = inspect.currentframe().f_code.co_name
-            cfg = compose(config_name='rag_ut1', overrides=["retriever=splade-v3", "generator=tinyllama-chat",  "reranker=minilm6", "reranker.batch_size=1"])
+            cfg = compose(config_name='rag_ut1', overrides=["retriever=splade++", "generator=tinyllama-chat",  "reranker=minilm6", "reranker.batch_size=1"])
             self.helper_with_rerun(cfg, test_name)
 
     # should be the last since it takes 90% memory
