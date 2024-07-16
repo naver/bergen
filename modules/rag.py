@@ -128,6 +128,7 @@ class RAG:
             **reranker_config,
             ) if reranker_config != None else None
 
+        # Hydra way of instantiating generator object defined in config.
         self.generator = instantiate(generator_config.init_args, prompt=prompt) if generator_config != None else None
 
         self.query_generator = GenerateQueries(**query_generator_config) if query_generator_config != None else None
@@ -442,14 +443,20 @@ class RAG:
             doc_ids, 
             multi_doc=True, 
             )
+        
         # split train into train and test
         train_test_datasets = gen_dataset.train_test_split(self.training_config.test_size_ratio, seed=42)
 
         print("Preprocessing data...")
         train_test_datasets['train'] = Tokenized_Sorted_Dataset(train_test_datasets['train'], self.generator, training=True)
         train_test_datasets['test'] = Tokenized_Sorted_Dataset(train_test_datasets['test'], self.generator, training=False)
+
+        # We keep some data to log in wandb, from the test set:
         call_back_data = Tokenized_Sorted_Dataset(train_test_datasets['test'], self.generator, training=False)
-        call_back_data_select = DataLoader(call_back_data.select(range(self.training_config.generate_test_samples)), batch_size=self.training_config.trainer.per_device_eval_batch_size, collate_fn=lambda l: self.generator.model.collate_fn(l, eval=True))
+        n_in_call_back_select = min(len(train_test_datasets['test']), self.training_config.generate_test_samples)
+        call_back_data_select = DataLoader(call_back_data.select(range(n_in_call_back_select)), 
+                                           batch_size=self.training_config.trainer.per_device_eval_batch_size, 
+                                           collate_fn=lambda l: self.generator.model.collate_fn(l, eval=True))
 
         print("Data preprocessed")
 
@@ -466,15 +473,12 @@ class RAG:
             self.generator.model = get_peft_model(self.generator.model, lora_config)
             self.generator.model.print_trainable_parameters()
 
-
-
         total_batch_size = self.training_config.trainer.per_device_train_batch_size * torch.cuda.device_count()
         total_steps = len(train_test_datasets['train']) // total_batch_size
         num_saving_steps = 5
         eval_steps =  max(total_steps// num_saving_steps, 1)
         save_steps = max(total_steps  // num_saving_steps, 1)
         logging_steps = max(total_steps // 5, 1)
-
 
         args = TrainingArguments(
             run_name=self.run_name,

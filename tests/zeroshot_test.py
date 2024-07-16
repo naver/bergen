@@ -41,7 +41,7 @@ def init():
     
 
 
-class TestClassZeroshot:
+class TestBergenMain:
 
     def test_init(self):
         with initialize(config_path="../config",version_base="1.2"):
@@ -70,7 +70,9 @@ class TestClassZeroshot:
     def test_spladetiny(self):
         with initialize(config_path="../config",version_base="1.2"):
             test_name = inspect.currentframe().f_code.co_name
-            cfg = compose(config_name='rag_ut1', overrides=["retriever=splade++", "generator=tinyllama-chat", "generator.init_args.batch_size=64"])
+            cfg = compose(config_name='rag_ut1', overrides=["retriever=splade++", 
+                                                            "generator=tinyllama-chat", 
+                                                            "generator.init_args.batch_size=64"])
             self.helper_with_rerun(cfg, test_name)
     
     def test_dense_contriever(self):
@@ -83,15 +85,40 @@ class TestClassZeroshot:
     def test_reranker(self):
         with initialize(config_path="../config",version_base="1.2"):
             test_name = inspect.currentframe().f_code.co_name
-            cfg = compose(config_name='rag_ut1', overrides=["retriever=splade++", "generator=tinyllama-chat",  "reranker=minilm6", "reranker.batch_size=1"])
+            cfg = compose(config_name='rag_ut1', overrides=["retriever=splade++", 
+                                                            "generator=tinyllama-chat",  
+                                                            "reranker=minilm6", 
+                                                            "reranker.batch_size=1"])
             self.helper_with_rerun(cfg, test_name)
 
     # should be the last since it takes 90% memory
     def test_vllm_spladetiny(self):
         with initialize(config_path="../config",version_base="1.2"):
             test_name = inspect.currentframe().f_code.co_name
-            cfg = compose(config_name='rag_ut1', overrides=[ "generator=vllm_tinyllama-chat", "generator.init_args.batch_size=64"])
+            cfg = compose(config_name='rag_ut1', overrides=[ "generator=vllm_tinyllama-chat", 
+                                                            "generator.init_args.batch_size=64"])
             self.helper_with_rerun(cfg, test_name)
+
+    def test_train_lora(self):
+        with initialize(config_path="../config",version_base="1.2"):
+            test_name = inspect.currentframe().f_code.co_name
+            cfg = compose(config_name='rag_ut1', overrides=[ "generator=tinyllama-chat", 
+                                                            "+train=lora", 
+                                                            "train.trainer.num_train_epochs=1",
+                                                            "train.lora.r=1"])
+            self.helper_with_rerun(cfg, test_name)
+
+    # Test of a training without lora, a bit too long (~4 minutes) to be uncommented, but maybe useful.
+    # Also: running it requires manual choice of wandb option
+    # def test_train_full(self):
+    #     with initialize(config_path="../config",version_base="1.2"):
+    #         test_name = inspect.currentframe().f_code.co_name
+    #         cfg = compose(config_name='rag_ut1', overrides=[ "generator=tinyllama-chat",
+    #                                                         "generator.init_args.quantization=bfloat16", 
+    #                                                         "+train=full", 
+    #                                                         "train.trainer.num_train_epochs=1"])
+    #         self.helper_with_rerun(cfg, test_name)
+
 
     @pytest.mark.skip(reason="Helper function, not a test")
     def set_folders(self, cfg, test_name):
