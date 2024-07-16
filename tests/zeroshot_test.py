@@ -78,7 +78,9 @@ class TestBergenMain:
     def test_dense_contriever(self):
         with initialize(config_path="../config",version_base="1.2"):
             test_name = inspect.currentframe().f_code.co_name
-            cfg = compose(config_name='rag_ut1', overrides=["retriever=contriever", "generator=tinyllama-chat", "generator.batch_size=64"])
+            cfg = compose(config_name='rag_ut1', overrides=["retriever=contriever", 
+                                                            "generator=tinyllama-chat", 
+                                                            "generator.init_args.batch_size=64"])
             self.helper_with_rerun(cfg, test_name)
 
 
