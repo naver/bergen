@@ -3,11 +3,9 @@ import json
 from pathlib import Path
 from omegaconf import OmegaConf
 import os 
+
+
 import pandas as pd
-
-
-#FIXME remove certain metrics Rouge P,F1
-# M,EM,Recall LLMeval, BEM, Rouge-L
 
 def get_info(file):
     res= json.load( open(file))
@@ -108,9 +106,11 @@ def main(args):
                         ltuple.append([current_folder.name, dataset_query, generator_basename,retriever_basename, reranker_basename, m, em, recall, rougel, bem, LLMeval])
                     elif args.format =='tiny':
                         ltuple.append([current_folder.name, dataset_query, generator_basename,retriever_basename, reranker_basename, m, LLMeval])
-                    else:     
+                    elif args.format=='full':     
                         ltuple.append([current_folder.name, retriever, ranking_metric, reranker, generator,  gen_time, dataset_query, retrieve_top_k, rerank_top_k, m, em, f1, precision, recall, rouge1, rouge2, rougel, bem, LLMeval])
-                    #ltuple.append([current_folder, retriever, reranker, generator, gen_time, dataset_query, retrieve_top_k, rerank_top_k, m, em, f1, precision, recall, rouge1, rouge2, rougel, bem, ll7b, ll7bs, ll13b, ll13b_short, ll13bswoq, mix7b, mix7bswoq])
+                    else:
+                        raise ValueError('Invalid output format')
+    
         except:
             print(f'Skipping {current_folder} due to parsing errors!')
     
@@ -124,10 +124,11 @@ def main(args):
     elif args.format =='tiny':
         #ltuple.append([current_folder.name, dataset_query, generator,retriever, reranker, m, LLMeval])
         df.columns = ['exp_folder', 'query_dataset', 'Generator', 'Retriever', 'Reranker', "M", "LLMeval"]
-    else:
+    elif args.format =='full':
         df.columns = ['exp_folder', 'Retriever', 'P_1', 'Reranker', 'Generator',  'gen_time', 'query_dataset', "r_top", "rr_top", "M", "EM", "F1", "P", "R", "Rg-1", "Rg-2", "Rg-L", "BEM", "LLMeval"]
-    #df.columns = ['exp_folder', 'Retriever', 'Reranker', 'Generator', 'gen_time', 'query_dataset', "r_top", "rr_top", "M", "EM", "F1", "P", "R", "Rg-1", "Rg-2", "Rg-L", "BEM", "ll7b", "ll7bs", "ll13b", "ll13bs","ll13bswoq" , "mix7b", "mix7bswoq"]
-
+    else:
+        raise ValueError('Invalid output format')
+    
     df=df.sort_values(by=[args.sort])
     print('Split:', args.split)
     print(df.to_markdown(floatfmt=".2f"))
@@ -144,7 +145,8 @@ if __name__ == '__main__':
 
     parser.add_argument("--folder", type=str, default='experiments')
     parser.add_argument("--split", type=str, default='dev')
-    parser.add_argument("--format", type=str, default='simple')
+    parser.add_argument("--format", type=str, default='simple',choices=['simple', 'tiny', 'full'],
+                        help='tiny prints Match and LLMEval; simple adds EM, R, Rg-L, BEM ; full prints all metrics and data')
     parser.add_argument("--sort", type=str, default="Generator")
     parser.add_argument("--csv", action='store_true')
 
