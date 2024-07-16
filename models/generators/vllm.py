@@ -30,7 +30,6 @@ class LLM(Generator):
 
         self.quantization = quantization
         self.max_length = max_length
-        self.model_name = model_name
         self.max_doc_len = max_doc_len
         self.max_new_tokens = max_new_tokens
         self.prompt = prompt

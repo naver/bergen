@@ -3,15 +3,17 @@ BERGEN
 Copyright (c) 2024-present NAVER Corp.
 CC BY-NC-SA 4.0 license
 '''
-
 from models.generators.generator import Generator
+
 
 class OracleAnswer(Generator):
     def __init__(self, 
-                 model_name=None, 
+                 model_name=None,
+                 batch_size=1, 
                  **kwargs
                  ):
-        self.model_name = model_name
+        Generator.__init__(self, model_name=model_name, batch_size=batch_size)
+
 
     def tokenizer(self, instr, **kwargs):
         return instr

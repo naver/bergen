@@ -73,7 +73,3 @@ class Generator(ABC):
                     {"role": "user", "content": f"{system_prompt}\n{user_prompt_with_values}"}
                 ]    
             return self.tokenizer.apply_chat_template(instr_prompt,  add_generation_prompt=True, tokenize=False)
-
-
-        
-
