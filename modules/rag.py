@@ -6,7 +6,6 @@ CC BY-NC-SA 4.0 license
 
 from modules.retrieve import Retrieve
 from modules.rerank import Rerank
-from modules.generate import Generate
 from modules.generate_query import GenerateQueries
 from modules.dataset_processor import ProcessDatasets
 from modules.metrics import RAGMetrics
@@ -129,13 +128,15 @@ class RAG:
             **reranker_config,
             ) if reranker_config != None else None
 
-
-        self.generator = Generate(**generator_config, prompt=prompt) if generator_config != None else None
+        self.generator = instantiate(generator_config.init_args, 
+                                     prompt=prompt, 
+                                     batch_size=generator_config.batch_size) if generator_config != None else None
 
         self.query_generator = GenerateQueries(**query_generator_config) if query_generator_config != None else None
         
                 # print RAG model
         print_rag_model(self, retriever_config, reranker_config, generator_config)
+        
     def eval(self, dataset_split):
 
         dataset = self.datasets[dataset_split]
@@ -369,12 +370,12 @@ class RAG:
             )
 
         
-        if hasattr(self.generator.model,"total_cost"):
-            print(self.generator.model.total_cost,self.generator.model.prompt_cost, self.generator.model.completion_cost)
+        if hasattr(self.generator,"total_cost"):
+            print(self.generator.total_cost,self.generator.prompt_cost, self.generator.completion_cost)
             write_dict(self.experiment_folder, f"eval_{dataset_split}_generation_cost.json", 
-                       {'total_cost':self.generator.model.total_cost,
-                        'prompt_cost':self.generator.model.prompt_cost,
-                        'completion_cost':self.generator.model.completion_cost}
+                       {'total_cost':self.generator.total_cost,
+                        'prompt_cost':self.generator.prompt_cost,
+                        'completion_cost':self.generator.completion_cost}
                         )
 
 
@@ -447,16 +448,16 @@ class RAG:
         train_test_datasets = gen_dataset.train_test_split(self.training_config.test_size_ratio, seed=42)
 
         print("Preprocessing data...")
-        train_test_datasets['train'] = Tokenized_Sorted_Dataset(train_test_datasets['train'], self.generator.model, training=True)
-        train_test_datasets['test'] = Tokenized_Sorted_Dataset(train_test_datasets['test'], self.generator.model, training=False)
-        call_back_data = Tokenized_Sorted_Dataset(train_test_datasets['test'], self.generator.model, training=False)
+        train_test_datasets['train'] = Tokenized_Sorted_Dataset(train_test_datasets['train'], self.generator, training=True)
+        train_test_datasets['test'] = Tokenized_Sorted_Dataset(train_test_datasets['test'], self.generator, training=False)
+        call_back_data = Tokenized_Sorted_Dataset(train_test_datasets['test'], self.generator, training=False)
         call_back_data_select = DataLoader(call_back_data.select(range(self.training_config.generate_test_samples)), batch_size=self.training_config.trainer.per_device_eval_batch_size, collate_fn=lambda l: self.generator.model.collate_fn(l, eval=True))
 
         print("Data preprocessed")
 
         # if lora in train config
         if 'lora' in self.training_config:
-            self.generator.model.model = prepare_model_for_kbit_training(self.generator.model.model)
+            self.generator.model = prepare_model_for_kbit_training(self.generator.model)
             print("using lora training")
             # lora config
             lora_config = LoraConfig(
@@ -464,8 +465,8 @@ class RAG:
                 target_modules=['q_proj', 'down_proj', 'gate_proj', 'k_proj', 'v_proj', 'o_proj', 'up_proj'],
                 )
             # get adapter
-            self.generator.model.model = get_peft_model(self.generator.model.model, lora_config)
-            self.generator.model.model.print_trainable_parameters()
+            self.generator.model = get_peft_model(self.generator.model, lora_config)
+            self.generator.model.print_trainable_parameters()
 
 
 
@@ -490,16 +491,16 @@ class RAG:
         )
 
         trainer = RAGTrainer(
-            model=self.generator.model.model,
-            model_prediction_step=self.generator.model.prediction_step,
-            generate=self.generator.model.generate,
+            model=self.generator.model,
+            model_prediction_step=self.generator.prediction_step,
+            generate=self.generator.generate,
             args=args,
-            data_collator=self.generator.model.collate_fn,
+            data_collator=self.generator.collate_fn,
             train_dataset=train_test_datasets['train'],
             eval_dataset=train_test_datasets['test'],
             call_back_data=call_back_data_select
         )
         trainer.train()
-        self.generator.model.model = trainer.model
+        self.generator.model = trainer.model
         move_finished_experiment(self.experiment_folder)
         self.experiment_folder = get_finished_experiment_name(self.experiment_folder)

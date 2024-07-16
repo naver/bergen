@@ -14,9 +14,12 @@ import random
 import os
 import json
 random.seed(42)
+
+
 class LLM(Generator):
     def __init__(self, 
-                model_name=None, 
+                model_name=None,
+                batch_size=1, 
                 max_new_tokens=1, 
                 max_doc_len=100,
                 max_length=None,
@@ -24,6 +27,8 @@ class LLM(Generator):
                 quantization=None,
                 attn_implementation="flash_attention_2"
                  ):
+        
+        Generator.__init__(self, model_name=model_name, batch_size=batch_size)
 
         # device_index = Accelerator().process_index
         # device_map = {"": device_index}
