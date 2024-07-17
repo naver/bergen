@@ -3,4 +3,4 @@ init_args:
   model_name: "meta-llama/Llama-2-7b-chat-hf"
   max_new_tokens: 128
   max_length: 2048
-batch_size: 256
+  batch_size: 256

@@ -3,17 +3,18 @@ BERGEN
 Copyright (c) 2024-present NAVER Corp.
 CC BY-NC-SA 4.0 license
 '''
-
-
 from models.generators.generator import Generator
+
+
 class RandomAnswer(Generator):
     # this class serves as a baseline for evaluation
     # it will output a label of a random query
     def __init__(self, 
                  model_name=None, 
+                 batch_size=1,
                  **kwargs
                  ):
-        self.model_name = model_name
+        Generator.__init__(self, model_name=model_name, batch_size=batch_size)
 
     def tokenizer(self, instr, **kwargs):
         return instr
@@ -39,4 +40,3 @@ class RandomAnswer(Generator):
             'label': label, 
             'ranking_label': ranking_label,
         }
-        
