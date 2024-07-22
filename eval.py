@@ -3,10 +3,12 @@ import shutil
 import torch
 import time
 import os 
+from hydra.utils import instantiate
+import omegaconf
 
 class Evaluate:
     @staticmethod
-    def eval(experiment_folder, split, bem=False, llm=None, llm_ollama=None, vllm=None,gpt=None,bem_batch_size=1, lid=False, llm_batch_size=1, llm_prompt="default", ollama_url=None, folder=None, force=False):
+    def eval(experiment_folder, split, bem=False, llm=None, llm_ollama=None, vllm=None,gpt=None,bem_batch_size=1, lid=False, llm_batch_size=1, llm_prompt="default_qa", ollama_url=None, folder=None, force=False):
         def eval_single(experiment_folder, folder, split, model, metric_name):
             if folder != None:
                 folders = [folder]
@@ -72,7 +74,10 @@ class Evaluate:
             model = OpenAI(gpt)
             eval_single(experiment_folder, folder, split, model, gpt)
         if llm is not None:
-            from models.evaluators.llm import LLM
+            from models.evaluators.llm import LLMeval
+            model_config = llm[0]
+            model_config = omegaconf.OmegaConf.load(f"config/generator/{model_config}.yaml")
+            
             if len(llm) == 0:
                 full_name, short_name = "Upstage/SOLAR-10.7B-Instruct-v1.0", "LLMeval"            
             elif len(llm)==1:
@@ -82,8 +87,9 @@ class Evaluate:
             elif len(llm)==2:
                 full_name = llm[0]
                 short_name = llm[1]
-                short_name = f"LLMeval_{short_name}"        
-            model = LLM(full_name, batch_size=llm_batch_size, prompt=llm_prompt)
+                short_name = f"LLMeval_{short_name}"      
+            breakpoint()  
+            model = LLMeval(model_config, batch_size=llm_batch_size, config=llm_prompt)
             eval_single(experiment_folder, folder, split, model, short_name)
         
         if vllm:
@@ -156,7 +162,7 @@ if __name__ == "__main__":
     parser.add_argument('--bem_batch_size', type=int, default=1024)
     parser.add_argument('--llm_batch_size', type=int, default=1)
     parser.add_argument('--force', action='store_true')
-    parser.add_argument('--llm_prompt', type=str, default="default_prompt", help="Provide yaml config file with updated prompt. Default prompt: config/evaluator/default_prompt.yaml")
+    parser.add_argument('--llm_prompt', type=str, default="default_qa", help="Provide yaml config file with updated prompt. Default prompt: config/evaluator/default_prompt.yaml")
     parser.add_argument('--ollama_url', type=str, default="http://localhost:11434", help="")
 
     
