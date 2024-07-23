@@ -8,7 +8,7 @@ dev:
         split: full
     query:
       init_args:
-        _target_: modules.dataset_processor.XORQA
+        _target_: modules.processors.mrag_dataset_processor.XORQA
         split: dev
         lang: ar
 test:

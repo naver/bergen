@@ -9,7 +9,7 @@ dev:
     
     query: 
         init_args:
-            _target_: modules.dataset_processor.TydiQA
+            _target_: modules.processors.mrag_dataset_processor.TydiQA
             split: "validation"
 test:
     doc: null
