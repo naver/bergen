@@ -9,7 +9,7 @@ dev:
     
     query: 
         init_args:
-            _target_: modules.dataset_processor.POPQA
+            _target_: modules.processors.qa_dataset_processor.POPQA
             split: "test"
 test:
     doc: null

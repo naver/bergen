@@ -5,7 +5,7 @@ train:
             split: "full"
     query: 
         init_args:
-            _target_: modules.dataset_processor.ASQA
+            _target_: modules.processors.qa_dataset_processor.ASQA
             split: "train"
 dev:
     doc: 
@@ -15,7 +15,7 @@ dev:
     
     query: 
         init_args:
-            _target_: modules.dataset_processor.ASQA
+            _target_: modules.processors.qa_dataset_processor.ASQA
             split: "dev"
 test:
     doc: null

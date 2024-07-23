@@ -9,7 +9,7 @@ dev:
     
     query: 
         init_args:
-            _target_: modules.dataset_processor.WIKIQA
+            _target_: modules.processors.qa_dataset_processor.WIKIQA
             split: "test"
 
 test:
@@ -20,6 +20,6 @@ test:
     
     query: 
         init_args:
-            _target_: modules.dataset_processor.WIKIQA
+            _target_: modules.processors.qa_dataset_processor.WIKIQA
             split: "test"
 
