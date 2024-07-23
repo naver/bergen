@@ -5,7 +5,6 @@ from collections import defaultdict
 import urllib.request
 import json
 
-
 class KILTNQ(Processor):
 
     def __init__(self, *args, **kwargs):

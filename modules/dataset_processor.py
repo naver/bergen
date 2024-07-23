@@ -116,7 +116,7 @@ class Processor(object):
 # ---------------------------------------- #
 # query processors
 # ---------------------------------------- #
-        
+      
 class BIOASQ11B(Processor):
 
     def __init__(self, data_path, *args, **kwargs):
@@ -175,6 +175,7 @@ class MMLU(Processor):
 
         return dataset
 
+#FIME does not seem to be used anymore?
 class NQOpen(Processor):
 
     def __init__(self, *args, **kwargs):
@@ -601,5 +602,24 @@ class ProcessDatasets:
                 else:
                     processed_datasets[split][query_or_doc] = None
         return processed_datasets
+    
+    @staticmethod
+    def check_instantiate(datasets, out_folder='datasets', num_proc=1, overwrite=False, debug=False):
+        processed_datasets = defaultdict(dict)
+        for split in datasets:
+            for query_or_doc in datasets[split]:
+                if datasets[split][query_or_doc] != None:
+                    processor_init_args = datasets[split][query_or_doc]['init_args']
+                    processor = instantiate(
+                        processor_init_args, 
+                        out_folder=out_folder, 
+                        num_proc=num_proc, 
+                        overwrite=overwrite, 
+                        debug= debug if query_or_doc == 'query' else False, 
+                        oracle_provenance=  False, 
+                        shuffle_labels= False
+                        )          
+        return True
+
 
     

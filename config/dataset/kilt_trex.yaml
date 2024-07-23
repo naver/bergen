@@ -9,7 +9,7 @@ dev:
     
     query: 
         init_args:
-            _target_: modules.processors.kilt_dataset_processor.KILTTrex
+            _target_: modules.processors.kilt_dataset_processor.KILTSTrex
             split: "validation"
 test:
     doc: null
