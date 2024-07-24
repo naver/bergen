@@ -7,6 +7,7 @@ CC BY-NC-SA 4.0 license
 import shutil
 from hydra import initialize, compose
 from bergen import main
+from eval import Evaluate
 from omegaconf import OmegaConf
 import pytest
 import inspect 
@@ -52,6 +53,7 @@ class TestBergenMain:
     def test_tinyonly(self):
         with initialize(config_path="../config",version_base="1.2"):
             test_name = inspect.currentframe().f_code.co_name
+            breakpoint()
             cfg = compose(config_name='rag_ut1', overrides=["generator=tinyllama-chat"])
             self.helper_single(cfg, test_name)
 
@@ -101,6 +103,7 @@ class TestBergenMain:
                                                             "generator.init_args.batch_size=64"])
             self.helper_with_rerun(cfg, test_name)
 
+    
     def test_train_lora(self):
         with initialize(config_path="../config",version_base="1.2"):
             test_name = inspect.currentframe().f_code.co_name
@@ -140,3 +143,49 @@ class TestBergenMain:
         self.set_folders(cfg, test_name)
         main(cfg)
 
+
+class TestBergenEval:
+    
+    def test_lid(self):
+        with initialize(config_path="../config",version_base="1.2"):
+            test_name = inspect.currentframe().f_code.co_name
+            exp_folder = "tests/utdata/utexp1"
+            Evaluate.eval(folder=exp_folder, lid=True, force=True)
+            
+    def test_llmeval_batch1(self):
+        with initialize(config_path="../config",version_base="1.2"):
+            test_name = inspect.currentframe().f_code.co_name
+            exp_folder = "tests/utdata/"
+            Evaluate.eval(experiment_folder=exp_folder, llm=["tinyllama-chat", "test-llm-1"], llm_batch_size= 1, llm_prompt="default_qa", force=True)
+            
+    def test_llmeval_batch2(self):
+        with initialize(config_path="../config",version_base="1.2"):
+            test_name = inspect.currentframe().f_code.co_name       
+            exp_folder = "tests/utdata/"
+            Evaluate.eval(experiment_folder=exp_folder, llm=["tinyllama-chat", "test-llm-2"], llm_batch_size= 2, llm_prompt="default_qa", force=True)
+
+    def test_llmeval_default(self):
+        with initialize(config_path="../config",version_base="1.2"):
+            test_name = inspect.currentframe().f_code.co_name       
+            exp_folder = "tests/utdata/"
+            Evaluate.eval(experiment_folder=exp_folder, llm=[], llm_batch_size= 2, llm_prompt="default_qa", force=True)
+     
+    def test_vllmeval_batch1(self):
+        with initialize(config_path="../config",version_base="1.2"):
+            test_name = inspect.currentframe().f_code.co_name
+            exp_folder = "tests/utdata/utexp1"
+            Evaluate.eval(experiment_folder=exp_folder, vllm=["tinyllama-chat", "test-vllm-1"], llm_prompt="default_qa", force=True)
+
+    def test_vllmeval_default(self):
+        with initialize(config_path="../config",version_base="1.2"):
+            test_name = inspect.currentframe().f_code.co_name
+            exp_folder = "tests/utdata/"
+            Evaluate.eval(experiment_folder=exp_folder, vllm=[], llm_prompt="default_qa", force=True)
+
+    def test_vllmeval_batch2(self):
+        with initialize(config_path="../config",version_base="1.2"):
+            test_name = inspect.currentframe().f_code.co_name
+            exp_folder = "tests/utdata/"
+            Evaluate.eval(experiment_folder=exp_folder, vllm=["tinyllama-chat", "test-vllm-2"], llm_batch_size=2, llm_prompt="default_qa", force=True)
+
+    

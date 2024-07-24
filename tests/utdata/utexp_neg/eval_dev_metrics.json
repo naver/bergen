@@ -1,0 +1,16 @@
+{
+  "M": 1.0,
+  "EM": 0.0,
+  "F1": 0.03372058357701116,
+  "Precision": 0.017227464945912013,
+  "Recall": 0.8,
+  "Recall_char3gram": 1.0,
+  "Rouge-1": 0.047864618977375914,
+  "Rouge-2": 0.0,
+  "Rouge-L": 0.047864618977375914,
+  "LLMeval_test-llm-1_logits": "0.9937998",
+  "lid": "0.0",
+  "VLLMeval_test-vllm": "0.4",
+  "VLLMeval_test-vllm-2": "0.4",
+  "VLLMeval": "0.5"
+}
