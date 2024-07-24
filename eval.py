@@ -5,6 +5,7 @@ import time
 import os 
 from hydra.utils import instantiate
 import omegaconf
+import yaml
 
 class Evaluate:
     @staticmethod
@@ -121,9 +122,24 @@ class Evaluate:
             
         if lid is not None:
             from models.evaluators.lid import LID
-            model = LID(lid)
-            eval_single(experiment_folder, folder, split, model, "lid", nb_samples = samples)
-
+            if folder == None:
+                folders = [ f.path for f in os.scandir(experiment_folder) if f.is_dir() and 'tmp_' not in f.path]
+            else:
+                folders = [folder]
+            for folder in folders:
+                # we need to get language from each folder config separately
+                print(folder)
+                config = yaml.safe_load(open(f"{folder}/config.yaml")) 
+                if 'lng' in config['dataset'][split]['query']['init_args']:
+                    tgt_lng = config['dataset'][split]['query']['init_args']['lng']
+                elif  'lang' in  config['dataset'][split]['query']['init_args']:
+                    tgt_lng = config['dataset'][split]['query']['init_args']['lang']
+                else:
+                    #if language is not specified we set it to English by default
+                    tgt_lng = 'en'
+                    print(f"SKIP {folder}: unknown lng")
+                model=LID(tgt_lng)  
+                eval_single(experiment_folder, folder, split, model, "lid")
     
 
 if __name__ == "__main__":
