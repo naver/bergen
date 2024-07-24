@@ -8,8 +8,8 @@ import omegaconf
 
 class Evaluate:
     @staticmethod
-    def eval(experiment_folder, split, bem=False, llm=None, llm_ollama=None, vllm=None,gpt=None,bem_batch_size=1, lid=False, llm_batch_size=1, llm_prompt="default_qa", ollama_url=None, folder=None, force=False):
-        def eval_single(experiment_folder, folder, split, model, metric_name):
+    def eval(experiment_folder="experiments/", split="dev", bem=False, llm=None, llm_ollama=None, vllm=None,gpt=None,bem_batch_size=1, lid=False, llm_batch_size=1, llm_prompt="default_qa", ollama_url=None, folder=None, force=False, samples=None):
+        def eval_single(experiment_folder, folder, split, model, metric_name, nb_samples=None):
             if folder != None:
                 folders = [folder]
             else:
@@ -40,6 +40,8 @@ class Evaluate:
                         predictions.append(sample['response'])
                         references.append(sample['label'])
                         questions.append(sample['question'])
+                        if nb_samples is not None and len(predictions)==nb_samples:
+                            break
 
                     if gpt is not None:
                         # openai costs
@@ -68,62 +70,59 @@ class Evaluate:
         if bem:
             from models.evaluators.bem import BEM
             model = BEM(batch_size=bem_batch_size)
-            eval_single(experiment_folder, folder, split, model, 'BEM')
+            eval_single(experiment_folder, folder, split, model, 'BEM', nb_samples = samples)
         if gpt is not None:
             from models.evaluators.openai import OpenAI
             model = OpenAI(gpt)
-            eval_single(experiment_folder, folder, split, model, gpt)
+            eval_single(experiment_folder, folder, split, model, gpt, nb_samples = samples)
         if llm is not None:
             from models.evaluators.llm import LLMeval
-            model_config = llm[0]
-            model_config = omegaconf.OmegaConf.load(f"config/generator/{model_config}.yaml")
-            
             if len(llm) == 0:
-                full_name, short_name = "Upstage/SOLAR-10.7B-Instruct-v1.0", "LLMeval"            
+                model_config, short_name = "SOLAR-107B", "LLMeval"            
             elif len(llm)==1:
-                full_name = llm[0]
-                short_name = full_name
+                model_config = llm[0]
+                short_name = model_config
                 short_name = f"LLMeval_{short_name}"        
             elif len(llm)==2:
-                full_name = llm[0]
+                model_config = llm[0]
                 short_name = llm[1]
-                short_name = f"LLMeval_{short_name}"      
-            breakpoint()  
+                short_name = f"LLMeval_{short_name}"                  
             model = LLMeval(model_config, batch_size=llm_batch_size, config=llm_prompt)
-            eval_single(experiment_folder, folder, split, model, short_name)
+            if model.use_logits:
+                short_name = f"{short_name}_logits"
+            eval_single(experiment_folder, folder, split, model, short_name, nb_samples = samples)
         
-        if vllm:
-            from models.evaluators.vllm import LLM
+        if vllm is not None:
+            from models.evaluators.vllm import VLLMeval 
             if len(vllm) == 0:
                 # corresponds to default LLMeval setting, results reported in the paper
-                full_name, short_name = "Upstage/SOLAR-10.7B-Instruct-v1.0", "LLMeval"             
+                model_config, short_name = "SOLAR-107B", "VLLMeval"             
             elif len(vllm)==1:
-                full_name = vllm[0]
-                short_name = f"LLMeval_{full_name}"
+                model_config = vllm[0]
+                short_name = f"VLLMeval_{model_config}"
             elif len(vllm)==2:
-                full_name = vllm[0]
-                short_name = f"LLMeval_{vllm[1]}"        
-            
-            model = LLM(full_name, batch_size=llm_batch_size, prompt=llm_prompt)
-            eval_single(experiment_folder, folder, split, model, short_name)
+                model_config = vllm[0]
+                short_name = f"VLLMeval_{vllm[1]}"        
+            model = VLLMeval(model_config, batch_size=llm_batch_size, config=llm_prompt)
+            eval_single(experiment_folder, folder, split, model, short_name, nb_samples = samples)
         if llm_ollama is not None:
-            from models.evaluators.llm_ollama import LLM
+            from models.evaluators.llm_ollama import LLMeval
             
             if len(llm_ollama)==1:
-                full_name = llm_ollama[0]
+                model_config = llm_ollama[0]
                 short_name = full_name
                 short_name = f"LLMeval_{short_name}"        
             elif len(llm_ollama)==2:
-                full_name = llm_ollama[0]
+                model_config = llm_ollama[0]
                 short_name = llm_ollama[1] 
                 short_name = f"LLMeval_{short_name}"        
-            model = LLM(full_name, batch_size=llm_batch_size, prompt=llm_prompt, basic_url=ollama_url)
-            eval_single(experiment_folder, folder, split, model, short_name)
- 
+            model = LLM(model_config, batch_size=llm_batch_size, config=llm_prompt, basic_url=ollama_url)
+            eval_single(experiment_folder, folder, split, model, short_name, nb_samples = samples)
+            
         if lid is not None:
             from models.evaluators.lid import LID
             model = LID(lid)
-            eval_single(experiment_folder, folder, split, model, "lid")
+            eval_single(experiment_folder, folder, split, model, "lid", nb_samples = samples)
 
     
 
@@ -134,6 +133,7 @@ if __name__ == "__main__":
     parser.add_argument('--experiments_folder', type=str, default="experiments/")
     parser.add_argument('--folder', type=str, default=None)
     parser.add_argument('--split', type=str, default='dev')
+    parser.add_argument('--sample', type=int, default=None, help="Use only subsample of the experiment folder for evaluation, useful for debug purposes")    
     parser.add_argument('--bem', action='store_true')
     parser.add_argument('--lid', type=str, default=None)
     parser.add_argument('--llm', type=str, nargs='*', default=None, 
@@ -168,8 +168,9 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
     e = Evaluate.eval(
-        args.experiments_folder, 
-        args.split, 
+        folder=args.folder, 
+        experiment_folder=args.experiments_folder, 
+        split=args.split, 
         bem=args.bem,
         llm=args.llm, 
         llm_ollama=args.llm_ollama,
@@ -180,6 +181,6 @@ if __name__ == "__main__":
         llm_batch_size=args.llm_batch_size,
         llm_prompt=args.llm_prompt,
         ollama_url=args.ollama_url,
-        folder=args.folder, 
-        force=args.force
-        )
+        force=args.force, 
+        samples=args.sample
+    )

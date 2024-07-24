@@ -7,11 +7,11 @@ CC BY-NC-SA 4.0 license
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 import omegaconf
 from tqdm import tqdm
-from models.generators.llm import LLM
 import torch
 import re
 import numpy as np
 from hydra.utils import instantiate
+from models.evaluators.utils import *
 
 class LLMeval():
     """
@@ -21,24 +21,18 @@ class LLMeval():
     #FIXME: we could reuse init from llm generator, but need to update max_length, max_new_token
     def __init__(self, model_config, batch_size=1, config="default_qa"):
         #model_config['init_args']['_target_'] = 'models.evaluators.llm.LLMeval'
+        model_config = omegaconf.OmegaConf.load(f"config/generator/{model_config}.yaml")            
         eval_config = omegaconf.OmegaConf.load(f"config/evaluator/{config}.yaml")
+        self.use_logits = eval_config.use_logits
         self.llm = instantiate(model_config['init_args'], prompt=eval_config['prompt'])
         self.options = eval_config.output_options
         self.prompt = eval_config['prompt']
-        self.llm.max_new_token = eval_config['max_new_token']
+        self.llm.max_new_token = eval_config['max_new_tokens']
         self.llm.batch_size = batch_size
         self.system_prompt = eval(self.prompt.system)
-        #self.model_name = model_name
-        #self.model = AutoModelForCausalLM.from_pretrained(self.model_name, device_map='auto', quantization_config=quant_config, attn_implementation="flash_attention_2")
-        #self.tokenizer = AutoTokenizer.from_pretrained(self.model_name, padding_side='left')
-        #self.tokenizer.pad_token = self.tokenizer.bos_token
-        #self.model.config.use_cache = False
-        #self.model.eval()
-        breakpoint()
-
-        self.output_ids = [self.llm.tokenizer.encode(opt, add_special_tokens=False)[-1] for opt in self.options]
-
-   
+        self.output_ids = [self.llm.tokenizer.encode(opt, add_special_tokens=False)[-1] for opt in sorted(self.options)]
+        self.output_values = torch.tensor([self.options[opt] for opt in sorted(self.options)]).float()
+        
     def create_instruction(self,sample):
         answer = sample['reference']
         question=sample['question']
@@ -68,31 +62,38 @@ class LLMeval():
         # Loading the TensorFlow Hub model
         assert len(predictions) == len(references) == len(questions)
         examples = [{'question': questions[i], 'reference': references[i], 'candidate': predictions[i]}  for i in range(len(predictions))]
-        breakpoint()
-        inputs, instrs = self.collate_fn(examples)
         # The outputs are raw logits.
         scores = list()
+        weird = list()
         # Perform batch inference
-        for i in tqdm(range(0, len(inputs['input_ids']), self.llm.batch_size), desc=f'LLM evaluation with {self.llm.model_name}...'):
+        for i in tqdm(range(0, len(examples), self.llm.batch_size), desc=f'LLM evaluation with {self.llm.model_name}...'):
             # Extract batch
-            batch_input_ids = inputs['input_ids'][i:i+self.batch_size].to('cuda')
-            batch_attention_masks = inputs['attention_mask'][i:i+self.batch_size].to('cuda')
-            instr_batch = instrs[i:i+self.batch_size]
-            # discrete model output 
-            # generated_tokens = self.model.generate(input_ids=batch_input_ids, attention_mask=batch_attention_masks, max_new_tokens=3) 
-            # generated_answers = self.tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
-            # for generated_answer in generated_answers:
-            #     answer = re.findall(r'\{([^}]+)\}', generated_answer)[-1]
-            #     scores.append(1 if answer == 'equivalent' else 0)
-            # continuous model output:
-            model_scores = self.llm.generate(input_ids=batch_input_ids, attention_mask=batch_attention_masks, max_new_tokens=self.llm.max_new_token, do_sample=False, output_scores=True, return_dict_in_generate=True).scores
-            model_scores = torch.stack(model_scores)
-            breakpoint()
-            model_scores = model_scores[0, :, self.output_ids].float()
-            pos_prob = torch.softmax(model_scores, 1)[:, 1].detach().cpu()
-            for i, score in enumerate(pos_prob):
-                scores.append(score.float())
-
+            batch_examples = examples[i:i+self.llm.batch_size]
+            inputs, instrs = self.collate_fn(batch_examples)
+           
+            if self.use_logits:
+                # continuous model output:
+                model_scores = self.llm.generate_logits(inputs)
+                #get processed logits from model outputs: expected shape (n_tokens, 1, vocab_size)
+                model_scores = torch.stack(model_scores)
+                #get scores corresponding to self.output_ids from the first generated tokens ()
+                model_scores = model_scores[0, :, self.output_ids].float()
+                #normalizing scores - getting probablity of each of predefined labesl
+                pos_prob = torch.softmax(model_scores, 1).detach().cpu()
+                #final score is computed as interpolation between prob of label and it's associated value (defined by options map in config): eg. p(x=yes)*1 + p(x=no)*0 
+                for i, score in enumerate(pos_prob):
+                    scores.append(torch.dot(score,self.output_values))
+            else:
+                # discrete model output            
+                # get real answer generation
+                model_generations = self.llm.generate(inputs)
+                batch_scores, batch_weird  = process_llm_outputs_assess_scores(model_generations, self.options)
+                scores.extend(batch_scores)
+                weird.extend(batch_weird)
+                # if string value specified in options is present in the generated output: assign corresponding score,
+                # if multiple values are present: take maximum value
+                scores.extend(scores)
+        
         torch.cuda.empty_cache()
-        return np.mean(scores), scores
+        return get_mean_without_unknown(scores), scores
 
