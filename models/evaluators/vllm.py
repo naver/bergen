@@ -28,6 +28,8 @@ class VLLMeval:
         model_config = omegaconf.OmegaConf.load(f"config/generator/vllm_{model_config}.yaml")
         self.llm = instantiate(model_config['init_args'], prompt=eval_config['prompt'])
         self.options = eval_config.output_options
+        self.rubrik_section = "\n - ".join([f"{self.options[opt]} for {opt} answer" for opt in self.options])
+
         self.prompt = eval_config['prompt']
         self.llm.sampling_params.max_new_token = eval_config['max_new_tokens']
         self.llm.batch_size = batch_size
@@ -36,23 +38,7 @@ class VLLMeval:
         self.output_ids = [self.llm.tokenizer.encode(opt, add_special_tokens=False)[-1] for opt in sorted(self.options)]
         self.output_values = torch.tensor([self.options[opt] for opt in sorted(self.options)]).float()
         
-        # self.batch_size = batch_size
-        # self.pos_word = pos_word  
-        # self.neg_word = neg_word 
-        # self.options = 
-        # self.model_name = model_name
-        # self.prompt = omegaconf.OmegaConf.load(f"config/evaluator/{prompt}.yaml")['prompt']
-        # self.system_prompt = eval(self.prompt.system)
-        #self.tokenizer = AutoTokenizer.from_pretrained(self.model_name, padding_side='left')
-        #self.tokenizer.pad_token = self.tokenizer.bos_token
-        #self.quantization = None
-        #if self.quantization is None:
-        #    self.model = vllm(model=self.model_name,tensor_parallel_size=torch.cuda.device_count(),gpu_memory_utilization=0.9,max_model_len=4096,enforce_eager=False,kv_cache_dtype="fp8")        
-        #else:
-        #    self.model = vllm(model=self.model_name,tensor_parallel_size=torch.cuda.device_count(),quantization=self.quantization)
-        #self.sampling_params =  SamplingParams(temperature=0,max_tokens=10,best_of=1, top_p=1, top_k=-1)
-
-
+     
     def create_instruction(self,sample):
         answer = sample['reference']
         question=sample['question']
@@ -65,14 +51,15 @@ class VLLMeval:
         prefix.extend([{'role': 'user',
             'content': eval(self.prompt.user).replace(":\ ", ": ")}]
             )
-        prefix.extend([{'role': 'assistant',
-            'content': eval(self.prompt.assistant).replace(":\ ", ": ")}]
+        if 'assistant' in self.prompt:
+            prefix.extend([{'role': 'assistant',
+                'content': eval(self.prompt.assistant).replace(":\ ", ": ")}]
             )
 
         return self.llm.tokenizer.apply_chat_template(prefix,  add_generation_prompt=True, tokenize=False)
-    def __del__(self):
-        logger.info("Deleting object")
-        del self.llm
+    #def __del__(self):
+    #    logger.info("Deleting object")
+    #    del self.llm
         
     @torch.no_grad()
     def __call__(self, predictions, references, questions):
