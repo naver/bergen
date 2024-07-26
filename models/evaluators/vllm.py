@@ -39,25 +39,37 @@ class VLLMeval:
         self.output_values = torch.tensor([self.options[opt] for opt in sorted(self.options)]).float()
         
      
-    def create_instruction(self,sample):
+     def create_instruction(self,sample):
         answer = sample['reference']
         question=sample['question']
         prediction=sample['candidate']
-    
-        prefix=[]
+        if 'response' in sample:
+            response = sample['response']
+        else:
+            response = None
+        prefix = []
         if 'system' in self.llm.tokenizer.chat_template:
             prefix =  [{'role': 'system',
                 'content': self.system_prompt}]
-        prefix.extend([{'role': 'user',
-            'content': eval(self.prompt.user).replace(":\ ", ": ")}]
+            prefix.extend([{'role': 'user',
+                'content': eval(self.prompt.user)}]
+            )
+        
+        else:
+            prefix = ([{'role': 'user_without_system',
+                'content': eval(self.prompt.user)}]
             )
         if 'assistant' in self.prompt:
             prefix.extend([{'role': 'assistant',
-                'content': eval(self.prompt.assistant).replace(":\ ", ": ")}]
+                'content': eval(self.prompt.assistant)}]
+                )
+        if not response is None:
+            prefix.extend([{'role': 'assistant',
+                'content': response}]
             )
+        return self.llm.tokenizer.apply_chat_template(prefix,  add_generation_prompt=True, tokenize=False) 
 
-        return self.llm.tokenizer.apply_chat_template(prefix,  add_generation_prompt=True, tokenize=False)
-    #def __del__(self):
+   #def __del__(self):
     #    logger.info("Deleting object")
     #    del self.llm
         

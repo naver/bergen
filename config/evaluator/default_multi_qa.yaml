@@ -1,11 +1,10 @@
 max_new_tokens: 1
 use_logits: True
 output_options: 
-    'Correct': 2
-    'Partially correct': 1
-    'Wrong': 0
+    'correct': 2
+    'partially correct': 1
+    'wrong': 0
 prompt:   
   system: f"You are an evaluation tool. Answer with one of \n {self.rubrik_section}."
   user: f"Here is a question, a golden answer and an AI-generated answer. Can you judge whether the AI-generated answer is correct according to the question and golden answer, simply answer with one of {list(self.options)}.\n Question:\ {question}. \nGolden answer:\ {answer} \n Generated answer:\ {prediction}"
-  assistant: f"Response:\ {{"
-  user_without_system: f"You are an evaluation tool. Just answer by {{{self.pos_word}}} or {{{self.neg_word}}}. Here is a question, a golden answer and an AI-generated answer. Judge whether the AI-generated answer is correct according to the question and golden answer, answer with {{{self.pos_word}}} or {{{self.neg_word}}}.\nQuestion:\ {question}.\nGolden answer:\ {answer}\nGenerated answer:\ {prediction}"
+  user_without_system: f"You are an evaluation tool. Just answer as following {self.rubrik_section}. Here is a question, a golden answer and an AI-generated answer. Judge whether the AI-generated answer is correct according to the question and golden answer, answer with {list(self.options)}.\nQuestion:\ {question}.\nGolden answer:\ {answer}\nGenerated answer:\ {prediction}"

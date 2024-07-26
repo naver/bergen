@@ -60,8 +60,13 @@ class LLMeval():
         if 'system' in self.llm.tokenizer.chat_template:
             prefix =  [{'role': 'system',
                 'content': self.system_prompt}]
-        prefix.extend([{'role': 'user',
-            'content': eval(self.prompt.user)}]
+            prefix.extend([{'role': 'user',
+                'content': eval(self.prompt.user)}]
+            )
+        
+        else:
+            prefix = ([{'role': 'user_without_system',
+                'content': eval(self.prompt.user)}]
             )
         if 'assistant' in self.prompt:
             prefix.extend([{'role': 'assistant',
