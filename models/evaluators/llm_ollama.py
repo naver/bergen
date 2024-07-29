@@ -26,8 +26,9 @@ class OllamaEval:
         self.batch_size = batch_size
         self.options = eval_config.output_options
         self.prompt = eval_config['prompt']
-        self.max_new_token = eval_config['max_new_token']
+        self.max_new_tokens = eval_config['max_new_tokens']
         self.batch_size = batch_size
+        self.rubrik_section = "\n - ".join(sorted([f"{opt} answer" for opt in self.options]))
         self.system_prompt = eval(self.prompt.system)
         self.output_values = torch.tensor([self.options[opt] for opt in sorted(self.options)]).float()
         self.model_name = model_name
@@ -38,14 +39,13 @@ class OllamaEval:
         answer = sample['reference']
         question=sample['question']
         prediction=sample['candidate']
-        pos_word = self.pos_word
-        neg_word = self.neg_word
+        
         template = ChatPromptTemplate.from_messages([
             ("user", eval(self.prompt.user)),
             ("ai", ' Response: {{'),
         ])
        
-        return template.invoke({'answer':answer, 'question':question, 'prediction':prediction, 'pos_word': self.pos_word, 'neg_word': self.neg_word})
+        return template.invoke({'answer':answer, 'question':question, 'prediction':prediction})
 
    
 
@@ -54,13 +54,13 @@ class OllamaEval:
         # Loading the TensorFlow Hub model
         assert len(predictions) == len(references) == len(questions)
         examples = [{'question': questions[i], 'reference': references[i], 'candidate': predictions[i]}  for i in range(len(predictions))]
-        instrs = [self.create_instruction(sample) if self.custom_format_instruction == None else self.custom_format_instruction(sample) for sample in examples]
+        instrs = [self.create_instruction(sample) for sample in examples]
         scores = list()
         weird = list()
        
         for i in (tq:=tqdm(range(0, len(instrs), self.batch_size), desc=f'LLM evaluation with {self.model_name}...')):
             outputs = self.model.batch(instrs[i:i+self.batch_size])
-            batch_scores, batch_weird  = process_llm_outputs_assess_scores(model_generations, self.options)
+            batch_scores, batch_weird  = process_llm_outputs_assess_scores(outputs, self.options)
             scores.extend(batch_scores)
             weird.extend(batch_weird)
             tq.set_description(f" score: {get_mean_without_unknown(scores)* 100:4.1f}%, weird :{float(len(weird))/len(scores)*100:4.1f}%")

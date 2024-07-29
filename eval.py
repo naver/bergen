@@ -6,6 +6,8 @@ import os
 from hydra.utils import instantiate
 import omegaconf
 import yaml
+from torch.profiler import profile, record_function, ProfilerActivity
+import gc
 
 class Evaluate:
     @staticmethod
@@ -25,7 +27,7 @@ class Evaluate:
                 input_file = f'{experiment_folder}/eval_{split}_out.json'
                 if os.path.exists(input_file):
                     data = load_data(input_file)
-
+                    breakpoint()
                     metrics_file = f'{experiment_folder}/eval_{split}_metrics.json'
                     try:
                        metrics_dict = json.load(open(metrics_file))
@@ -49,9 +51,8 @@ class Evaluate:
                         model_score, scores, cost = model(predictions, references, questions)
                         costs_out_file = f'{experiment_folder}/eval_{split}_cost_{metric_name}_out.json'
                         with open(costs_out_file, 'w') as fout: fout.write(json.dumps(cost))
-                    else:
+                    else:                    
                         model_score, scores = model(predictions, references, questions)
-
                     metrics_out_file = f'{experiment_folder}/eval_{split}_metrics_{metric_name}_out.json'
                     with open(metrics_out_file, 'w') as fout:
 
@@ -67,7 +68,8 @@ class Evaluate:
                     # when writing successful remove tmp file
                     shutil.move(metrics_file + '_', metrics_file)
     
-
+        #with profile(activities=[ProfilerActivity.CUDA, ProfilerActivity.CPU],
+        #            profile_memory=True, record_shapes=True) as prof:
         if bem:
             from models.evaluators.bem import BEM
             model = BEM(batch_size=bem_batch_size)
@@ -76,6 +78,23 @@ class Evaluate:
             from models.evaluators.openai import OpenAI
             model = OpenAI(gpt)
             eval_single(experiment_folder, folder, split, model, gpt, nb_samples = samples)
+        
+        if vllm is not None:
+            from models.evaluators.vllm import VLLMeval 
+            if len(vllm) == 0:
+                # corresponds to default LLMeval setting, results reported in the paper
+                model_config, short_name = "SOLAR-107B", "VLLMeval"             
+            elif len(vllm)==1:
+                model_config = vllm[0]
+                short_name = f"VLLMeval_{model_config}"
+            elif len(vllm)==2:
+                model_config = vllm[0]
+                short_name = f"VLLMeval_{vllm[1]}"        
+            model = VLLMeval(model_config, batch_size=llm_batch_size, config=llm_prompt)
+            eval_single(experiment_folder, folder, split, model, short_name, nb_samples = samples)
+            del model
+            torch.cuda.empty_cache()
+            gc.collect()
         if llm is not None:
             from models.evaluators.llm import LLMeval
             if len(llm) == 0:
@@ -92,32 +111,21 @@ class Evaluate:
             if model.use_logits:
                 short_name = f"{short_name}_logits"
             eval_single(experiment_folder, folder, split, model, short_name, nb_samples = samples)
-        
-        if vllm is not None:
-            from models.evaluators.vllm import VLLMeval 
-            if len(vllm) == 0:
-                # corresponds to default LLMeval setting, results reported in the paper
-                model_config, short_name = "SOLAR-107B", "VLLMeval"             
-            elif len(vllm)==1:
-                model_config = vllm[0]
-                short_name = f"VLLMeval_{model_config}"
-            elif len(vllm)==2:
-                model_config = vllm[0]
-                short_name = f"VLLMeval_{vllm[1]}"        
-            model = VLLMeval(model_config, batch_size=llm_batch_size, config=llm_prompt)
-            eval_single(experiment_folder, folder, split, model, short_name, nb_samples = samples)
+            del model
+            torch.cuda.empty_cache()
+            gc.collect()
         if llm_ollama is not None:
-            from models.evaluators.llm_ollama import LLMeval
+            from models.evaluators.llm_ollama import OllamaEval
             
             if len(llm_ollama)==1:
                 model_config = llm_ollama[0]
-                short_name = full_name
+                short_name = model_config
                 short_name = f"LLMeval_{short_name}"        
             elif len(llm_ollama)==2:
                 model_config = llm_ollama[0]
                 short_name = llm_ollama[1] 
                 short_name = f"LLMeval_{short_name}"        
-            model = LLM(model_config, batch_size=llm_batch_size, config=llm_prompt, basic_url=ollama_url)
+            model = OllamaEval(model_config, batch_size=llm_batch_size, config=llm_prompt, basic_url=ollama_url)
             eval_single(experiment_folder, folder, split, model, short_name, nb_samples = samples)
             
         if lid is not None:
@@ -140,6 +148,7 @@ class Evaluate:
                     print(f"SKIP {folder}: unknown lng")
                 model=LID(tgt_lng)  
                 eval_single(experiment_folder, folder, split, model, "lid")
+        #print(prof.key_averages().table(sort_by="self_cpu_memory_usage", row_limit=10))
     
 
 if __name__ == "__main__":
@@ -200,3 +209,4 @@ if __name__ == "__main__":
         force=args.force, 
         samples=args.sample
     )
+

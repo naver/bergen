@@ -136,7 +136,7 @@ In case of `--vllm` inference point only option 1 is possible.
 ```bash
 python3 eval.py --experiments_folder experiments/ --llm_batch_size 16 --split 'dev' --vllm
 ```
-Similarly to similarly to `--generator` you can specify which LLM you are willing as first options of `--llm`/`-vllm`, as well as short name at metrics naming. 
+Similarly to  `--generator` you can specify which LLM you are willing as first options of `--llm`/`-vllm`, as well as short name at metrics naming (use the name of the configuration file as the name of the llm). 
  
 
 ```bash
@@ -154,7 +154,14 @@ python3 eval.py --experiments_folder experiments/ --llm_batch_size 16 --split 'd
 You can specify prompt and other parameters in the evaluation config file for `--llm` or `--vllm` at `config/evaluator` directory. By default they rely on `default_qa.yaml` configuration which assigns binary (Yes/No) value to each triple of <em>Question/Response/Gold Response</em>. You can specify finer granularity options and prompt (aka <em>rubrik section</em>). See example of more fine-grained configuration at `config/evaluator/default_multi_qa.yaml`. 
 
 ```bash
-python3 eval.py --experiments_folder experiments/ --llm_batch_size 16 --split 'dev' --vllm  --llm_prompt default_multi_qa.yaml
+python3 eval.py --experiments_folder experiments/ --llm_batch_size 16 --split 'dev' --vllm  --llm_prompt default_multi_qa
+```
+
+
+If you have local ollama server running, you can call models installed on this server as following:
+
+```bash
+python3 eval.py --experiments_folder experiments/ --llm_ollama "phi3:latest" --ollama_url "http://localhost:11434"   --llm_prompt default_multi_qa
 ```
 
 
