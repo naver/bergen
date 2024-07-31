@@ -9,6 +9,7 @@ from hydra import initialize, compose
 from bergen import main
 from omegaconf import OmegaConf
 import pytest
+import gc
 import inspect 
 import torch
 import os
@@ -41,6 +42,13 @@ def init():
         raise SystemError('No GPU available. Needs GPUs for running tests.')
     clean_dirs()
     
+    
+@pytest.fixture(autouse=True)
+def clear_gpu_memory():
+    yield  # This makes the fixture run after each test
+    torch.cuda.empty_cache()
+    torch.cuda.synchronize()
+    gc.collect()
 
 
 class TestBergenMain:
