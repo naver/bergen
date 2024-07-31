@@ -490,15 +490,17 @@ class UT1Queries(Processor):
             'content':[],
             'label':[],
         }
-        f=open('tests/utdata/ut1_queries.tsv')
-        for l in f:
-            tok=l.split('\t')
-            qid=tok[0].strip()
-            qt=tok[1].strip()
-            label=tok[2].strip()
-            data_d['id'].append(qid)
-            data_d['content'].append(qt)
-            data_d['label'].append(label)
+        script_path = os.path.abspath(__file__)
+        tests_directory = os.path.join(os.path.dirname(os.path.dirname(script_path)), 'tests')
+        with open(os.path.join(tests_directory,'utdata/ut1_queries.tsv'), 'r') as f:
+            for l in f:
+                tok=l.split('\t')
+                qid=tok[0].strip()
+                qt=tok[1].strip()
+                label=tok[2].strip()
+                data_d['id'].append(qid)
+                data_d['content'].append(qt)
+                data_d['label'].append(label)
         dataset=datasets.Dataset.from_dict(data_d)
         return dataset
 
@@ -512,13 +514,17 @@ class UT1Docs(Processor):
             'id':[],
             'content':[],
         }
-        f=open('tests/utdata/ut1_docs.tsv')
-        for l in f:
-            tok=l.split('\t')
-            did=tok[0].strip()
-            dt=tok[1].strip()
-            data_d['id'].append(did)
-            data_d['content'].append(dt)
+        # We get the adress of the tests tsv file, relative to this script path:
+        script_path = os.path.abspath(__file__)
+        tests_directory = os.path.join(os.path.dirname(os.path.dirname(script_path)), 'tests')
+        
+        with open(os.path.join(tests_directory, 'utdata/ut1_docs.tsv'), 'r') as f:
+            for l in f:
+                tok=l.split('\t')
+                did=tok[0].strip()
+                dt=tok[1].strip()
+                data_d['id'].append(did)
+                data_d['content'].append(dt)
         dataset=datasets.Dataset.from_dict(data_d)
         return dataset
 
