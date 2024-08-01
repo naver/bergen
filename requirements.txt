@@ -8,9 +8,11 @@ numpy
 omegaconf
 pandas
 peft
+protobuf
 pytrec_eval
 regex
 rouge
+sentencepiece
 scikit_learn
 scipy
 tensorflow==2.8.0
