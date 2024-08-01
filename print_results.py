@@ -98,9 +98,17 @@ def main(args):
                         # except:
                         #     print(f'Failed to load {current_folder}!')  
                     #preprocess the generator name,retriever,reranker name
-                    generator_basename = os.path.basename(generator)
-                    retriever_basename = os.path.basename(retriever)
-                    reranker_basename = os.path.basename(reranker)
+                    generator_basename = 'none'
+                    if generator is not None:
+                        generator_basename = os.path.basename(generator)
+                        
+                    retriever_basename = 'none'
+                    if retriever is not None:
+                        retriever_basename = os.path.basename(retriever)
+                    
+                    reranker_basename = 'none'
+                    if reranker is not None:
+                        reranker_basename = os.path.basename(reranker)
                     
                     if args.format =='simple':
                         ltuple.append([current_folder.name, dataset_query, generator_basename,retriever_basename, reranker_basename, m, em, recall, rougel, bem, LLMeval])
@@ -111,8 +119,8 @@ def main(args):
                     else:
                         raise ValueError('Invalid output format')
     
-        except:
-            print(f'Skipping {current_folder} due to parsing errors!')
+        except Exception as e:
+            print(f'Skipping {current_folder} due to parsing errors: {e}')
     
     if len(ltuple) == 0:
         print(f'No results in folder "{args.folder}" yet!')

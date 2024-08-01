@@ -385,7 +385,6 @@ def make_embeddings_dataset(embeddings_path, embedding_dim, num_proc):
     dataset.save_to_disk(get_embedding_datasets_path(embeddings_path), num_proc=num_proc)
 
 
-
 # adapted from https://github.com/huggingface/trl/blob/main/trl/trainer/utils.py
 def prepare_labels(input_ids, response_token_ids, ignore_index=-100):
     label_ids = input_ids.clone()
@@ -413,4 +412,3 @@ def prepare_labels(input_ids, response_token_ids, ignore_index=-100):
             # Make pytorch loss function ignore all tokens up through the end of the response key
             label_ids[i, :response_token_ids_end_idx] = ignore_index
     return label_ids
-

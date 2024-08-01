@@ -17,11 +17,11 @@ class Generator(ABC):
 
     @abstractmethod
     def generate(self, inp):
-        pass
+        raise NotImplementedError
     
     @abstractmethod
     def collate_fn(self, inp):
-        pass
+        raise NotImplementedError
 
     def eval(self, dataset):
         if self.tokenizer:
