@@ -130,7 +130,6 @@ def match_score(predictions, references):
 class RAGMetrics:
     @staticmethod
     def compute(predictions, references, questions=None):
-
         rouge1, rouge2, rougel = rouge_score(predictions, references)
         f1, precision, recall = f1_score(predictions, references)
         f1_char3gram, precision_char3gram, recall_char3gram = f1_score(predictions, references, ngrams)

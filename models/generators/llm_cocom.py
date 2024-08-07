@@ -84,7 +84,7 @@ class LLMCocom(Generator):
         return query_ids, queries, instructions, responses, labels, ranking_labels
 
     def get_response(self):
-        return '[/INST]\n'
+        return '[/INST]\n' # TODO use the chat template ?
 
     def collate_fn(self, examples, eval=False):
         """
