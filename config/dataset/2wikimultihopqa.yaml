@@ -9,7 +9,7 @@ dev:
     
     query: 
         init_args:
-            _target_: modules.dataset_processor.wikimultihopqa
+            _target_: modules.processors.qa_dataset_processor.wikimultihopqa
             split: "validation"
 test:
     doc: null

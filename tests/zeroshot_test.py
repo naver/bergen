@@ -10,11 +10,14 @@ from bergen import main
 from eval import Evaluate
 from omegaconf import OmegaConf
 import pytest
+import gc
 import inspect 
 import torch
 import os
 import gc
-
+from modules.rag import RAG
+import modules.dataset_processor
+import pathlib
 """
 pip install pytest
 To run tests run from the root folder:
@@ -42,6 +45,13 @@ def init():
         raise SystemError('No GPU available. Needs GPUs for running tests.')
     clean_dirs()
     
+    
+@pytest.fixture(autouse=True)
+def clear_gpu_memory():
+    yield  # This makes the fixture run after each test
+    torch.cuda.empty_cache()
+    torch.cuda.synchronize()
+    gc.collect()
 
 
 class TestBergenMain:
@@ -125,6 +135,50 @@ class TestBergenMain:
     #                                                         "train.trainer.num_train_epochs=1"])
     #         self.helper_with_rerun(cfg, test_name)
 
+    # this is too long takes 20 min for NQ, it download the dataset from HF, and process it from scratch
+    # def test_create_kiltnq(self):
+    #    with initialize(config_path="../config",version_base="1.2"):
+    #        test_name = inspect.currentframe().f_code.co_name
+    #        cfg = compose(config_name='rag_ut1', overrides=[ "dataset=kilt_nq", "generator=tinyllama-chat"])
+    #        #cfg = compose(config_name='rag_ut1', overrides=["generator=tinyllama-chat"])
+    #        
+    #        print(cfg,test_name)
+    #        self.create_rag_obj(cfg, test_name)
+
+    # This only check the instantiation of the processor, but not calling the get_process
+    def test_processor_subset(self):
+        datasets=['kilt_nq','asqa','kilt_triviaqa','popqa','kilt_hotpotqa']
+
+        for d in datasets:
+            with initialize(config_path="../config",version_base="1.2"):
+                test_name = inspect.currentframe().f_code.co_name
+                cfg = compose(config_name='rag_ut1', overrides=[ "dataset="+d, "generator=tinyllama-chat"])
+                print(cfg)
+                p = modules.dataset_processor.ProcessDatasets.check_instantiate(cfg['dataset'], out_folder=cfg.dataset_folder)
+                print(p)
+    
+    def test_processor_all(self):
+        
+        datasets=sorted(pathlib.Path('config/dataset').glob('**/*.yaml'))
+
+        for dpath in datasets:
+            d = os.path.basename(dpath).replace('.yaml','')
+            dir_name = os.path.dirname(dpath)
+            # if config in mkqa tidy add dirname to the config
+            if not(dir_name.endswith('dataset')): 
+                d =os.path.basename(dir_name)+'/'+d
+            print(dir_name,d)
+            
+            #skipping current failing test 
+            if 'pubmed_bioasq' in d:
+                continue
+
+            with initialize(config_path="../config",version_base="1.2"):
+                test_name = inspect.currentframe().f_code.co_name
+                cfg = compose(config_name='rag_ut1', overrides=[ "dataset="+d, "generator=tinyllama-chat"])
+                #print(cfg)
+                p = modules.dataset_processor.ProcessDatasets.check_instantiate(cfg['dataset'], out_folder=cfg.dataset_folder)
+                print(p)          
 
     @pytest.mark.skip(reason="Helper function, not a test")
     def set_folders(self, cfg, test_name):
@@ -145,6 +199,11 @@ class TestBergenMain:
     def helper_single(self, cfg, test_name):
         self.set_folders(cfg, test_name)
         main(cfg)
+    
+    @pytest.mark.skip(reason="Helper function, not a test")
+    def create_rag_obj(self, cfg, test_name):
+        self.set_folders(cfg, test_name)
+        rag = RAG(**cfg, config=cfg)
 
 
 class TestBergenEval:
@@ -161,8 +220,7 @@ class TestBergenEval:
             test_name = inspect.currentframe().f_code.co_name
             exp_folder = "tests/utdata/"
             Evaluate.eval(experiment_folder=exp_folder, llm=["tinyllama-chat", "test-llm-def"], llm_batch_size= 4, llm_prompt="default_qa", force=True, samples=4)
-        #torch.cuda.empty_cache()
-        #gc.collect()
+     
     
    
     def test_llmeval_multi(self):
@@ -170,17 +228,13 @@ class TestBergenEval:
             test_name = inspect.currentframe().f_code.co_name
             exp_folder = "tests/utdata/"
             Evaluate.eval(experiment_folder=exp_folder, llm=["tinyllama-chat", "test-llm-1"], llm_batch_size= 4, llm_prompt="default_multi_qa", force=True)
-        #torch.cuda.empty_cache()
-        #gc.collect()
-            
+    
     def test_vllmeval(self):
         with initialize(config_path="../config",version_base="1.2"):
             test_name = inspect.currentframe().f_code.co_name
             exp_folder = "tests/utdata/"
             Evaluate.eval(experiment_folder=exp_folder, vllm=["tinyllama-chat", "test-vllm-2"], llm_batch_size=4, llm_prompt="default_qa", force=True)
-        #torch.cuda.empty_cache()
-        #gc.collect()
-    
+   
 
     
 

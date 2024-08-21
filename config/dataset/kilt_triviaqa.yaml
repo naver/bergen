@@ -9,7 +9,7 @@ dev:
     
     query: 
         init_args:
-            _target_: modules.dataset_processor.KILTTriviaqa
+            _target_: modules.processors.kilt_dataset_processor.KILTTriviaqa
             split: "validation"
 test:
     doc: null
