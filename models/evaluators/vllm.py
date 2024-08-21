@@ -39,7 +39,7 @@ class VLLMeval:
         self.output_values = torch.tensor([self.options[opt] for opt in sorted(self.options)]).float()
         
      
-     def create_instruction(self,sample):
+    def create_instruction(self,sample):
         answer = sample['reference']
         question=sample['question']
         prediction=sample['candidate']

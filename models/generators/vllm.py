@@ -11,7 +11,7 @@ import random
 
 from vllm import LLM as vllm
 from vllm import  SamplingParams
-
+import gc
 
 random.seed(42)
 
@@ -80,6 +80,11 @@ class LLM(Generator):
 
         return data_dict
 
+    def __del__(self):
+    #    #del self.model.llm_engine.model_executor
+    #    del self.model
+        gc.collect()
+        torch.cuda.empty_cache()
 
     def format_instruction(self, sample):
         # will be injected into formatted prompt string
