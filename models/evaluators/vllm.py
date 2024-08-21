@@ -90,7 +90,9 @@ class VLLMeval:
             #scores.extend([ 1 if self.pos_word.lower() in rep.lower() else 0 for rep in decoded ])
             #weird.extend([ 1 if (self.neg_word.lower() not in rep.lower() and self.pos_word not in rep.lower()) else 0 for rep in decoded ])
             tq.set_description(f" score: {get_mean_without_unknown(scores)* 100:4.1f}%, weird :{float(len(weird))/len(scores)*100:4.1f}%")
-        logger.info(weird)        
+        logger.info(weird)
         torch.cuda.empty_cache()
+        gc.collect()        
+
         return get_mean_without_unknown(scores), scores
 

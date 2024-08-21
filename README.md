@@ -213,11 +213,14 @@ To run all tests in the `tests` folder run:
 ```bash
 pytest tests/
 ```
+WARNING: you might have OutOfMemory error when running all tests, if it is the case you can failed tests separately to make sure that they pass
 
 To run a single test (e.g. `tinyonly`) run: 
 ```bash 
 pytest tests/ -k "tinyonly"
 ```
+
+
 ## Cite 
 
 If you use BERGEn for your research please consider citing us: 

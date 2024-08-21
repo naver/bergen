@@ -13,6 +13,7 @@ import pytest
 import inspect 
 import torch
 import os
+import gc
 
 """
 pip install pytest
@@ -151,30 +152,35 @@ class TestBergenEval:
             test_name = inspect.currentframe().f_code.co_name
             exp_folder = "tests/utdata/"
             Evaluate.eval(experiment_folder=exp_folder, lid=True, force=True)
-   
-   
-    def test_vllmeval_batch(self):
-        with initialize(config_path="../config",version_base="1.2"):
-            test_name = inspect.currentframe().f_code.co_name
-            exp_folder = "tests/utdata/"
-            Evaluate.eval(experiment_folder=exp_folder, vllm=["tinyllama-chat", "test-vllm-2"], llm_batch_size=4, llm_prompt="default_qa", force=True)
 
+   
     def test_llmeval_default(self):
         with initialize(config_path="../config",version_base="1.2"):
             test_name = inspect.currentframe().f_code.co_name
             exp_folder = "tests/utdata/"
-            Evaluate.eval(experiment_folder=exp_folder, llm=[], llm_batch_size= 4, llm_prompt="default_qa", force=True, sample=4)
-
+            Evaluate.eval(experiment_folder=exp_folder, llm=[], llm_batch_size= 4, llm_prompt="default_qa", force=True, samples=4)
+        torch.cuda.empty_cache()
+        gc.collect()
+    
+   
     def test_llmeval_multi(self):
         with initialize(config_path="../config",version_base="1.2"):
             test_name = inspect.currentframe().f_code.co_name
             exp_folder = "tests/utdata/"
             Evaluate.eval(experiment_folder=exp_folder, llm=["tinyllama-chat", "test-llm-1"], llm_batch_size= 4, llm_prompt="default_multi_qa", force=True)
+        torch.cuda.empty_cache()
+        gc.collect()
             
-    def test_llmeval_batch(self):
+    def test_vllmeval_batch(self):
         with initialize(config_path="../config",version_base="1.2"):
-            test_name = inspect.currentframe().f_code.co_name       
+            test_name = inspect.currentframe().f_code.co_name
             exp_folder = "tests/utdata/"
-            Evaluate.eval(experiment_folder=exp_folder, llm=["tinyllama-chat", "test-llm-2"], llm_batch_size=4, llm_prompt="default_qa", force=True)
+            Evaluate.eval(experiment_folder=exp_folder, vllm=["tinyllama-chat", "test-vllm-2"], llm_batch_size=4, llm_prompt="default_qa", force=True)
+        torch.cuda.empty_cache()
+        gc.collect()
     
+
+    
+
+   
     
