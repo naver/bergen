@@ -12,6 +12,7 @@ import re
 import numpy as np
 from hydra.utils import instantiate
 from models.evaluators.utils import *
+import gc
 
 class LLMeval():
     """
@@ -44,9 +45,10 @@ class LLMeval():
                                      
                 
         
-    #def __del__(self):
+    def __del__(self):
     #    print(f"Delete evaluator {self.llm.model_name}")
-    #    del self.llm
+        torch.cuda.empty_cache()
+        gc.collect()        
 
     def create_instruction(self,sample):
         answer = sample['reference']

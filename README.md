@@ -220,6 +220,10 @@ To run a single test (e.g. `tinyonly`) run:
 pytest tests/ -k "tinyonly"
 ```
 
+To run a single group of tests (e.g. `TestBergenMain` or `TestBergenEval`) run (recommended to better handle memory issues): 
+```bash 
+pytest tests -k TestBergenEval
+```
 
 ## Cite 
 

@@ -15,7 +15,7 @@ import random
 from models.evaluators.utils import *
 import logging
 logger = logging.getLogger(__name__)
-
+import gc
 
 
 class VLLMeval:
@@ -69,10 +69,11 @@ class VLLMeval:
             )
         return self.llm.tokenizer.apply_chat_template(prefix,  add_generation_prompt=True, tokenize=False) 
 
-   #def __del__(self):
-    #    logger.info("Deleting object")
-    #    del self.llm
-        
+    def __del__(self):
+    #    logger.info("Deleting object")        
+        torch.cuda.empty_cache()
+        gc.collect()        
+    
     @torch.no_grad()
     def __call__(self, predictions, references, questions):
         # Loading the TensorFlow Hub model
@@ -91,8 +92,6 @@ class VLLMeval:
             #weird.extend([ 1 if (self.neg_word.lower() not in rep.lower() and self.pos_word not in rep.lower()) else 0 for rep in decoded ])
             tq.set_description(f" score: {get_mean_without_unknown(scores)* 100:4.1f}%, weird :{float(len(weird))/len(scores)*100:4.1f}%")
         logger.info(weird)
-        torch.cuda.empty_cache()
-        gc.collect()        
-
+    
         return get_mean_without_unknown(scores), scores
 
