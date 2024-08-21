@@ -192,8 +192,7 @@ class TestBergenMain:
     def helper_with_rerun(self, cfg, test_name):
         self.set_folders(cfg, test_name)
         main(cfg)
-        torch.cuda.empty_cache()
-        gc.collect()
+        
 
     @pytest.mark.skip(reason="Helper function, not a test")
     def helper_single(self, cfg, test_name):
@@ -221,8 +220,7 @@ class TestBergenEval:
             exp_folder = "tests/utdata/"
             Evaluate.eval(experiment_folder=exp_folder, llm=["tinyllama-chat", "test-llm-def"], llm_batch_size= 4, llm_prompt="default_qa", force=True, samples=4)
      
-    
-   
+       
     def test_llmeval_multi(self):
         with initialize(config_path="../config",version_base="1.2"):
             test_name = inspect.currentframe().f_code.co_name
