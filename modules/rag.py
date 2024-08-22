@@ -15,6 +15,7 @@ import os
 from tqdm import tqdm
 import json
 from hydra.utils import instantiate
+import random
 from utils import (
     eval_retrieval_kilt, init_experiment, move_finished_experiment,
     write_trec, prepare_dataset_from_ids, load_trec,
@@ -50,6 +51,7 @@ class RAG:
                 debug=False,
                 continue_batch=None,
                 train=None,
+                fewshot=0,
                 prompt=None,
                 **kwargs,
                 ):
@@ -95,7 +97,7 @@ class RAG:
         self.overwrite_exp = overwrite_exp
         self.overwrite_index = overwrite_index
         self.training_config = train
-
+        self.few_shot = fewshot
         assert self.generation_top_k <= self.rerank_top_k <= self.retrieve_top_k
         # init experiment (set run name, create dirs)
         self.run_name, self.experiment_folder = init_experiment(config, experiments_folder, index_folder, runs_folder, run_name, overwrite_exp=self.overwrite_exp, continue_batch=continue_batch)
@@ -109,7 +111,29 @@ class RAG:
             shuffle_labels=True if generator_config != None and generator_config.init_args.model_name == 'random_answer' else False,
             oracle_provenance=True if retriever_config != None and retriever_config.init_args.model_name == 'oracle_provenance' else False,
             )
-        
+        assert self.few_shot == 0 or 'train' in self.datasets # few shot requires availability of train split
+        def format_fewshot_samples(question, answer):
+            sample = ""
+            if hasattr(prompt, "user_without_docs"):
+                sample += eval(prompt.user_without_docs).replace(':\ ', ': ')
+            else:
+                sample += f"Question: {question}."
+            if hasattr(prompt, "answer"):
+                sample += f"\n{prompt.answer}:\n{answer}"  # could be useful for multilingual settings, answer can be specified in different language
+            else:
+                sample += f"\nResponse:\n{answer}."
+            return sample
+        # get few random samples from train
+        if self.few_shot > 0:            
+            sample_ids = random.sample(list(range(len(self.datasets['train']['query']))), self.few_shot)
+            samples = [(self.datasets['train']['query'][sample]['content'], ", ".join(self.datasets['train']['query'][sample]['label'])) for sample in sample_ids]
+            if not hasattr(prompt, "fewshot"):
+                fewshot_prompt=" Please follow the same answer formatting and style as in the following examples:\n" 
+                fewshot_prompt +='\n'.join([format_fewshot_samples(sample[0], sample[1]) for sample in samples])
+                prompt.system = prompt.system + "\n" + fewshot_prompt
+                prompt.system_without_docs = prompt.system_without_docs + "\n" + fewshot_prompt
+            else:
+                prompt.fewshot +='\n'.join([format_fewshot_samples(sample[0], sample[1]) for sample in samples])
         self.metrics = {
             "train": RAGMetrics,
             # lookup metric with dataset name (tuple: dataset_name, split) 
@@ -130,7 +154,7 @@ class RAG:
 
         # Hydra way of instantiating generator object defined in config.
         self.generator = instantiate(generator_config.init_args, prompt=prompt) if generator_config != None else None
-
+            
         self.query_generator = GenerateQueries(**query_generator_config) if query_generator_config != None else None
         
                 # print RAG model

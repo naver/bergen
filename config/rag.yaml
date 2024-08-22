@@ -9,6 +9,7 @@ defaults:
     - train: null
     - prompt: basic
 
+fewshot: 0
 # main variables locating the local data folder and index
 run_name: null
 dataset_folder: 'datasets/'

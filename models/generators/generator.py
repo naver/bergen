@@ -53,9 +53,10 @@ class Generator(ABC):
         # return output.logits, output.loss
         pass
 
-    def compile_prompt(self, system_prompt, user_prompt, question, docs=None):
+    def compile_prompt(self, system_prompt, user_prompt, question, fewshot,  docs=None):
         # check if chat template allows for system prompts
-
+        if fewshot:
+            system_prompt = f"{system_prompt}\n{fewshot}"
         # if has chat_template e.g. gamma does not use it
         if self.tokenizer.chat_template == None:
             user_prompt_with_values = eval(user_prompt).replace(':\ ', ': ')
@@ -73,3 +74,5 @@ class Generator(ABC):
                     {"role": "user", "content": f"{system_prompt}\n{user_prompt_with_values}"}
                 ]    
             return self.tokenizer.apply_chat_template(instr_prompt,  add_generation_prompt=True, tokenize=False)
+
+    

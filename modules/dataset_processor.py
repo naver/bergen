@@ -585,7 +585,6 @@ class ProcessDatasets:
                         raise ValueError(f"Found empty value in '{field_name}' field.")
                     elif isinstance(field_value, list) and len(field_value) == 0:
                         raise ValueError(f"Found empty list in '{field_name}' field.")
-                
 
         processed_datasets = defaultdict(dict)
         for split in datasets:

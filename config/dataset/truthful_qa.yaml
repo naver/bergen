@@ -1,6 +1,9 @@
 train:
     doc: null
-    query: null
+    query: 
+        init_args:
+            _target_: modules.processors.qa_dataset_processor.truthful_qa
+            split: "train"
 dev:
     doc: 
         init_args:

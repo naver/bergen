@@ -1,7 +1,9 @@
 train:
     doc: null
-    query: null
-dev:
+    query: 
+        init_args:
+            _target_: modules.processors.kilt_dataset_processor.KILTTriviaqa
+            split: "train"
     doc: 
         init_args:
             _target_: modules.dataset_processor.KILT100w

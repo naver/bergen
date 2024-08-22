@@ -84,15 +84,19 @@ class LLM(Generator):
     def format_instruction(self, sample):
         # will be injected into formatted prompt string
         question = sample['query']
+        if hasattr(self.prompt, "fewshot"):
+            fewshot = self.prompt.fewshot
+        else:
+            fewshot = None
         # in case we have previously retrieved documents
         if 'doc' in sample:
             docs = ''
             for i, doc in enumerate(sample['doc']):
                 doc = ' '.join(doc.split()[:self.max_doc_len])
                 docs += f"Document {i+1}: {doc}\n"
-            compiled_prompt = self.compile_prompt(self.prompt.system, self.prompt.user, question, docs)
+            compiled_prompt = self.compile_prompt(self.prompt.system, self.prompt.user, question, fewshot, docs)
         else:
             # without retrieval we don't put documents in the prompt
-            compiled_prompt = self.compile_prompt(self.prompt.system_without_docs, self.prompt.user_without_docs, question)
+            compiled_prompt = self.compile_prompt(self.prompt.system_without_docs, self.prompt.user_without_docs, question, fewshot)
 
         return compiled_prompt

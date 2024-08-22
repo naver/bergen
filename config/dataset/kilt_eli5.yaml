@@ -1,6 +1,12 @@
 train:
-    doc: null
-    query: null
+    doc: 
+        init_args:
+            _target_: modules.dataset_processor.KILT100w
+            split: "full"
+    query: 
+        init_args:
+            _target_: modules.processors.kilt_dataset_processor.KILTEli5
+            split: "train"
 dev:
     doc: 
         init_args:

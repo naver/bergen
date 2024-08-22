@@ -154,6 +154,8 @@ class KILTEli5(Processor):
         # ranking_label: list of wikipedia_ids per answer, empty list if no provenances are present or answer is empty
         dataset = dataset.map(lambda example: {'ranking_label': [[provenance['wikipedia_id'] for provenance in el['provenance']] if len(el['answer']) > 0 and len(el['provenance']) > 0 else [] for el in example['output']]})
         dataset = dataset.rename_column("input", "content")
+        # remove empty queries
+        dataset = dataset.filter(lambda ex: not ex['content'] in ['', None])
         dataset = dataset.remove_columns(['meta', 'output'])
         return dataset
     

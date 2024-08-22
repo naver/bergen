@@ -17,6 +17,7 @@ One can write simple config files (yaml), configuring a retriever, reranker, and
   python3 bergen.py retriever="bm25" reranker="minilm6" generator='tinyllama-chat' dataset='kilt_nq'
 ```
 
+
 ### Installation
  Check  the [installation guide](documentations/INSTALL.md)
 
@@ -111,6 +112,12 @@ python3 bergen.py retriever="splade-v3" reranker="debertav3"  generator='tinylla
 Using vllm to speed up generation:
 ```bash
 python3 bergen.py retriever="splade-v3" reranker="debertav3"  generator='vllm_SOLAR-107B' dataset='kilt_nq'
+```
+
+It is possible to run the pipeline in few-shot settings (eg. appending few training samples to the prompt, to guide LLM with answer formatting) as following:
+
+```bash
+  python3 bergen.py retriever="bm25" reranker="minilm6" generator='tinyllama-chat' dataset='kilt_nq' few=5
 ```
 
 To specify another config file:

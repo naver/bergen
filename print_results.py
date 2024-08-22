@@ -69,50 +69,52 @@ def get_ranking_metrics(file):
 
 
 def main(args):
-    
-    folder_path = Path(args.folder)
     ltuple=[]
     split = args.split
-    for current_folder in folder_path.iterdir():
-        skip = False
-        try:
-            if current_folder.is_dir() and not 'tmp_' in str(current_folder):
-                gen_time = None
-                ranking_metric = None
-                files = [f.name for f in current_folder.iterdir()]
+    for folder in args.folder:
+        folder_path = Path(folder)
+        for current_folder in folder_path.iterdir():
+            skip = False
+            try:
+                if current_folder.is_dir() and not 'tmp_' in str(current_folder):
+                    gen_time = None
+                    ranking_metric = None
+                    files = [f.name for f in current_folder.iterdir()]
 
-                if f'eval_{split}_metrics.json' in files:
+                    if f'eval_{split}_metrics.json' in files:
 
-                    for file_in_subfolder in current_folder.iterdir():
-                        # try:
-                        if 'config.yaml' in str(file_in_subfolder):
-                            dataset_query, dataset_doc, retriever, reranker, generator, prompt, retrieve_top_k, rerank_top_k = get_config(file_in_subfolder, split)
+                        for file_in_subfolder in current_folder.iterdir():
+                            # try:
+                            if 'config.yaml' in str(file_in_subfolder):
+                                dataset_query, dataset_doc, retriever, reranker, generator, prompt, retrieve_top_k, rerank_top_k = get_config(file_in_subfolder, split)
 
-                        if f'eval_{split}_metrics.json' in str(file_in_subfolder):
-                            m, em, f1, precision, recall, rouge1, rouge2, rougel, bem, LLMeval= get_scores(file_in_subfolder)
-                        if f'eval_{split}_generation_time.json' in str(file_in_subfolder) :
-                            gen_time = get_generation_time(file_in_subfolder) 
+                            if f'eval_{split}_metrics.json' in str(file_in_subfolder):
+                                m, em, f1, precision, recall, rouge1, rouge2, rougel, bem, LLMeval= get_scores(file_in_subfolder)
+                            if f'eval_{split}_generation_time.json' in str(file_in_subfolder) :
+                                gen_time = get_generation_time(file_in_subfolder) 
 
-                        if f'eval_{split}_ranking_metrics.json' in str(file_in_subfolder) :
-                            ranking_metric = get_ranking_metrics(file_in_subfolder)
-                        # except:
-                        #     print(f'Failed to load {current_folder}!')  
-                    #preprocess the generator name,retriever,reranker name
-                    generator_basename = os.path.basename(generator)
-                    retriever_basename = os.path.basename(retriever)
-                    reranker_basename = os.path.basename(reranker)
-                    
-                    if args.format =='simple':
-                        ltuple.append([current_folder.name, dataset_query, generator_basename,retriever_basename, reranker_basename, m, em, recall, rougel, bem, LLMeval])
-                    elif args.format =='tiny':
-                        ltuple.append([current_folder.name, dataset_query, generator_basename,retriever_basename, reranker_basename, m, LLMeval])
-                    elif args.format=='full':     
-                        ltuple.append([current_folder.name, retriever, ranking_metric, reranker, generator,  gen_time, dataset_query, retrieve_top_k, rerank_top_k, m, em, f1, precision, recall, rouge1, rouge2, rougel, bem, LLMeval])
-                    else:
-                        raise ValueError('Invalid output format')
-    
-        except:
-            print(f'Skipping {current_folder} due to parsing errors!')
+                            if f'eval_{split}_ranking_metrics.json' in str(file_in_subfolder) :
+                                ranking_metric = get_ranking_metrics(file_in_subfolder)
+                            # except:
+                            #     print(f'Failed to load {current_folder}!')  
+                        #preprocess the generator name,retriever,reranker name
+                        generator_basename = os.path.basename(generator)
+                        retriever_basename = os.path.basename(retriever)
+                        if reranker:
+                            reranker_basename = os.path.basename(reranker)
+                        else:
+                            reranker_basename="None"
+                        if args.format =='simple':
+                            ltuple.append([f"{folder_path.name}/{current_folder.name}", dataset_query, generator_basename,retriever_basename, reranker_basename, m, em, recall, rougel, bem, LLMeval])
+                        elif args.format =='tiny':
+                            ltuple.append([f"{folder_path.name}/{current_folder.name}", dataset_query, generator_basename,retriever_basename, reranker_basename, m, LLMeval])
+                        elif args.format=='full':     
+                            ltuple.append([f"{folder_path.name}/{current_folder.name}", retriever, ranking_metric, reranker, generator,  gen_time, dataset_query, retrieve_top_k, rerank_top_k, m, em, f1, precision, recall, rouge1, rouge2, rougel, bem, LLMeval])
+                        else:
+                            raise ValueError('Invalid output format')
+        
+            except:
+                print(f'Skipping {current_folder} due to parsing errors!')
     
     if len(ltuple) == 0:
         print(f'No results in folder "{args.folder}" yet!')
@@ -143,7 +145,7 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--folder", type=str, default='experiments')
+    parser.add_argument("--folder", type=str, nargs='+', default='experiments')
     parser.add_argument("--split", type=str, default='dev')
     parser.add_argument("--format", type=str, default='simple',choices=['simple', 'tiny', 'full'],
                         help='tiny prints Match and LLMEval; simple adds EM, R, Rg-L, BEM ; full prints all metrics and data')
