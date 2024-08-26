@@ -1,0 +1,6 @@
+init_args: 
+  _target_: models.generators.llm_xrag.LLM
+  model_name: "Hannibal046/xrag-moe"
+  max_new_tokens: 100
+  max_length: 4096
+batch_size: 256

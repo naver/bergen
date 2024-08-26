@@ -6,7 +6,7 @@ train:
     
     query: 
         init_args:
-            _target_: modules.dataset_processor.KILTNQ
+            _target_: modules.processors.kilt_dataset_processor.KILTNQ
             split: "train"
 dev:
     doc: 
@@ -16,7 +16,7 @@ dev:
     
     query: 
         init_args:
-            _target_: modules.dataset_processor.KILTNQ
+            _target_: modules.processors.kilt_dataset_processor.KILTNQ
             split: "validation"
 test:
     doc: null

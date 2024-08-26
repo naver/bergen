@@ -2,10 +2,14 @@
 We present BERGEN (BEnchmarking Retrieval-augmented GENeration), a library to benchmark RAG systems, focusing on question-answering (QA). Inconsistent benchmarking poses a major challenge in comparing approaches and understanding the impact of each component in a RAG pipeline.
 BERGEN was designed to ease the reproducibility and integration of new datasets and models thanks to HuggingFace.
 
+For more information and experimental findings, please see:
+- the initial BERGEN paper: https://arxiv.org/abs/2407.01102
+- the Multilingual RAG paper:  https://arxiv.org/abs/2407.01463
+
 ## Quick Start
 A RAG setup is typically a pipeline
 
-`input` >> `retriever` >> `reranker` >> `LLM` >> `output`
+`question` >> `retriever` >> `reranker` >> `LLM` >> `answer`
 
 One can write simple config files (yaml), configuring a retriever, reranker, and LLMs for generations. All those configurations can be chained together as follows: am experiment with retrieval using `BM25`, reranking using `MiniLM6`, and generation using `tinyllama-chat` on `kilt_nq`.
 
@@ -119,14 +123,19 @@ CONFIG=myownconfig python3 bergen.py retriever="splade-v3" reranker="debertav3" 
 ## Evaluation
 Non-neural metrics will be calculated automatically. Neural metrics such as `BEM` and `LLM` need to be evoked seperately.
 
-By default `eval.py` will scan all folders in `experiments/` and evaluate them sequentially. To evaluate a single folder pass the folder using `--folder`. To avoid running out of memory either run `BEM` using `--bem` or run `LLM` using `--llm`. A csv file will automatically be saved to `results/` containing the table in `csv` format.
+By default `eval.py` will scan all folders in `experiments/` and evaluate them sequentially. To evaluate a single folder pass the folder using `--folder`. To avoid running out of memory either run `BEM` using `--bem` or run `LLM` using `--llm` or `--vllm` (for faster inference). A csv file will automatically be saved to `results/` containing the table in `csv` format.
 
 ```bash
-python3 eval.py --experiments_folder experiments/ --llm_batch_size 16 --split 'dev' --llm
+python3 eval.py --experiments_folder experiments/ --llm_batch_size 16 --split 'dev' --vllm
 ```
 
+## Training
+For training a model add a training config e.g. `train=lora` as an argument, e.g.
+```bash
+  python3 bergen.py retriever="bm25" reranker="minilm6" generator='tinyllama-chat' dataset='kilt_nq' train='lora'
+```
 
-
+For training the `dev` dataset split that is defined in the config is split in `train` and `test` splits ( default test size: `0.01`). The best model (according to the newly generated `test` split) is loaded after the training and evaluated on the `dev`  dataset split.
 
 ## Output files
 Example files generated for split `dev` using `naver_splade-cocondenser-selfdistil` as a retriever.
@@ -170,6 +179,22 @@ pytest tests/
 To run a single test (e.g. `tinyonly`) run: 
 ```bash 
 pytest tests/ -k "tinyonly"
+```
+## Cite 
+
+If you use BERGEn for your research please consider citing us: 
+
+```
+@misc{rau2024bergenbenchmarkinglibraryretrievalaugmented,
+      title={BERGEN: A Benchmarking Library for Retrieval-Augmented Generation}, 
+      author={David Rau and Hervé Déjean and Nadezhda Chirkova and Thibault Formal and
+      Shuai Wang and Vassilina Nikoulina and Stéphane Clinchant},
+      year={2024},
+      eprint={2407.01102},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2407.01102}, 
+}
 ```
 
 ## License

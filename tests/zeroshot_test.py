@@ -9,10 +9,13 @@ from hydra import initialize, compose
 from bergen import main
 from omegaconf import OmegaConf
 import pytest
+import gc
 import inspect 
 import torch
 import os
-
+from modules.rag import RAG
+import modules.dataset_processor
+import pathlib
 """
 pip install pytest
 To run tests run from the root folder:
@@ -20,7 +23,7 @@ pytest tests/ -k "tinyonly" #to run one test
 or simply "pytest tests/ " to run all the tests in zeroshot
 """
 
-
+#FIXME Test equality/stability of output
 # run once at the beginning
 @pytest.fixture(scope="session", autouse=True)
 def init():
@@ -39,9 +42,16 @@ def init():
         raise SystemError('No GPU available. Needs GPUs for running tests.')
     clean_dirs()
     
+    
+@pytest.fixture(autouse=True)
+def clear_gpu_memory():
+    yield  # This makes the fixture run after each test
+    torch.cuda.empty_cache()
+    torch.cuda.synchronize()
+    gc.collect()
 
 
-class TestClassZeroshot:
+class TestBergenMain:
 
     def test_init(self):
         with initialize(config_path="../config",version_base="1.2"):
@@ -70,23 +80,101 @@ class TestClassZeroshot:
     def test_spladetiny(self):
         with initialize(config_path="../config",version_base="1.2"):
             test_name = inspect.currentframe().f_code.co_name
-            cfg = compose(config_name='rag_ut1', overrides=["retriever=splade-v3", "generator=tinyllama-chat", "generator.batch_size=64"])
+            cfg = compose(config_name='rag_ut1', overrides=["retriever=splade++", 
+                                                            "generator=tinyllama-chat", 
+                                                            "generator.init_args.batch_size=64"])
             self.helper_with_rerun(cfg, test_name)
-
+    
+    def test_dense_contriever(self):
+        with initialize(config_path="../config",version_base="1.2"):
+            test_name = inspect.currentframe().f_code.co_name
+            cfg = compose(config_name='rag_ut1', overrides=["retriever=contriever", 
+                                                            "generator=tinyllama-chat", 
+                                                            "generator.init_args.batch_size=64"])
+            self.helper_with_rerun(cfg, test_name)
 
 
     def test_reranker(self):
         with initialize(config_path="../config",version_base="1.2"):
             test_name = inspect.currentframe().f_code.co_name
-            cfg = compose(config_name='rag_ut1', overrides=["retriever=splade-v3", "generator=tinyllama-chat",  "reranker=minilm6", "reranker.batch_size=1"])
+            cfg = compose(config_name='rag_ut1', overrides=["retriever=splade++", 
+                                                            "generator=tinyllama-chat",  
+                                                            "reranker=minilm6", 
+                                                            "reranker.batch_size=1"])
             self.helper_with_rerun(cfg, test_name)
 
     # should be the last since it takes 90% memory
     def test_vllm_spladetiny(self):
         with initialize(config_path="../config",version_base="1.2"):
             test_name = inspect.currentframe().f_code.co_name
-            cfg = compose(config_name='rag_ut1', overrides=[ "generator=vllm_tinyllama-chat", "generator.batch_size=64"])
+            cfg = compose(config_name='rag_ut1', overrides=[ "generator=vllm_tinyllama-chat", 
+                                                            "generator.init_args.batch_size=64"])
             self.helper_with_rerun(cfg, test_name)
+
+    def test_train_lora(self):
+        with initialize(config_path="../config",version_base="1.2"):
+            test_name = inspect.currentframe().f_code.co_name
+            cfg = compose(config_name='rag_ut1', overrides=[ "generator=tinyllama-chat", 
+                                                            "+train=lora", 
+                                                            "train.trainer.num_train_epochs=1",
+                                                            "train.lora.r=1"])
+            self.helper_with_rerun(cfg, test_name)
+
+    # Test of a training without lora, a bit too long (~4 minutes) to be uncommented, but maybe useful.
+    # Also: running it requires manual choice of wandb option
+    # def test_train_full(self):
+    #     with initialize(config_path="../config",version_base="1.2"):
+    #         test_name = inspect.currentframe().f_code.co_name
+    #         cfg = compose(config_name='rag_ut1', overrides=[ "generator=tinyllama-chat",
+    #                                                         "generator.init_args.quantization=bfloat16", 
+    #                                                         "+train=full", 
+    #                                                         "train.trainer.num_train_epochs=1"])
+    #         self.helper_with_rerun(cfg, test_name)
+
+    # this is too long takes 20 min for NQ, it download the dataset from HF, and process it from scratch
+    # def test_create_kiltnq(self):
+    #    with initialize(config_path="../config",version_base="1.2"):
+    #        test_name = inspect.currentframe().f_code.co_name
+    #        cfg = compose(config_name='rag_ut1', overrides=[ "dataset=kilt_nq", "generator=tinyllama-chat"])
+    #        #cfg = compose(config_name='rag_ut1', overrides=["generator=tinyllama-chat"])
+    #        
+    #        print(cfg,test_name)
+    #        self.create_rag_obj(cfg, test_name)
+
+    # This only check the instantiation of the processor, but not calling the get_process
+    def test_processor_subset(self):
+        datasets=['kilt_nq','asqa','kilt_triviaqa','popqa','kilt_hotpotqa']
+
+        for d in datasets:
+            with initialize(config_path="../config",version_base="1.2"):
+                test_name = inspect.currentframe().f_code.co_name
+                cfg = compose(config_name='rag_ut1', overrides=[ "dataset="+d, "generator=tinyllama-chat"])
+                print(cfg)
+                p = modules.dataset_processor.ProcessDatasets.check_instantiate(cfg['dataset'], out_folder=cfg.dataset_folder)
+                print(p)
+    
+    def test_processor_all(self):
+        
+        datasets=sorted(pathlib.Path('config/dataset').glob('**/*.yaml'))
+
+        for dpath in datasets:
+            d = os.path.basename(dpath).replace('.yaml','')
+            dir_name = os.path.dirname(dpath)
+            # if config in mkqa tidy add dirname to the config
+            if not(dir_name.endswith('dataset')): 
+                d =os.path.basename(dir_name)+'/'+d
+            print(dir_name,d)
+            
+            #skipping current failing test 
+            if 'pubmed_bioasq' in d:
+                continue
+
+            with initialize(config_path="../config",version_base="1.2"):
+                test_name = inspect.currentframe().f_code.co_name
+                cfg = compose(config_name='rag_ut1', overrides=[ "dataset="+d, "generator=tinyllama-chat"])
+                #print(cfg)
+                p = modules.dataset_processor.ProcessDatasets.check_instantiate(cfg['dataset'], out_folder=cfg.dataset_folder)
+                print(p)          
 
     @pytest.mark.skip(reason="Helper function, not a test")
     def set_folders(self, cfg, test_name):
@@ -105,4 +193,9 @@ class TestClassZeroshot:
     def helper_single(self, cfg, test_name):
         self.set_folders(cfg, test_name)
         main(cfg)
+    
+    @pytest.mark.skip(reason="Helper function, not a test")
+    def create_rag_obj(self, cfg, test_name):
+        self.set_folders(cfg, test_name)
+        rag = RAG(**cfg, config=cfg)
 

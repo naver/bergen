@@ -9,7 +9,7 @@ dev:
     
     query: 
         init_args:
-            _target_: modules.dataset_processor.truthful_qa
+            _target_: modules.processors.qa_dataset_processor.truthful_qa
             split: "validation"
 test:
     doc: null

@@ -9,7 +9,7 @@ dev:
     
     query: 
         init_args:
-            _target_: modules.dataset_processor.KILTHotpotqa
+            _target_: modules.processors.kilt_dataset_processor.KILTHotpotqa
             split: "validation"
 test:
     doc: null

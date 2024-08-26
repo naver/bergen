@@ -3,4 +3,4 @@ init_args:
   model_name: "gpt-4"
   max_new_tokens: 128
   max_length: 2048
-batch_size: 2
+  batch_size: 2
