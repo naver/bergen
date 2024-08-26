@@ -9,7 +9,7 @@ dev:
         lang: pt
     query:
       init_args:
-        _target_: modules.dataset_processor.MKQA
+        _target_: modules.processors.mrag_dataset_processor.MKQA
         split: train
         lang: pt
 test:

@@ -5,7 +5,7 @@ train:
             split: "full"
     query: 
         init_args:
-            _target_: modules.dataset_processor.SCIQ
+            _target_: modules.processors.qa_dataset_processor.SCIQ
             split: "train"
 dev:
     doc: 
@@ -14,7 +14,7 @@ dev:
             split: "full"
     query: 
         init_args:
-            _target_: modules.dataset_processor.SCIQ
+            _target_: modules.processors.qa_dataset_processor.SCIQ
             split: "test" #Not Clear if we should use valid 
 
 test:
@@ -24,6 +24,6 @@ test:
             split: "full"
     query: 
         init_args:
-            _target_: modules.dataset_processor.SCIQ
+            _target_: modules.processors.qa_dataset_processor.SCIQ
             split: "test"
 

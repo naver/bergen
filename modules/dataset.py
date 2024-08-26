@@ -7,6 +7,8 @@ CC BY-NC-SA 4.0 license
 from torch.utils.data import Dataset
 from tqdm import tqdm
 import random
+
+
 class Tokenized_Sorted_Dataset(Dataset):
     def __init__(self, data, model, training=False):
 

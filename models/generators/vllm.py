@@ -14,20 +14,22 @@ from vllm import  SamplingParams
 
 
 random.seed(42)
+
+
 class LLM(Generator):
-    def __init__(self, 
+    def __init__(self,
                 model_name=None, 
+                batch_size=1,
                 max_new_tokens=1, 
                 max_doc_len=100,
                 max_length=None,
                 prompt=None,
                 quantization=None
-                 ):
-
+                ):
+        Generator.__init__(self, model_name=model_name, batch_size=batch_size)
 
         self.quantization = quantization
         self.max_length = max_length
-        self.model_name = model_name
         self.max_doc_len = max_doc_len
         self.max_new_tokens = max_new_tokens
         self.prompt = prompt
