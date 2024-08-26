@@ -7,7 +7,7 @@ import os
 class Evaluate:
     @staticmethod
     def eval(experiment_folder, split, bem=False, llm=None, llm_ollama=None, vllm=None,gpt=None,bem_batch_size=1, lid=False, llm_batch_size=1, llm_prompt="default", ollama_url=None, folder=None, force=False):
-        def eval_single(experiment_folder, folder, split, model, metric_name):
+        def eval_single(experiment_folder, folder, split, model, metric_name):            
             if folder != None:
                 folders = [folder]
             else:
@@ -86,7 +86,7 @@ class Evaluate:
             model = LLM(full_name, batch_size=llm_batch_size, prompt=llm_prompt)
             eval_single(experiment_folder, folder, split, model, short_name)
         
-        if vllm:
+        if vllm is not None:
             from models.evaluators.vllm import LLM
             if len(vllm) == 0:
                 # corresponds to default LLMeval setting, results reported in the paper

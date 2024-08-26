@@ -47,7 +47,11 @@ def get_scores(file, decimals=2):
     ll13b = float(data['LLM_ll13b']) if 'LLM_ll13b' in data else None
     ll70b = float(data['LLM_ll70b']) if 'LLM_ll70bsol' in data else None
     mix7b = float(data['LLM_mix7b']) if 'LLM_mix7b' in data else None
-    LLMeval = float(data['LLMeval']) if 'LLMeval' in data else None
+    LLMeval ={}
+    for k in data:
+        if "LLMeval" in k:
+            LLMeval[k.replace("LLMeval_", "")] = float(data[k])
+    #LLMeval = float(data['LLMeval_solar']) if 'LLMeval_solar' in data else None
     m = float(data['M'])
     em = float(data['EM'])
     f1 = float(data['F1'])
@@ -99,7 +103,10 @@ def main(args):
                             #     print(f'Failed to load {current_folder}!')  
                         #preprocess the generator name,retriever,reranker name
                         generator_basename = os.path.basename(generator)
-                        retriever_basename = os.path.basename(retriever)
+                        if retriever:
+                            retriever_basename = os.path.basename(retriever)
+                        else:
+                            retriever_basename = "None"
                         if reranker:
                             reranker_basename = os.path.basename(reranker)
                         else:
