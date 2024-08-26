@@ -206,7 +206,6 @@ class TestBergenMain:
 
 
 class TestBergenEval:
-    
     def test_lid(self):
         with initialize(config_path="../config",version_base="1.2"):
             test_name = inspect.currentframe().f_code.co_name
@@ -227,7 +226,6 @@ class TestBergenEval:
             exp_folder = "tests/utdata/"
             Evaluate.eval(experiment_folder=exp_folder, llm=["tinyllama-chat", "test-llm-1"], llm_batch_size= 4, llm_prompt="default_multi_qa", force=True)
     
-    @pytest.mark.skip(reason="avoiding VLLM test for now")
     def test_vllmeval(self):
         with initialize(config_path="../config",version_base="1.2"):
             test_name = inspect.currentframe().f_code.co_name

@@ -1,0 +1,4 @@
+system: "You are given a question and you MUST respond by EXTRACTING the answer from one of the provided documents. If none of the documents contain the answer, respond with NO-RES."
+user: f"Documents:\n{docs}\n\nQuestion:\ {question}?\nAnswer:"
+system_without_docs: "You are a helpful assistant. Answer the questions as short as possible."
+user_without_docs: f"Question:\ {question}?"

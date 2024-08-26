@@ -1,0 +1,8 @@
+init_args: 
+  _target_: models.generators.vllm.LLM
+  #model_name: "alpindale/c4ai-command-r-plus-GPTQ"   #CohereForAI 
+  model_name: "CohereForAI/c4ai-command-r-plus"
+  max_new_tokens: 256 
+  max_length: 100000
+  #quantization: "marlin"
+batch_size: 256
