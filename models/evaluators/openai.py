@@ -64,9 +64,9 @@ def run_llm(client, model_name,messages):
 
 def create_instruction(question,answer,prediction):
     prefix =  [{'role': 'system',
-             'content': "You are an evaluation tool. Just answer by [Yes] or [No]."}]
+             'content': "You are an evaluation tool. Just answer by {Yes} or {No}."}]
     prefix.extend([{'role': 'user',
-             'content': f"Here is a question, a golden answer and an AI-generated answer. Can you judge whether the AI-generated answer is correct according to the question and golden answer, simply answer Yes or No.\n Question: {question}. \ngolden answer: {answer} \n Generated answer: {prediction}"}
+             'content': f"Here is a question, a golden answer and an AI-generated answer. Can you judge whether the AI-generated answer is correct according to the question and golden answer, simply answer {{Yes}} or {{No}}.\n Question: {question}. \ngolden answer: {answer} \n Generated answer: {prediction}.\Response:"}
              ]
              )
     return prefix    
@@ -79,6 +79,7 @@ class OpenAI():
         self.model_name=model
     def __call__(self, predictions, references, questions):
         scores=list()
+        weird=list()
         total_cost=0
         prompt_cost=0
         completion_cost=0
@@ -90,6 +91,7 @@ class OpenAI():
             completion_cost += costs[2]
             score = 1 if "yes" in response.lower() else 0       
             scores.append(score)
-            tq.set_description(f"cost:{total_cost:4.1f} score: {np.mean(scores)* 100:4.1f}%")
+            weird.extend([ 1 if ("no" not in response.lower() and "yes" not in response.lower()) else 0 ])
+            tq.set_description(f"cost:{total_cost:4.1f} score: {np.mean(scores)* 100:4.1f}% weird {np.mean(weird)* 100:4.1f}%")
         print(total_cost,prompt_cost,completion_cost)
         return np.mean(scores), scores, {"total_cost":total_cost,"prompt_cost":prompt_cost,"completion_cost":completion_cost}
