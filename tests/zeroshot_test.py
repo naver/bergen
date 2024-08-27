@@ -206,7 +206,6 @@ class TestBergenMain:
 
 
 class TestBergenEval:
-    
     def test_lid(self):
         with initialize(config_path="../config",version_base="1.2"):
             test_name = inspect.currentframe().f_code.co_name

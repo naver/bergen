@@ -1,0 +1,13 @@
+init_args: 
+  _target_: models.generators.llm_cocom.COCOMLLM
+  model_name: "/beegfs/scratch/user/hdejean/calmar/dec_from_emb/experiments_compress_real/4331287/last_model/"
+  decoder_model_name: "Upstage/SOLAR-10.7B-Instruct-v1.0"
+  compr_model_name: null
+  max_new_tokens: 128
+  sep: True
+  compr_rate: 4
+  compr_linear_type: 'concat'
+  quantization: 'no'
+  context_max_length: 128  
+  generation_top_k: ${generation_top_k}
+batch_size: 4

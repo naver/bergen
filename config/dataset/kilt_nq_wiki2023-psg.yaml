@@ -1,0 +1,23 @@
+train:
+    doc: 
+        init_args:
+            _target_: modules.dataset_processor.Wikipedia2023_section
+            split: "train"
+    
+    query: 
+        init_args:
+            _target_: modules.processors.kilt_dataset_processor.KILTNQ
+            split: "train"
+dev:
+    doc: 
+        init_args:
+            _target_: modules.dataset_processor.Wikipedia2023_section
+            split: "train"
+    
+    query: 
+        init_args:
+            _target_: modules.processors.kilt_dataset_processor.KILTNQ
+            split: "validation"
+test:
+    doc: null
+    query: null

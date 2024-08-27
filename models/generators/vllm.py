@@ -24,7 +24,8 @@ class LLM(Generator):
                 max_doc_len=100,
                 max_length=None,
                 prompt=None,
-                quantization=None
+                quantization=None,
+                gpu_memory_utilization=0.9
                 ):
         Generator.__init__(self, model_name=model_name, batch_size=batch_size)
 
@@ -38,9 +39,9 @@ class LLM(Generator):
         self.tokenizer.pad_token = self.tokenizer.bos_token
 
         if self.quantization is None:
-            self.model = vllm(model=self.model_name,tensor_parallel_size=torch.cuda.device_count(),dtype=torch.float16,gpu_memory_utilization=0.9,max_model_len=self.max_length,enforce_eager=True,kv_cache_dtype="fp8")        
+            self.model = vllm(model=self.model_name,tensor_parallel_size=torch.cuda.device_count(),dtype=torch.float16,gpu_memory_utilization=gpu_memory_utilization,max_model_len=self.max_length,enforce_eager=True,kv_cache_dtype="fp8")        
         else:
-            self.model = vllm(model=self.model_name,tensor_parallel_size=torch.cuda.device_count(),quantization=self.quantization)
+            self.model = vllm(model=self.model_name,tensor_parallel_size=torch.cuda.device_count(),gpu_memory_utilization=gpu_memory_utilization,quantization=self.quantization)
         self.sampling_params =  SamplingParams(temperature=1,max_tokens=max_new_tokens,best_of=1, top_p=1, top_k=-1)
 
 

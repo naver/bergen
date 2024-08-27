@@ -1,0 +1,7 @@
+init_args: 
+  _target_: models.generators.vllm.LLM
+  model_name: "kaist-ai/mistral-orpo-beta"
+  max_new_tokens: 128
+  max_length: 4096
+batch_size: 256
+

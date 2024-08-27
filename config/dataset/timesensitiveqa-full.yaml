@@ -1,0 +1,27 @@
+train:
+    doc: 
+        init_args:
+            _target_: modules.dataset_processor.Wikipedia2023_full
+            split: "train"
+    query: 
+        init_args:
+            _target_: modules.dataset_processor.TimeSensitiveQA
+            split: "train"
+dev:
+    doc: 
+        init_args:
+            _target_: modules.dataset_processor.Wikipedia2023_full
+            split: "train"
+    query: 
+        init_args:
+            _target_: modules.dataset_processor.TimeSensitiveQA
+            split: "validation"
+test:
+    doc: 
+        init_args:
+            _target_: modules.dataset_processor.Wikipedia2023_full
+            split: "train"
+    query: 
+        init_args:
+            _target_: modules.dataset_processor.TimeSensitiveQA
+            split: "test"
