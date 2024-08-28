@@ -15,6 +15,7 @@ dataset_folder: 'datasets/'
 index_folder: 'indexes/'
 runs_folder: 'runs/'
 generated_query_folder: 'generated_queries/'
+processed_context_folder: 'processed_contexts/'
 experiments_folder: 'experiments/'    
 
 # topk documents to retrieve, rerank and to use for generation
