@@ -3,7 +3,7 @@ import numpy as np
 
 def process_llm_outputs_assess_scores(outputs, options, unknown_value=-100):
     
-    possible_scores = [[options[opt] for opt in options if opt.lower() in rep.lower() ] for rep in outputs]
+    possible_scores = [[options[opt] for opt in options if opt in rep ] for rep in outputs]
     scores = [sc[0] if len(sc)==1 else unknown_value for sc in possible_scores]
     weird = [rep for i,rep in enumerate(outputs) if (len(possible_scores[i])==0 or len(possible_scores[i])>1)]
     return scores, weird

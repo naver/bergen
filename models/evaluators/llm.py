@@ -23,6 +23,8 @@ class LLMeval():
         #model_config['init_args']['_target_'] = 'models.evaluators.llm.LLMeval'
         model_config = omegaconf.OmegaConf.load(f"config/generator/{model_config}.yaml")            
         eval_config = omegaconf.OmegaConf.load(f"config/evaluator/{config}.yaml")
+        model_config['init_args']['max_new_tokens']= eval_config['max_new_tokens']
+
         self.use_logits = eval_config.use_logits
         self.llm = instantiate(model_config['init_args'], prompt=eval_config['prompt'])
         self.options = eval_config.output_options
@@ -30,7 +32,7 @@ class LLMeval():
         self.prompt = eval_config['prompt']
         self.llm.max_new_tokens = eval_config['max_new_tokens']
         self.llm.batch_size = batch_size
-        self.system_prompt = eval(self.prompt.system)
+        self.system_prompt = eval(self.prompt.system).replace(':\ ', ': ')
         #FIXME: what shall we do if label corrsponds to multiple tokens?
         self.output_ids = [self.llm.tokenizer.encode(opt, add_special_tokens=False) for opt in sorted(self.options)]
         self.output_values = torch.tensor([self.options[opt] for opt in sorted(self.options)]).float()
@@ -63,16 +65,16 @@ class LLMeval():
             prefix =  [{'role': 'system',
                 'content': self.system_prompt}]
             prefix.extend([{'role': 'user',
-                'content': eval(self.prompt.user)}]
+                'content': eval(self.prompt.user).replace(':\ ', ': ')}]
             )
         
         else:
             prefix = ([{'role': 'user_without_system',
-                'content': eval(self.prompt.user)}]
+                'content': eval(self.prompt.user).replace(':\ ', ': ')}]
             )
         if 'assistant' in self.prompt:
             prefix.extend([{'role': 'assistant',
-                'content': eval(self.prompt.assistant)}]
+                'content': eval(self.prompt.assistant).replace(':\ ', ': ')}]
                 )
         if not response is None:
             prefix.extend([{'role': 'assistant',
