@@ -1,0 +1,7 @@
+init_args: 
+  _target_: models.context_processors.llmlingua2.LLMLingua2
+  model_name: "microsoft/llmlingua-2-xlm-roberta-large-meetingbank"
+  rate: 0.25
+  force_tokens: []
+  
+  
