@@ -11,7 +11,7 @@ import gc
 
 class Evaluate:
     @staticmethod
-    def eval(experiment_folder="experiments/", split="dev", bem=False, llm=None, llm_ollama=None, vllm=None,gpt=None,bem_batch_size=1, lid=False, llm_batch_size=1, llm_prompt="default_qa", ollama_url=None, folder=None, force=False, samples=None):
+    def eval(experiment_folder="experiments/", split="dev", bem=False, llm=None, llm_ollama=None, vllm=None,gpt=None,bem_batch_size=1, lid=None, lid_advanced=None, llm_batch_size=1, llm_prompt="default_qa", ollama_url=None, folder=None, force=False, samples=None):
         def eval_single(experiment_folder, folder, split, model, metric_name, nb_samples=None):
             if folder != None:
                 folders = [folder]
@@ -60,7 +60,7 @@ class Evaluate:
                             fout.write(json.dumps(jsonl)+'\n')
                             
                     metrics_dict.update({metric_name: str(model_score)})
-                    print (metrics_dict,metric_name,model_score)
+                    print(metric_name,model_score)
                     # save to _ tmp file
                     with open(metrics_file + '_', 'w') as fp:
                         json.dump(metrics_dict, fp, indent=2)
@@ -127,12 +127,15 @@ class Evaluate:
             model = OllamaEval(model_config, batch_size=llm_batch_size, config=llm_prompt, basic_url=ollama_url)
             eval_single(experiment_folder, folder, split, model, short_name, nb_samples = samples)
             
-        if lid is not None:
+        if lid is not None or lid_advanced is not None:
             from models.evaluators.lid import LID
+            from models.evaluators.lid_advanced import LID_advanced
             if folder == None:
                 folders = [ f.path for f in os.scandir(experiment_folder) if f.is_dir() and 'tmp_' not in f.path]
             else:
                 folders = [folder]
+                tgt_lng_lid = lid
+                tgt_lng_lid1 = lid_advanced
             for folder in folders:
                 # we need to get language from each folder config separately
                 print(folder)
@@ -144,9 +147,13 @@ class Evaluate:
                 else:
                     #if language is not specified we set it to English by default
                     tgt_lng = 'en'
-                    print(f"SKIP {folder}: unknown lng")
-                model=LID(tgt_lng)  
-                eval_single(experiment_folder, folder, split, model, "lid")
+                    print(f"{folder}: didn't find lng in the config.yaml, set it to English by default")
+                if lid is not None:
+                    model=LID(tgt_lng)  
+                    eval_single(experiment_folder, folder, split, model, "lid_debug")
+                if lid_advanced is not None:
+                    model = LID_advanced(tgt_lng)
+                    eval_single(experiment_folder, folder, split, model, "lid_advanced")
         #print(prof.key_averages().table(sort_by="self_cpu_memory_usage", row_limit=10))
     
 
@@ -159,7 +166,9 @@ if __name__ == "__main__":
     parser.add_argument('--split', type=str, default='dev')
     parser.add_argument('--sample', type=int, default=None, help="Use only subsample of the experiment folder for evaluation, useful for debug purposes")    
     parser.add_argument('--bem', action='store_true')
-    parser.add_argument('--lid', type=str, default=None)
+    parser.add_argument('--lid', action='store_true', default=None)
+    parser.add_argument('--lid_advanced', action='store_true', default=None)
+
     parser.add_argument('--llm', type=str, nargs='*', default=None, 
             help="""
                 Uses default HF inference mechanism for LLM evaluation.  Requires up to 2 arguments: 
@@ -201,6 +210,7 @@ if __name__ == "__main__":
         vllm=args.vllm, 
         gpt=args.gpt,
         lid=args.lid,
+        lid_advanced=args.lid_advanced,
         bem_batch_size=args.bem_batch_size,
         llm_batch_size=args.llm_batch_size,
         llm_prompt=args.llm_prompt,
