@@ -36,16 +36,15 @@ class OllamaEval:
        
 
     def create_instruction(self,sample):
-        answer = sample['reference']
+        answer = ", ".join(sample['reference'])
         question=sample['question']
-        prediction=sample['candidate']
-        
+        #need to remove "{}"
+        prediction=sample['candidate'].replace("{", "").replace("}","")
         template = ChatPromptTemplate.from_messages([
             ("user", eval(self.prompt.user)),
-            ("ai", ' Response: {{'),
+            ("ai", ' Response: '),
         ])
-       
-        return template.invoke({'answer':answer, 'question':question, 'prediction':prediction})
+        return template.invoke({'answer':answer, 'question':question, 'prediction':prediction, 'self.rubrik_section':self.rubrik_section})
 
    
 
