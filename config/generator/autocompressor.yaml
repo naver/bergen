@@ -1,6 +1,0 @@
-init_args: 
-  _target_: models.generators.llm_compress.LLM
-  model_name: "princeton-nlp/AutoCompressor-Llama-2-7b-6k"
-  max_new_tokens: 64
-  max_length: 4096
-batch_size: 2
