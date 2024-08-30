@@ -138,6 +138,59 @@ class BIOASQ11B(Processor):
         return dataset
     
     
+class BIOASQ11B_Ragged(Processor):
+    """BIOASQ benchmark, dataset from Ragged paper"""
+
+    def __init__(self, *args, **kwargs):
+        self.dataset_name = 'BIOASQ11B_Ragged'
+        super().__init__(*args, **kwargs, dataset_name=self.dataset_name)
+    
+    def process(self):
+        hf_name = "jenhsia/ragged"
+        dataset = datasets.load_dataset(hf_name, 'bioasq', num_proc=self.num_proc)[self.split]
+        # ['id', 'input', 'output', 'question_type']
+        dataset = dataset.map(lambda example: {'label': [dictt["answer"] for dictt in example["output"] if dictt["answer"] is not None]})
+        dataset = dataset.map(lambda example: {'label': [" ".join(example['label'])] if example['question_type'] == 'list' else example['label']})  # concatenate list question types to compute recall on all labels (see metrics computation)
+        dataset = dataset.rename_column("input", "content")
+        dataset = dataset.remove_columns(['question_type', 'output'])
+        return dataset
+
+    
+class PubMed2023_Ragged(Processor):
+    """PubMed abstracts, dataset from Ragged paper"""
+
+    def __init__(self, *args, **kwargs):
+        self.dataset_name = 'PubMed-2023_Ragged'
+        super().__init__(*args, **kwargs, dataset_name=self.dataset_name)
+    
+    def process(self):
+        hf_name = "jenhsia/ragged"
+        dataset = datasets.load_dataset(hf_name, 'pubmed', num_proc=self.num_proc)[self.split]
+
+        concatenated_data = {}
+        for row in tqdm(dataset):
+            real_id, field_type = row['id'].split('_')
+
+            if real_id not in concatenated_data:
+                concatenated_data[real_id] = {"title": "", "content": ""}
+            
+            if field_type == '0':
+                concatenated_data[real_id]["title"] = row['contents']
+            elif field_type == '1':
+                concatenated_data[real_id]["content"] = row['contents']
+                
+        concatenated_rows = []
+        for real_id, fields in tqdm(concatenated_data.items()):
+            title = fields["title"]
+            content = fields["content"]
+            concatenated_content = f"{title}: {content}" if content else title
+            concatenated_rows.append({"id": real_id, "content": concatenated_content})
+
+        dataset = datasets.Dataset.from_list(concatenated_rows)
+
+        return dataset
+   
+    
 
 class MMLU(Processor):
 
@@ -627,5 +680,14 @@ class ProcessDatasets:
                         )          
         return True
 
+
+class KILTMULTIQA(Processor):
+    def __init__(self, *args, **kwargs):
+        dataset_name = 'kilt_combined_qa'
+        super().__init__(*args, **kwargs, dataset_name=dataset_name)
+    
+    def process(self):
+        dataset = datasets.load_dataset("dmrau/combined_qa")[self.split]
+        return dataset
 
     

@@ -1,7 +1,7 @@
 init_args: 
     _target_: models.generators.llm_cocom.LLMCocom
     model_name: "cocom_unique_adapter_128"
-    batch_size: 32
+    batch_size: 64
     checkpoint_path: "/scratch/1/user/mlouis/calmar/expcocom/unique_adapter_128/0ad95c551c7923fc/last_model"
     context_max_length: 512
     max_new_tokens: 128

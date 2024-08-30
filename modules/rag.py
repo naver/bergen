@@ -29,7 +29,6 @@ class RAG:
                 retriever=None, 
                 reranker=None,
                 query_generator=None, 
-                
                 runs_folder=None,
                 run_name=None, 
                 dataset=None, 
@@ -64,15 +63,15 @@ class RAG:
         #if all the config are still None, load from config
 
         #if none, then load from config
-        if generator_config == None:
+        if generator_config is None:
             generator_config = config.generator if hasattr(config, 'generator') else None
-        if query_generator_config == None:
+        if query_generator_config is None:
             query_generator_config = config.query_generator if hasattr(config, 'query_generator') else None
-        if retriever_config == None:
+        if retriever_config is None:
             retriever_config = config.retriever if hasattr(config, 'retriever') else None
-        if reranker_config == None:
+        if reranker_config is None:
             reranker_config = config.reranker if hasattr(config, 'reranker') else None
-        if dataset_config == None:
+        if dataset_config is None:
             dataset_config = config.dataset if hasattr(config, 'dataset') else None
 
         if query_generator_config is None:
@@ -106,8 +105,8 @@ class RAG:
             num_proc=processing_num_proc,
             overwrite=overwrite_datasets,
             debug=debug,
-            shuffle_labels=True if generator_config != None and generator_config.init_args.model_name == 'random_answer' else False,
-            oracle_provenance=True if retriever_config != None and retriever_config.init_args.model_name == 'oracle_provenance' else False,
+            shuffle_labels=True if generator_config is not None and generator_config.init_args.model_name == 'random_answer' else False,
+            oracle_provenance=True if retriever_config is not None and retriever_config.init_args.model_name == 'oracle_provenance' else False,
             )
         
         self.metrics = {
@@ -122,16 +121,16 @@ class RAG:
                     **retriever_config,
                     pyserini_num_threads=self.pyserini_num_threads,
                     continue_batch=continue_batch,
-                    ) if retriever_config != None else None
+                    ) if retriever_config is not None else None
         # init reranker
         self.reranker = Rerank(
             **reranker_config,
-            ) if reranker_config != None else None
+            ) if reranker_config is not None else None
 
         # Hydra way of instantiating generator object defined in config.
-        self.generator = instantiate(generator_config.init_args, prompt=prompt) if generator_config != None else None
+        self.generator = instantiate(generator_config.init_args, prompt=prompt) if generator_config is not None else None
 
-        self.query_generator = GenerateQueries(**query_generator_config) if query_generator_config != None else None
+        self.query_generator = GenerateQueries(**query_generator_config) if query_generator_config is not None else None
         
                 # print RAG model
         print_rag_model(self, retriever_config, reranker_config, generator_config)
@@ -143,7 +142,7 @@ class RAG:
         doc_dataset_name = self.datasets[dataset_split]['doc'].name
 
         # query generation (or copying in case query_generator="copy")
-        if self.retriever != None:
+        if self.retriever is not None:
             dataset = self.generate_query(
                 dataset,
                 query_dataset_name, 
@@ -151,7 +150,7 @@ class RAG:
             )
         
         # retrieve
-        if self.retriever != None:
+        if self.retriever is not None:
             query_ids, doc_ids, _ = self.retrieve(
                     dataset, 
                     query_dataset_name, 
@@ -162,7 +161,7 @@ class RAG:
         else:
             query_ids, doc_ids = None, None
         # rerank
-        if self.reranker !=  None:
+        if self.reranker is not  None:
             query_ids, doc_ids, _ = self.rerank(
                 dataset, 
                 query_dataset_name, 
@@ -174,7 +173,7 @@ class RAG:
                 )
 
         # generate
-        if self.generator !=  None:
+        if self.generator is not None:
             questions, _, predictions, references = self.generate(
                 dataset, 
                 dataset_split,
@@ -335,7 +334,7 @@ class RAG:
                  query_ids, 
                  doc_ids,
                  ):
-        doc_ids = [doc_ids_q[:self.generation_top_k] for doc_ids_q in doc_ids] if doc_ids != None else doc_ids 
+        doc_ids = [doc_ids_q[:self.generation_top_k] for doc_ids_q in doc_ids] if doc_ids is not None else doc_ids 
 
         gen_dataset = prepare_dataset_from_ids(
             dataset, 
@@ -396,21 +395,21 @@ class RAG:
 
     def train(self):
         from transformers import TrainingArguments
-        from transformers import AutoModelForCausalLM
         from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
         from modules.trainer import RAGTrainer
-        import torch
-        from transformers import Trainer
         from modules.dataset import Tokenized_Sorted_Dataset
-        from torch.utils.data import DataLoader
+        from accelerate import Accelerator
 
         dataset_split = 'train'
         dataset = self.datasets[dataset_split] 
         query_dataset_name = dataset['query'].name
         doc_dataset_name = dataset['doc'].name
+        
+        if self.retriever is not None:
+            dataset = self.generate_query(dataset, query_dataset_name, dataset_split)
 
         # if no retriever don't load doc embeddings
-        if self.retriever != None:
+        if self.retriever is not None:
             query_ids, doc_ids, _ = self.retrieve(
                 dataset, 
                 query_dataset_name, 
@@ -422,7 +421,7 @@ class RAG:
         else:
             query_ids, doc_ids = None, None
 
-        if self.reranker !=  None:
+        if self.reranker is not None:
             query_ids, doc_ids, _ = self.rerank(
                 dataset,
                 query_dataset_name,
@@ -434,29 +433,31 @@ class RAG:
                 )
 
         # get top-k docs
-        doc_ids = [doc_ids_q[:self.generation_top_k] for doc_ids_q in doc_ids] if doc_ids != None else doc_ids
+        doc_ids = [doc_ids_q[:self.generation_top_k] for doc_ids_q in doc_ids] if doc_ids is not None else doc_ids
 
         # prepare dataset
-        gen_dataset = prepare_dataset_from_ids(
-            dataset, 
-            query_ids, 
-            doc_ids, 
-            multi_doc=True, 
-            )
+        gen_dataset = prepare_dataset_from_ids(dataset, query_ids, doc_ids, multi_doc=True)
         
         # split train into train and test
         train_test_datasets = gen_dataset.train_test_split(self.training_config.test_size_ratio, seed=42)
 
         print("Preprocessing data...")
-        train_test_datasets['train'] = Tokenized_Sorted_Dataset(train_test_datasets['train'], self.generator, training=True)
-        train_test_datasets['test'] = Tokenized_Sorted_Dataset(train_test_datasets['test'], self.generator, training=False)
-
-        # We keep some data to log in wandb, from the test set:
-        call_back_data = Tokenized_Sorted_Dataset(train_test_datasets['test'], self.generator, training=False)
-        n_in_call_back_select = min(len(train_test_datasets['test']), self.training_config.generate_test_samples)
-        call_back_data_select = DataLoader(call_back_data.select(range(n_in_call_back_select)), 
-                                           batch_size=self.training_config.trainer.per_device_eval_batch_size, 
-                                           collate_fn=lambda l: self.generator.model.collate_fn(l, eval=True))
+        from models.generators.llm_cocom import LLMCocom
+        if not isinstance(self.generator, LLMCocom):
+            train_test_datasets['train'] = Tokenized_Sorted_Dataset(train_test_datasets['train'], self.generator, training=True)
+            train_test_datasets['test'] = Tokenized_Sorted_Dataset(train_test_datasets['test'], self.generator, training=False)
+        else:
+            # Preprocessing for COCOM is all done in the collate_fn function.
+            self.generator.model.generation_top_k = self.generation_top_k
+            
+            # While we are at it we add the "sep" ! 
+            self.generator.model.sep = True
+            self.generator.model.config.sep = True # also in the config so that it'll be saved (probably!)
+            
+            if self.training_config.freeze_compressor:
+                kept_adapters = [elt for elt in self.generator.model.adapter_keys if elt != 'encoder_adapter']
+                print('Freezing the compressor, keeping only', kept_adapters)
+                self.generator.model.decoder.set_adapter(kept_adapters)
 
         print("Data preprocessed")
 
@@ -473,36 +474,43 @@ class RAG:
             self.generator.model = get_peft_model(self.generator.model, lora_config)
             self.generator.model.print_trainable_parameters()
 
-        total_batch_size = self.training_config.trainer.per_device_train_batch_size * torch.cuda.device_count()
-        total_steps = len(train_test_datasets['train']) // total_batch_size
-        num_saving_steps = 5
-        eval_steps =  max(total_steps// num_saving_steps, 1)
-        save_steps = max(total_steps  // num_saving_steps, 1)
-        logging_steps = max(total_steps // 5, 1)
-
         args = TrainingArguments(
             run_name=self.run_name,
             output_dir=f'{self.experiment_folder}/train/',
             **self.training_config.trainer,
-            evaluation_strategy="steps",
-            eval_steps=eval_steps, 
-            save_steps=save_steps,
-            logging_steps=logging_steps,
-            load_best_model_at_end=True,
+            eval_strategy="steps",
+            eval_steps=10000, # not useful for cocom models (todo ?) 
+            save_strategy='steps',
+            save_steps=500,
+            save_total_limit=20,
+            logging_strategy='steps',
+            logging_steps=100,
             remove_unused_columns=False,
         )
 
         trainer = RAGTrainer(
             model=self.generator.model,
             model_prediction_step=self.generator.prediction_step,
-            generate=self.generator.generate,
             args=args,
             data_collator=self.generator.collate_fn,
             train_dataset=train_test_datasets['train'],
-            eval_dataset=train_test_datasets['test'],
-            call_back_data=call_back_data_select
+            eval_dataset=train_test_datasets['test']
         )
-        trainer.train()
-        self.generator.model = trainer.model
-        move_finished_experiment(self.experiment_folder)
-        self.experiment_folder = get_finished_experiment_name(self.experiment_folder)
+        
+        accelerator = Accelerator(split_batches=False)
+        model, _, _, _ = accelerator.prepare(trainer.model, 
+                                             trainer.optimizer, 
+                                             trainer.get_train_dataloader(),
+                                             trainer.get_eval_dataloader())
+        # _ = trainer.evaluate() # for debugging
+        
+        trainer.train(resume_from_checkpoint=None)
+        accelerator.wait_for_everyone()
+        unwrapped_model = accelerator.unwrap_model(model)
+
+        self.generator.model.model = trainer.model
+        
+        if accelerator.is_main_process:
+            unwrapped_model.save_pretrained(f"{self.experiment_folder}/last_model")
+            move_finished_experiment(self.experiment_folder)
+            self.experiment_folder = get_finished_experiment_name(self.experiment_folder)
