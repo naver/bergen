@@ -7,12 +7,14 @@ CC BY-NC-SA 4.0 license
 import shutil
 from hydra import initialize, compose
 from bergen import main
+from eval import Evaluate
 from omegaconf import OmegaConf
 import pytest
 import gc
 import inspect 
 import torch
 import os
+import gc
 from modules.rag import RAG
 import modules.dataset_processor
 import pathlib
@@ -27,7 +29,7 @@ or simply "pytest tests/ " to run all the tests in zeroshot
 # run once at the beginning
 @pytest.fixture(scope="session", autouse=True)
 def init():
-
+    
     def rmdir(folder):
         if os.path.exists(folder):
             shutil.rmtree(folder)
@@ -37,6 +39,7 @@ def init():
         rmdir('tests/index/')
         rmdir('tests/run/')
         rmdir('tests/dataset/')
+
 
     if not torch.cuda.is_available():
         raise SystemError('No GPU available. Needs GPUs for running tests.')
@@ -111,6 +114,7 @@ class TestBergenMain:
                                                             "generator.init_args.batch_size=64"])
             self.helper_with_rerun(cfg, test_name)
 
+    
     def test_train_lora(self):
         with initialize(config_path="../config",version_base="1.2"):
             test_name = inspect.currentframe().f_code.co_name
@@ -188,6 +192,7 @@ class TestBergenMain:
     def helper_with_rerun(self, cfg, test_name):
         self.set_folders(cfg, test_name)
         main(cfg)
+        
 
     @pytest.mark.skip(reason="Helper function, not a test")
     def helper_single(self, cfg, test_name):
@@ -199,3 +204,41 @@ class TestBergenMain:
         self.set_folders(cfg, test_name)
         rag = RAG(**cfg, config=cfg)
 
+
+class TestBergenEval:
+    def test_lid(self):
+        with initialize(config_path="../config",version_base="1.2"):
+            test_name = inspect.currentframe().f_code.co_name
+            exp_folder = "tests/utdata/"
+            Evaluate.eval(experiment_folder=exp_folder, lid=True, force=True)
+
+   
+    def test_llmeval_default(self):
+        with initialize(config_path="../config",version_base="1.2"):
+            test_name = inspect.currentframe().f_code.co_name
+            exp_folder = "tests/utdata/"
+            Evaluate.eval(experiment_folder=exp_folder, llm=["tinyllama-chat", "test-llm-1"], llm_batch_size= 4, llm_prompt="default_qa", force=True, samples=4)
+     
+       
+    def test_llmeval_multi(self):
+        with initialize(config_path="../config",version_base="1.2"):
+            test_name = inspect.currentframe().f_code.co_name
+            exp_folder = "tests/utdata/"
+            Evaluate.eval(experiment_folder=exp_folder, llm=["tinyllama-chat", "test-llm-2"], llm_batch_size= 4, llm_prompt="default_multi_qa", force=True)
+    
+    def test_vllmeval(self):
+        with initialize(config_path="../config",version_base="1.2"):
+            test_name = inspect.currentframe().f_code.co_name
+            exp_folder = "tests/utdata/"
+            Evaluate.eval(experiment_folder=exp_folder, vllm=["tinyllama-chat", "test-vllm-1"], llm_batch_size=4, llm_prompt="default_qa", force=True)
+   
+    def test_vllmeval_multi(self):
+        with initialize(config_path="../config",version_base="1.2"):
+            test_name = inspect.currentframe().f_code.co_name
+            exp_folder = "tests/utdata/"
+            Evaluate.eval(experiment_folder=exp_folder, vllm=["tinyllama-chat", "test-vllm-2"], llm_batch_size=4, llm_prompt="default_multi_qa", force=True)
+   
+    
+
+   
+    

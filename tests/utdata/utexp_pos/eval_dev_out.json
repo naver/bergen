@@ -1,0 +1,417 @@
+[
+  {
+    "q_id": "-1833051064924762940",
+    "response": "To answer the question, I need information about \"The Black Stallion\" cast. However, the provided background is about \"Kelly Reno\" and not related to \"The Black Stallion.\" Alec Ramsey is a character from the book and movie series \"The Black Stallion.\" In the 1979 film adaptation, Alec Ramsey is played by actor Kelly Reno.",
+    "instruction": "### System:\nYou are a helpful assistant. Your task is to extract relevant information from provided documents and to answer to questions as short as possible.\n\n### User:\nBackground:\nDocument 1: Kelly Reno. Kelly Reno\n\n\nQuestion: who plays alec ramsay in the black stallion\n\n### Assistant:\n\nResponse:\n",
+    "label": [
+      "Kelly Reno"
+    ],
+    "question": "who plays alec ramsay in the black stallion",
+    "ranking_label": [
+      [
+        "5977910"
+      ],
+      [],
+      []
+    ]
+  },
+  {
+    "q_id": "2484343456230333941",
+    "response": "Left Behind is a book series that focuses on the theme of the end of the world.",
+    "instruction": "### System:\nYou are a helpful assistant. Your task is to extract relevant information from provided documents and to answer to questions as short as possible.\n\n### User:\nBackground:\nDocument 1: Left Behind. Left Behind\n\n\nQuestion: book series about the end of the world\n\n### Assistant:\n\nResponse:\n",
+    "label": [
+      "Left Behind"
+    ],
+    "question": "book series about the end of the world",
+    "ranking_label": [
+      [
+        "18615"
+      ],
+      [],
+      [],
+      [],
+      []
+    ]
+  },
+  {
+    "q_id": "-248879071981501725",
+    "response": "Mike Post wrote the theme song for Law and Order, as he is referred to as \"Mike Post\" in the given background information.",
+    "instruction": "### System:\nYou are a helpful assistant. Your task is to extract relevant information from provided documents and to answer to questions as short as possible.\n\n### User:\nBackground:\nDocument 1: Mike Post. Mike Post\n\n\nQuestion: who wrote the theme song to law and order\n\n### Assistant:\n\nResponse:\n",
+    "label": [
+      "Mike Post",
+      "Mike Post ( born Leland Michael Postil"
+    ],
+    "question": "who wrote the theme song to law and order",
+    "ranking_label": [
+      [
+        "736476"
+      ],
+      [],
+      [],
+      []
+    ]
+  },
+  {
+    "q_id": "-4747832956913377153",
+    "response": "The common name for gravitational force is gravity.",
+    "instruction": "### System:\nYou are a helpful assistant. Your task is to extract relevant information from provided documents and to answer to questions as short as possible.\n\n### User:\nBackground:\nDocument 1: Gravity. Gravity\n\n\nQuestion: what is the common name for gravitational force\n\n### Assistant:\n\nResponse:\n",
+    "label": [
+      "Gravity",
+      "Gravity , or gravitation"
+    ],
+    "question": "what is the common name for gravitational force",
+    "ranking_label": [
+      [
+        "38579"
+      ],
+      [],
+      [],
+      [],
+      [],
+      [],
+      []
+    ]
+  },
+  {
+    "q_id": "8095609166102020574",
+    "response": "Thomas Jefferson was the third President of the United States of America.",
+    "instruction": "### System:\nYou are a helpful assistant. Your task is to extract relevant information from provided documents and to answer to questions as short as possible.\n\n### User:\nBackground:\nDocument 1: Thomas Jefferson. Thomas Jefferson\n\n\nQuestion: third president of the united states of america\n\n### Assistant:\n\nResponse:\n",
+    "label": [
+      "Thomas Jefferson"
+    ],
+    "question": "third president of the united states of america",
+    "ranking_label": [
+      [
+        "29922"
+      ],
+      [],
+      [],
+      [],
+      []
+    ]
+  },
+  {
+    "q_id": "-525942396749510966",
+    "response": "Jonathan Harris played Dr. Smith in Lost in Space.",
+    "instruction": "### System:\nYou are a helpful assistant. Your task is to extract relevant information from provided documents and to answer to questions as short as possible.\n\n### User:\nBackground:\nDocument 1: Jonathan Harris. Jonathan Harris\n\n\nQuestion: who played doctor smith in lost in space\n\n### Assistant:\n\nResponse:\n",
+    "label": [
+      "Jonathan Harris",
+      "Jonathan Harris ( born Jonathan Daniel Charasuchin"
+    ],
+    "question": "who played doctor smith in lost in space",
+    "ranking_label": [
+      [
+        "781810"
+      ],
+      [],
+      [],
+      [],
+      [],
+      [],
+      []
+    ]
+  },
+  {
+    "q_id": "-4323000711881657078",
+    "response": "Bernard Hill played King Theoden in the Lord of the Rings film series.",
+    "instruction": "### System:\nYou are a helpful assistant. Your task is to extract relevant information from provided documents and to answer to questions as short as possible.\n\n### User:\nBackground:\nDocument 1: Bernard Hill. Bernard Hill\n\n\nQuestion: who played king theoden in lord of the rings\n\n### Assistant:\n\nResponse:\n",
+    "label": [
+      "Bernard Hill"
+    ],
+    "question": "who played king theoden in lord of the rings",
+    "ranking_label": [
+      [
+        "163903"
+      ],
+      [],
+      []
+    ]
+  },
+  {
+    "q_id": "-2419576910417046724",
+    "response": "Southend Pier is the longest pier in the UK. (This answer is based on the given background that \"Southend Pier\" is mentioned, implying it holds some significance or record. Since the question asks for the longest pier in the UK, it can be inferred that Southend Pier is the answer.)",
+    "instruction": "### System:\nYou are a helpful assistant. Your task is to extract relevant information from provided documents and to answer to questions as short as possible.\n\n### User:\nBackground:\nDocument 1: Southend Pier. Southend Pier\n\n\nQuestion: what is the longest pier in the uk\n\n### Assistant:\n\nResponse:\n",
+    "label": [
+      "Southend Pier"
+    ],
+    "question": "what is the longest pier in the uk",
+    "ranking_label": [
+      [
+        "2394127"
+      ],
+      [],
+      [],
+      [],
+      []
+    ]
+  },
+  {
+    "q_id": "-6687867009117829006",
+    "response": "Beorn is the character who can turn into a bear in The Hobbit.",
+    "instruction": "### System:\nYou are a helpful assistant. Your task is to extract relevant information from provided documents and to answer to questions as short as possible.\n\n### User:\nBackground:\nDocument 1: Beorn. Beorn\n\n\nQuestion: who turns into a bear in the hobbit\n\n### Assistant:\n\nResponse:\n",
+    "label": [
+      "Beorn"
+    ],
+    "question": "who turns into a bear in the hobbit",
+    "ranking_label": [
+      [
+        "58102"
+      ],
+      [],
+      [],
+      [],
+      [],
+      []
+    ]
+  },
+  {
+    "q_id": "-3886770275251117853",
+    "response": "When iron reacts with oxygen and water, it undergoes a process called oxidation or rusting. This results in the formation of a reddish-brown compound called hydrated iron oxide, more commonly known as rust. This reaction is accelerated in the presence of water and moisture.",
+    "instruction": "### System:\nYou are a helpful assistant. Your task is to extract relevant information from provided documents and to answer to questions as short as possible.\n\n### User:\nBackground:\nDocument 1: Rust. Rust\n\n\nQuestion: what happens when iron reacts with oxygen and water\n\n### Assistant:\n\nResponse:\n",
+    "label": [
+      "Rust"
+    ],
+    "question": "what happens when iron reacts with oxygen and water",
+    "ranking_label": [
+      [
+        "26477"
+      ],
+      [],
+      [],
+      [],
+      []
+    ]
+  },
+  {
+    "q_id": "-3537666304259521083",
+    "response": "There is not enough information provided to determine which specific song is played while raising the American flag. Reveille is a traditional bugle call used to signal the start of the day in the military, but it might not necessarily be the song played when raising the flag.",
+    "instruction": "### System:\nYou are a helpful assistant. Your task is to extract relevant information from provided documents and to answer to questions as short as possible.\n\n### User:\nBackground:\nDocument 1: Reveille. Reveille\n\n\nQuestion: what song is played while raising the american flag\n\n### Assistant:\n\nResponse:\n",
+    "label": [
+      "`` Reveille ''",
+      "Reveille"
+    ],
+    "question": "what song is played while raising the american flag",
+    "ranking_label": [
+      [],
+      [
+        "1084467"
+      ],
+      [],
+      []
+    ]
+  },
+  {
+    "q_id": "6785597892935739178",
+    "response": "Miller Lite was the first light beer in the U.S. (as indicated by the text provided, which simply mentions \"Miller Lite\").",
+    "instruction": "### System:\nYou are a helpful assistant. Your task is to extract relevant information from provided documents and to answer to questions as short as possible.\n\n### User:\nBackground:\nDocument 1: Miller Lite. Miller Lite\n\n\nQuestion: what was the first light beer in the us\n\n### Assistant:\n\nResponse:\n",
+    "label": [
+      "Miller Lite"
+    ],
+    "question": "what was the first light beer in the us",
+    "ranking_label": [
+      [
+        "1113355"
+      ],
+      [],
+      [],
+      []
+    ]
+  },
+  {
+    "q_id": "-6047989319894692111",
+    "response": "Sauron possesses the One Ring in The Lord of the Rings.",
+    "instruction": "### System:\nYou are a helpful assistant. Your task is to extract relevant information from provided documents and to answer to questions as short as possible.\n\n### User:\nBackground:\nDocument 1: Sauron. Sauron\n\n\nQuestion: who has a ring of power in lotr\n\n### Assistant:\n\nResponse:\n",
+    "label": [
+      "Sauron"
+    ],
+    "question": "who has a ring of power in lotr",
+    "ranking_label": [
+      [
+        "23141343"
+      ],
+      [],
+      [],
+      []
+    ]
+  },
+  {
+    "q_id": "-8283850019251231694",
+    "response": "Michael Buffer is credited with coining the phrase \"Let's get ready to rumble.\"",
+    "instruction": "### System:\nYou are a helpful assistant. Your task is to extract relevant information from provided documents and to answer to questions as short as possible.\n\n### User:\nBackground:\nDocument 1: Michael Buffer. Michael Buffer\n\n\nQuestion: who coined the phrase let get ready to rumble\n\n### Assistant:\n\nResponse:\n",
+    "label": [
+      "Michael Buffer"
+    ],
+    "question": "who coined the phrase let get ready to rumble",
+    "ranking_label": [
+      [
+        "715217"
+      ],
+      [],
+      [],
+      [],
+      []
+    ]
+  },
+  {
+    "q_id": "-1105882236356165332",
+    "response": "Sri Lanka belongs to South Asia.",
+    "instruction": "### System:\nYou are a helpful assistant. Your task is to extract relevant information from provided documents and to answer to questions as short as possible.\n\n### User:\nBackground:\nDocument 1: South Asia. South Asia\n\n\nQuestion: sri lanka belongs to which part of asia\n\n### Assistant:\n\nResponse:\n",
+    "label": [
+      "South Asia"
+    ],
+    "question": "sri lanka belongs to which part of asia",
+    "ranking_label": [
+      [
+        "21566765"
+      ],
+      [],
+      []
+    ]
+  },
+  {
+    "q_id": "4655709146254117753",
+    "response": "The highest point in the United States is Mount Whitney.",
+    "instruction": "### System:\nYou are a helpful assistant. Your task is to extract relevant information from provided documents and to answer to questions as short as possible.\n\n### User:\nBackground:\nDocument 1: Mount Whitney. Mount Whitney\n\n\nQuestion: what's the highest point in the us\n\n### Assistant:\n\nResponse:\n",
+    "label": [
+      "Mount Whitney"
+    ],
+    "question": "what's the highest point in the us",
+    "ranking_label": [
+      [
+        "238615"
+      ],
+      [],
+      [],
+      [],
+      []
+    ]
+  },
+  {
+    "q_id": "6524766539964714821",
+    "response": "Lauren Tom voices the character Amy on Futurama.",
+    "instruction": "### System:\nYou are a helpful assistant. Your task is to extract relevant information from provided documents and to answer to questions as short as possible.\n\n### User:\nBackground:\nDocument 1: Lauren Tom. Lauren Tom\n\n\nQuestion: who does the voice of amy on futurama\n\n### Assistant:\n\nResponse:\n",
+    "label": [
+      "Lauren Tom"
+    ],
+    "question": "who does the voice of amy on futurama",
+    "ranking_label": [
+      [
+        "663818"
+      ],
+      [],
+      [],
+      []
+    ]
+  },
+  {
+    "q_id": "-1145193137828819774",
+    "response": "Diana Rigg played the role of Olenna Tyrell, a grandmother figure in the TV series Game of Thrones.",
+    "instruction": "### System:\nYou are a helpful assistant. Your task is to extract relevant information from provided documents and to answer to questions as short as possible.\n\n### User:\nBackground:\nDocument 1: Diana Rigg. Diana Rigg\n\n\nQuestion: who plays the grandmother in game of thrones\n\n### Assistant:\n\nResponse:\n",
+    "label": [
+      "Rigg"
+    ],
+    "question": "who plays the grandmother in game of thrones",
+    "ranking_label": [
+      [
+        "195158"
+      ],
+      [],
+      [],
+      [],
+      [],
+      [],
+      []
+    ]
+  },
+  {
+    "q_id": "8127283608263713430",
+    "response": "Process: Continental drift causes continents to drift apart.",
+    "instruction": "### System:\nYou are a helpful assistant. Your task is to extract relevant information from provided documents and to answer to questions as short as possible.\n\n### User:\nBackground:\nDocument 1: Continental drift. Continental drift\n\n\nQuestion: what process causes the continents to drift apart how\n\n### Assistant:\n\nResponse:\n",
+    "label": [
+      "Continental drift"
+    ],
+    "question": "what process causes the continents to drift apart how",
+    "ranking_label": [
+      [
+        "6056"
+      ],
+      [],
+      [],
+      [],
+      []
+    ]
+  },
+  {
+    "q_id": "8707879945343660137",
+    "response": "Spanish moss hangs from the trees in the bayou.",
+    "instruction": "### System:\nYou are a helpful assistant. Your task is to extract relevant information from provided documents and to answer to questions as short as possible.\n\n### User:\nBackground:\nDocument 1: Spanish moss. Spanish moss\n\n\nQuestion: what hangs from the trees in the bayou\n\n### Assistant:\n\nResponse:\n",
+    "label": [
+      "Spanish moss"
+    ],
+    "question": "what hangs from the trees in the bayou",
+    "ranking_label": [
+      [
+        "76046"
+      ],
+      [],
+      [],
+      [],
+      []
+    ]
+  },
+  {
+    "q_id": "-1531676396763282931",
+    "response": "Icarus, from Greek mythology, is known for flying too close to the sun. However, he was not a Greek god; his father, Daedalus, was a craftsman and inventor.",
+    "instruction": "### System:\nYou are a helpful assistant. Your task is to extract relevant information from provided documents and to answer to questions as short as possible.\n\n### User:\nBackground:\nDocument 1: Icarus. Icarus\n\n\nQuestion: which greek god flew too close to the sun\n\n### Assistant:\n\nResponse:\n",
+    "label": [
+      "Icarus"
+    ],
+    "question": "which greek god flew too close to the sun",
+    "ranking_label": [
+      [
+        "82721"
+      ],
+      [],
+      [],
+      [],
+      []
+    ]
+  }, 
+  {
+    "q_id": "-302450126325076130",
+    "response": "The Phaeacians live in Scheria, as mentioned in the given background information. This is the location in the Odyssey where they reside.",
+    "instruction": "### System:\nYou are a helpful assistant. Your task is to extract relevant information from provided documents and to answer to questions as short as possible.\n\n### User:\nBackground:\nDocument 1: Scheria. Scheria\n\n\nQuestion: where do the phaeacians live in the odyssey\n\n### Assistant:\n\nResponse:\n",
+    "label": [
+      "Scheria",
+      "Scheria ( / \u02c8sk\u025bri\u0259 / ; Ancient Greek : \u03a3\u03c7\u03b5\u03c1\u03af\u03b7 or \u03a3\u03c7\u03b5\u03c1\u03af\u03b1 ) -- also known as Scherie or Phaeacia"
+    ],
+    "question": "where do the phaeacians live in the odyssey",
+    "ranking_label": [
+      [
+        "357094"
+      ],
+      [],
+      [],
+      [],
+      []
+    ]
+  },
+  {
+    "q_id": "7851442863470339390",
+    "response": "John Hancock is known for signing the largest on the Declaration of Independence.",
+    "instruction": "### System:\nYou are a helpful assistant. Your task is to extract relevant information from provided documents and to answer to questions as short as possible.\n\n### User:\nBackground:\nDocument 1: John Hancock. John Hancock\n\n\nQuestion: who signed the largest on the declaration of independence\n\n### Assistant:\n\nResponse:\n",
+    "label": [
+      "John Hancock"
+    ],
+    "question": "who signed the largest on the declaration of independence",
+    "ranking_label": [
+      [
+        "16324"
+      ],
+      [],
+      [],
+      []
+    ]
+  }
+  
+]

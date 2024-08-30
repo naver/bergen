@@ -21,3 +21,6 @@ trl
 bitsandbytes
 tabulate
 pytest
+langid
+fasttext
+fasttext-langdetect
