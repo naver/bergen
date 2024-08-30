@@ -1,0 +1,6 @@
+init_args: 
+  _target_: models.generators.vllm.LLM
+  model_name: "microsoft/Phi-3-mini-4k-instruct"
+  max_new_tokens: 128
+  max_length: 4000
+batch_size: 256

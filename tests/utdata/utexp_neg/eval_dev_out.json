@@ -1,0 +1,221 @@
+[
+  {
+    "q_id": "-3339006116507262453",
+    "response": "I cannot answer this question based on the provided background information about The Impalas from Document 1. More context or specific information is needed to determine who sang \"I Ran All the Way Home.\"",
+    "instruction": "### System:\nYou are a helpful assistant. Your task is to extract relevant information from provided documents and to answer to questions as short as possible.\n\n### User:\nBackground:\nDocument 1: The Impalas. The Impalas\n\n\nQuestion: who sang i ran all the way home\n\n### Assistant:\n\nResponse:\n",
+    "label": [
+      "The Impalas"
+    ],
+    "question": "who sang i ran all the way home",
+    "ranking_label": [
+      [
+        "12107055"
+      ],
+      [],
+      [],
+      []
+    ]
+  },
+  {
+    "q_id": "3133023570425583704",
+    "response": "I couldn't find information about \"June Gable\" being related to the TV show \"Friends.\" However, the actress who played Joey's agent, Estelle Leonard, is played by Elliot Gould. There's no connection between June Gable and Estelle on Friends.",
+    "instruction": "### System:\nYou are a helpful assistant. Your task is to extract relevant information from provided documents and to answer to questions as short as possible.\n\n### User:\nBackground:\nDocument 1: June Gable. June Gable\n\n\nQuestion: who played joey's agent estelle on friends\n\n### Assistant:\n\nResponse:\n",
+    "label": [
+      "June Gable"
+    ],
+    "question": "who played joey's agent estelle on friends",
+    "ranking_label": [
+      [
+        "5698241"
+      ],
+      [],
+      []
+    ]
+  },
+  {
+    "q_id": "-1582234629547061501",
+    "response": "To accurately answer this question, I would need more context or a specific document mentioning the artist who sang \"I'm Gonna Run Away from You.\" Tami Lynn from Document 1 might not necessarily be the artist in question.",
+    "instruction": "### System:\nYou are a helpful assistant. Your task is to extract relevant information from provided documents and to answer to questions as short as possible.\n\n### User:\nBackground:\nDocument 1: Tami Lynn. Tami Lynn\n\n\nQuestion: who sang i'm gonna run away from you\n\n### Assistant:\n\nResponse:\n",
+    "label": [
+      "Tami Lynn"
+    ],
+    "question": "who sang i'm gonna run away from you",
+    "ranking_label": [
+      [
+        "18826690"
+      ],
+      [],
+      []
+    ]
+  },
+  {
+    "q_id": "-488573928094288904",
+    "response": "There is no direct connection between \"My Summer Story\" and \"A Christmas Story\" or \"It Runs in the Family\" in the provided information. More context or details are needed to establish a relationship between these titles.",
+    "instruction": "### System:\nYou are a helpful assistant. Your task is to extract relevant information from provided documents and to answer to questions as short as possible.\n\n### User:\nBackground:\nDocument 1: My Summer Story. My Summer Story\n\n\nQuestion: sequel to a christmas story it runs in the family\n\n### Assistant:\n\nResponse:\n",
+    "label": [
+      "My Summer Story"
+    ],
+    "question": "sequel to a christmas story it runs in the family",
+    "ranking_label": [
+      [
+        "1291440"
+      ],
+      [],
+      [],
+      []
+    ]
+  },
+  {
+    "q_id": "8635293627598264071",
+    "response": "To determine the real killer in Basic Instinct 2, I would need more information or specific details from the movie, as the provided background is not enough to answer this question accurately. Catherine Tramell is a character from the Basic Instinct film series, but her role in the specific killing in Basic Instinct 2 cannot be confirmed solely based on the given information.",
+    "instruction": "### System:\nYou are a helpful assistant. Your task is to extract relevant information from provided documents and to answer to questions as short as possible.\n\n### User:\nBackground:\nDocument 1: Catherine Tramell. Catherine Tramell\n\n\nQuestion: who is the real killer in basic instinct 2\n\n### Assistant:\n\nResponse:\n",
+    "label": [
+      "Catherine Tramell"
+    ],
+    "question": "who is the real killer in basic instinct 2",
+    "ranking_label": [
+      [
+        "4522065"
+      ],
+      [],
+      [],
+      []
+    ]
+  },
+  {
+    "q_id": "4492033271398413517",
+    "response": "The mall used in \"Back to the Future\" is not mentioned in the provided document (Puente Hills Mall). More information is needed to accurately answer the question.",
+    "instruction": "### System:\nYou are a helpful assistant. Your task is to extract relevant information from provided documents and to answer to questions as short as possible.\n\n### User:\nBackground:\nDocument 1: Puente Hills Mall. Puente Hills Mall\n\n\nQuestion: what mall did they use in back to the future\n\n### Assistant:\n\nResponse:\n",
+    "label": [
+      "Puente Hills Mall",
+      "Puente Hills Mall , located in the City of Industry , California , United States"
+    ],
+    "question": "what mall did they use in back to the future",
+    "ranking_label": [
+      [
+        "2200896"
+      ],
+      [],
+      [],
+      [],
+      []
+    ]
+  },
+  {
+    "q_id": "3804478832687821957",
+    "response": "Stereo to mono conversion is not directly related to audio panning. Panning refers to the process of balancing the audio between the left and right channels in a stereo signal. To convert a stereo signal to mono, you can use a summing mixer or simply add the left and right channels together.",
+    "instruction": "### System:\nYou are a helpful assistant. Your task is to extract relevant information from provided documents and to answer to questions as short as possible.\n\n### User:\nBackground:\nDocument 1: Panning (audio). Panning (audio)\n\n\nQuestion: converting stereo signal to mono signal is called\n\n### Assistant:\n\nResponse:\n",
+    "label": [
+      "Panning"
+    ],
+    "question": "converting stereo signal to mono signal is called",
+    "ranking_label": [
+      [
+        "5634526"
+      ],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      []
+    ]
+  },
+  {
+    "q_id": "-5566961676609800090",
+    "response": "To answer this question, I need to find information about the cast of Hogan's Heroes. In the context given, Howard Caine could be a potential actor. However, the specific actor who played Major Hochstetter is Richard Dawson.",
+    "instruction": "### System:\nYou are a helpful assistant. Your task is to extract relevant information from provided documents and to answer to questions as short as possible.\n\n### User:\nBackground:\nDocument 1: Howard Caine. Howard Caine\n\n\nQuestion: who played major hochstetter in hogan's heroes\n\n### Assistant:\n\nResponse:\n",
+    "label": [
+      "Howard Caine",
+      "Howard Caine ( born Howard Cohen"
+    ],
+    "question": "who played major hochstetter in hogan's heroes",
+    "ranking_label": [
+      [
+        "6726595"
+      ],
+      [],
+      [],
+      [],
+      [],
+      []
+    ]
+  },
+  {
+    "q_id": "2077711785168359308",
+    "response": "I cannot answer this question based on the provided background information about Matt Flinders. More context or specific data about the song \"Picking Up Pebbles\" is needed to determine who sang it.",
+    "instruction": "### System:\nYou are a helpful assistant. Your task is to extract relevant information from provided documents and to answer to questions as short as possible.\n\n### User:\nBackground:\nDocument 1: Matt Flinders. Matt Flinders\n\n\nQuestion: who sang picking up pebbles and throwing them into the sea\n\n### Assistant:\n\nResponse:\n",
+    "label": [
+      "Matt Flinders",
+      "Matt Flinders ( born Sylvan Louis Bonett"
+    ],
+    "question": "who sang picking up pebbles and throwing them into the sea",
+    "ranking_label": [
+      [
+        "3376453"
+      ],
+      [],
+      [],
+      [],
+      [],
+      [],
+      []
+    ]
+  },
+  {
+    "q_id": "-1257072979323742586",
+    "response": "The origin of the last name Baca is not provided in the given background information. To accurately answer the question, more context or information about the Baca family of New Mexico or the etymology of the Baca surname is needed.",
+    "instruction": "### System:\nYou are a helpful assistant. Your task is to extract relevant information from provided documents and to answer to questions as short as possible.\n\n### User:\nBackground:\nDocument 1: Baca family of New Mexico. Baca family of New Mexico\n\n\nQuestion: where does the last name baca come from\n\n### Assistant:\n\nResponse:\n",
+    "label": [
+      "New Mexico"
+    ],
+    "question": "where does the last name baca come from",
+    "ranking_label": [
+      [
+        "6147091"
+      ],
+      [],
+      [],
+      [],
+      [],
+      [],
+      []
+    ]
+  },
+  {
+    "q_id": "-9011802698577995654",
+    "response": "There is not enough information provided to determine who played Bat Masterson in the movie Tombstone. Mason Alan Dinehart is not mentioned in relation to this question.",
+    "instruction": "### System:\nYou are a helpful assistant. Your task is to extract relevant information from provided documents and to answer to questions as short as possible.\n\n### User:\nBackground:\nDocument 1: Mason Alan Dinehart. Mason Alan Dinehart\n\n\nQuestion: who played bat masterson in the movie tombstone\n\n### Assistant:\n\nResponse:\n",
+    "label": [
+      "Mason Alan Dinehart"
+    ],
+    "question": "who played bat masterson in the movie tombstone",
+    "ranking_label": [
+      [
+        "39941754"
+      ],
+      [],
+      [],
+      []
+    ]
+  },
+  {
+    "q_id": "6882831655380911332",
+    "response": "The provided information does not give details about any British city. Coton in the Elms is a village in England, but it is not far enough to determine its distance from the sea in comparison to other British cities.",
+    "instruction": "### System:\nYou are a helpful assistant. Your task is to extract relevant information from provided documents and to answer to questions as short as possible.\n\n### User:\nBackground:\nDocument 1: Coton in the Elms. Coton in the Elms\n\n\nQuestion: which british city is farthest from the sea\n\n### Assistant:\n\nResponse:\n",
+    "label": [
+      "Coton in the Elms"
+    ],
+    "question": "which british city is farthest from the sea",
+    "ranking_label": [
+      [
+        "3978987"
+      ],
+      [],
+      [],
+      [],
+      []
+    ]
+  }
+]

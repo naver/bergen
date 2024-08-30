@@ -3,7 +3,6 @@ BERGEN
 Copyright (c) 2024-present NAVER Corp.
 CC BY-NC-SA 4.0 license
 '''
-
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig, AutoConfig
 import torch
 from models.generators.generator import Generator
@@ -13,6 +12,7 @@ from peft import AutoPeftModelForCausalLM, PeftConfig
 import random
 import os
 import json
+import gc
 random.seed(42)
 
 
@@ -27,12 +27,12 @@ class LLM(Generator):
                 quantization=None,
                 attn_implementation="flash_attention_2"
                  ):
-        
         Generator.__init__(self, model_name=model_name, batch_size=batch_size)
-
         # device_index = Accelerator().process_index
         # device_map = {"": device_index}
-
+        # check type of gpu: if not A100 then change attn implementation to sdpa
+        if not "A100" in torch.cuda.get_device_name(torch.cuda.current_device):
+            attn_implementation="sdpa"
         self.max_length = max_length
         self.max_doc_len = max_doc_len
         self.quantization = quantization
@@ -121,8 +121,8 @@ class LLM(Generator):
         return output.logits, output.loss
        
     def generate(self, instr_tokenized):
-        input_ids = instr_tokenized['input_ids'].to("cuda")
-        attention_mask = instr_tokenized['attention_mask'].to("cuda")
+        input_ids = instr_tokenized['input_ids'].to(self.model.device)
+        attention_mask = instr_tokenized['attention_mask'].to(self.model.device)
         output_ids = self.model.generate(
             input_ids,
             attention_mask=attention_mask,
@@ -135,6 +135,12 @@ class LLM(Generator):
         decoded = self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
 
         return decoded
+        
+    def __del__(self):
+    #del self.model.llm_engine.model_executor
+    #    del self.model
+        gc.collect()
+        torch.cuda.empty_cache()
 
     def collate_fn(self, examples, eval=False, **kwargs):
         ignore_index = -100
