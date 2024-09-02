@@ -454,7 +454,7 @@ class RAG:
             self.generator.model.sep = True
             self.generator.model.config.sep = True # also in the config so that it'll be saved (probably!)
             
-            if self.training_config.freeze_compressor:
+            if  self.training_config.get("freeze_compressor", False):
                 kept_adapters = [elt for elt in self.generator.model.adapter_keys if elt != 'encoder_adapter']
                 print('Freezing the compressor, keeping only', kept_adapters)
                 self.generator.model.decoder.set_adapter(kept_adapters)
