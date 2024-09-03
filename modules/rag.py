@@ -468,11 +468,12 @@ class RAG:
             # lora config
             lora_config = LoraConfig(
                 **self.training_config.lora,
-                target_modules=['q_proj', 'down_proj', 'gate_proj', 'k_proj', 'v_proj', 'o_proj', 'up_proj'],
+                target_modules='all-linear',
                 )
             # get adapter
             self.generator.model = get_peft_model(self.generator.model, lora_config)
             self.generator.model.print_trainable_parameters()
+            self.generator.model = self.generator.model.bfloat16()
 
         args = TrainingArguments(
             run_name=self.run_name,
@@ -508,9 +509,9 @@ class RAG:
         accelerator.wait_for_everyone()
         unwrapped_model = accelerator.unwrap_model(model)
 
-        self.generator.model.model = trainer.model
+        self.generator.model = unwrapped_model
         
         if accelerator.is_main_process:
-            unwrapped_model.save_pretrained(f"{self.experiment_folder}/last_model")
+            self.generator.model.save_pretrained(f"{self.experiment_folder}/last_model")
             move_finished_experiment(self.experiment_folder)
             self.experiment_folder = get_finished_experiment_name(self.experiment_folder)
