@@ -431,16 +431,16 @@ class RAG:
                 doc_ids,
                 self.rerank_top_k,
                 )
-
+            
         # get top-k docs
         doc_ids = [doc_ids_q[:self.generation_top_k] for doc_ids_q in doc_ids] if doc_ids is not None else doc_ids
-
+        
         # prepare dataset
         gen_dataset = prepare_dataset_from_ids(dataset, query_ids, doc_ids, multi_doc=True)
         
         # split train into train and test
         train_test_datasets = gen_dataset.train_test_split(self.training_config.test_size_ratio, seed=42)
-
+        
         print("Preprocessing data...")
         from models.generators.llm_cocom import LLMCocom
         if not isinstance(self.generator, LLMCocom):

@@ -16,7 +16,8 @@ class LLMCocom(Generator):
                  context_max_length: int = 128,
                  max_new_tokens: int = 128,
                  model_max_length: int = 1280,
-                 prompt: str = None):
+                 prompt: str = None,
+                 compr_rate: float = None):
         """
         Class to use cocom with compression
         checkpoint_path: path to a COCOM checkpoint
@@ -25,12 +26,29 @@ class LLMCocom(Generator):
         model_max_length: maximum length used in the final query (should be large enough)
         """
         # Lazy import to prevent dependency
-        from cocom.model import COCOM
+        from cocom.model import COCOM, COCOMConfig
         
         Generator.__init__(self, model_name=model_name, batch_size=batch_size)
 
         # Loading the cocom model:
-        self.model = COCOM.from_pretrained(checkpoint_path)
+        if checkpoint_path is not None:
+            self.model = COCOM.from_pretrained(checkpoint_path)
+        else:
+            cfg = COCOMConfig(
+                decoder_model_name='mistralai/Mistral-7B-Instruct-v0.2',
+                max_new_tokens=128,
+                quantization='no',
+                compr_model_name=None,
+                compr_rate=compr_rate,
+                lora=True,
+                training_form='both_separately',
+                lora_r=16,
+                kbtc_training=False,
+                optimize_mem_tokens=False
+            )
+            print('Creating brand new COCOM model:', cfg)
+            self.model = COCOM(cfg)
+            
         self.model.eval()
         
         self.prompt = prompt

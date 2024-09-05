@@ -26,7 +26,7 @@ class LLM(Generator):
                 prompt=None,
                 quantization=None,
                 attn_implementation="flash_attention_2"
-                 ):
+                ):
         
         Generator.__init__(self, model_name=model_name, batch_size=batch_size)
 
@@ -176,7 +176,6 @@ class LLM(Generator):
             label_ids = prepare_labels(model_input['input_ids'], response_token_ids[1:], ignore_index=ignore_index)
             data_dict['label_ids'] =  label_ids
 
-        
         data_dict.update({
             'model_input': model_input,
             'q_id': q_ids, 
