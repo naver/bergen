@@ -27,8 +27,6 @@ class LLM(Generator):
                 quantization=None,
                 attn_implementation="flash_attention_2"
                 ):
-        
-                 ):
         Generator.__init__(self, model_name=model_name, batch_size=batch_size)
         # device_index = Accelerator().process_index
         # device_map = {"": device_index}
