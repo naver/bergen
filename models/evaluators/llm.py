@@ -4,67 +4,89 @@ Copyright (c) 2024-present NAVER Corp.
 CC BY-NC-SA 4.0 license
 '''
 
-from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
+from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig, GenerationConfig
 import omegaconf
 from tqdm import tqdm
-from models.generators.llm import LLM
 import torch
 import re
 import numpy as np
-class LLM:
+from hydra.utils import instantiate
+from models.evaluators.utils import *
+import gc
+
+class LLMeval():
     """
     - relies on default HF inference 
     - output score is a floating number corresponding to the logit score output by model.generate for pos_word
     """
-    def __init__(self, model_name, batch_size=1, custom_format_instruction=None, pos_word="Yes", neg_word="No", prompt="default_prompt"):
-        self.batch_size = batch_size
-        quant_config = BitsAndBytesConfig(
-        load_in_4bit=True,
-        bnb_4bit_quant_type='nf4',
-        bnb_4bit_compute_dtype='bfloat16',
-        bnb_4bit_use_double_quant=False
-        )
-        self.pos_word = pos_word 
-        self.neg_word = neg_word 
-        
-        self.custom_format_instruction = custom_format_instruction
-        self.prompt = omegaconf.OmegaConf.load(f"config/evaluator/{prompt}.yaml")['prompt']
-        self.system_prompt = eval(self.prompt.system)
-        self.model_name = model_name
-        self.model = AutoModelForCausalLM.from_pretrained(self.model_name, device_map='auto', quantization_config=quant_config, attn_implementation="flash_attention_2")
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name, padding_side='left')
-        self.tokenizer.pad_token = self.tokenizer.bos_token
-        self.model.config.use_cache = False
-        self.model.eval()
+    def __init__(self, model_config, batch_size=1, config="default_qa"):
+        #model_config['init_args']['_target_'] = 'models.evaluators.llm.LLMeval'
+        model_config = omegaconf.OmegaConf.load(f"config/generator/{model_config}.yaml")            
+        eval_config = omegaconf.OmegaConf.load(f"config/evaluator/{config}.yaml")
+        model_config['init_args']['max_new_tokens']= eval_config['max_new_tokens']
 
+        self.use_logits = eval_config.use_logits
+        self.llm = instantiate(model_config['init_args'], prompt=eval_config['prompt'])
+        self.options = eval_config.output_options
+        self.rubrik_section = "\n - ".join(sorted([f"{opt} answer" for opt in self.options]))
+        self.prompt = eval_config['prompt']
+        self.llm.max_new_tokens = eval_config['max_new_tokens']
+        self.llm.batch_size = batch_size
+        self.system_prompt = eval(self.prompt.system).replace(':\ ', ': ')
+        #FIXME: what shall we do if label corrsponds to multiple tokens?
+        self.output_ids = [self.llm.tokenizer.encode(opt, add_special_tokens=False) for opt in sorted(self.options)]
+        self.output_values = torch.tensor([self.options[opt] for opt in sorted(self.options)]).float()
         
-        self.pos_tokenid, self.neg_tokenid = self.tokenizer.encode(f'\n{self.pos_word}', add_special_tokens=False)[-1], self.tokenizer.encode(f'\n{self.neg_word}', add_special_tokens=False)[-1]
+        self.generation_config = GenerationConfig.from_model_config(self.llm.model.config) 
+        self.generation_config.do_sample=False,
+        # according to documentation from https://huggingface.co/docs/transformers/v4.43.2/main_classes/text_generation this is supposed to force model to generate tokens from the list, but it doesn't seem to work in practice 
+        # --> rollback to simple solution: just check first token logit of each predefined label
+        self.generation_config.force_word_ids=self.output_ids, 
+        self.generation_config.max_new_tokens=self.llm.max_new_tokens                    
+                 
+                                     
+                
+        
+    def __del__(self):
+    #    print(f"Delete evaluator {self.llm.model_name}")
+        torch.cuda.empty_cache()
+        gc.collect()        
 
-   
     def create_instruction(self,sample):
         answer = sample['reference']
         question=sample['question']
         prediction=sample['candidate']
-        pos_word = self.pos_word
-        neg_word = self.neg_word
+        if 'response' in sample:
+            response = sample['response']
+        else:
+            response = None
         prefix = []
-        if 'system' in self.tokenizer.chat_template:
+        if 'system' in self.llm.tokenizer.chat_template:
             prefix =  [{'role': 'system',
                 'content': self.system_prompt}]
-        prefix.extend([{'role': 'user',
-            'content': eval(self.prompt.user)}]
+            prefix.extend([{'role': 'user',
+                'content': eval(self.prompt.user).replace(':\ ', ': ')}]
             )
-        prefix.extend([{'role': 'assistant',
-            'content': eval(self.prompt.assistant)}]
+        
+        else:
+            prefix = ([{'role': 'user_without_system',
+                'content': eval(self.prompt.user).replace(':\ ', ': ')}]
             )
-        return self.tokenizer.apply_chat_template(prefix,  add_generation_prompt=True, tokenize=False) 
+        if 'assistant' in self.prompt:
+            prefix.extend([{'role': 'assistant',
+                'content': eval(self.prompt.assistant).replace(':\ ', ': ')}]
+                )
+        if not response is None:
+            prefix.extend([{'role': 'assistant',
+                'content': response}]
+            )
+        return self.llm.tokenizer.apply_chat_template(prefix,  add_generation_prompt=True, tokenize=False) 
 
    
    
     def collate_fn(self, examples, max_length=512):
-        instr = [self.create_instruction(sample) if self.custom_format_instruction == None else self.custom_format_instruction(sample) for sample in examples]  # Add prompt to each text
-        self.tokenizer.add_special_tokens({'pad_token': '[PAD]'})
-        instr_tokenized = self.tokenizer(instr, padding=True, truncation=True, return_tensors="pt")
+        instr = [self.create_instruction(sample) for sample in examples]  # Add prompt to each text
+        instr_tokenized = self.llm.tokenizer(instr, padding=True, truncation=True, return_tensors="pt")
         return instr_tokenized, instr
 
     @torch.no_grad()
@@ -72,30 +94,49 @@ class LLM:
         # Loading the TensorFlow Hub model
         assert len(predictions) == len(references) == len(questions)
         examples = [{'question': questions[i], 'reference': references[i], 'candidate': predictions[i]}  for i in range(len(predictions))]
-        
-        inputs, instrs = self.collate_fn(examples)
         # The outputs are raw logits.
         scores = list()
+        weird = list()
         # Perform batch inference
-        for i in tqdm(range(0, len(inputs['input_ids']), self.batch_size), desc=f'LLM evaluation with {self.model_name}...'):
+        full_inputs, full_instrs = self.collate_fn(examples)
+        for i in tqdm(range(0, len(examples), self.llm.batch_size), desc=f'LLM evaluation with {self.llm.model_name}...'):
             # Extract batch
-            batch_input_ids = inputs['input_ids'][i:i+self.batch_size].to('cuda')
-            batch_attention_masks = inputs['attention_mask'][i:i+self.batch_size].to('cuda')
-            instr_batch = instrs[i:i+self.batch_size]
-            # discrete model output 
-            # generated_tokens = self.model.generate(input_ids=batch_input_ids, attention_mask=batch_attention_masks, max_new_tokens=3) 
-            # generated_answers = self.tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
-            # for generated_answer in generated_answers:
-            #     answer = re.findall(r'\{([^}]+)\}', generated_answer)[-1]
-            #     scores.append(1 if answer == 'equivalent' else 0)
-            # continuous model output:
-            model_scores = self.model.generate(input_ids=batch_input_ids, attention_mask=batch_attention_masks, max_new_tokens=1, do_sample=False, output_scores=True, return_dict_in_generate=True).scores
-            model_scores = torch.stack(model_scores)
-            model_scores = model_scores[0, :, [self.neg_tokenid, self.pos_tokenid]].float()
-            pos_prob = torch.softmax(model_scores, 1)[:, 1].detach().cpu()
-            for i, score in enumerate(pos_prob):
-                scores.append(score.float())
-
+            batch_examples = examples[i:i+self.llm.batch_size]
+            inputs, instrs = self.collate_fn(batch_examples)
+            input_ids = inputs['input_ids'].to(self.llm.model.device)
+            attention_mask = inputs['attention_mask'].to(self.llm.model.device)                        
+                           
+            if self.use_logits:
+                self.generation_config.output_logits=True 
+                self.generation_config.return_dict_in_generate=True                    
+                model_outputs = self.llm.model.generate(
+                        input_ids,                            
+                        attention_mask=attention_mask,
+                        generation_config=self.generation_config
+                )  
+                #get processed logits from model outputs: expected shape (n_tokens, 1, vocab_size)
+                model_scores = torch.stack(model_outputs.logits)
+                #get scores corresponding to first token of predefined labels from the first generated tokens
+                model_scores = model_scores[0, :, [tok[0] for tok in self.output_ids]].float()
+                #normalizing scores - getting probablity of each of predefined labesl
+                pos_prob = torch.softmax(model_scores, 1).detach().cpu()
+                #final score is computed as interpolation between prob of label and it's associated value (defined by options map in config): eg. p(x=yes)*1 + p(x=no)*0 
+                for i, score in enumerate(pos_prob):
+                    scores.append(torch.dot(score,self.output_values))
+            else:
+                # discrete model output            
+                # get real answer generation
+                model_generations = self.llm.model.generate(input_ids,
+                                    attention_mask=attention_mask,
+                                    generation_config=self.generation_config 
+                                    )
+                batch_scores, batch_weird  = process_llm_outputs_assess_scores(model_generations, self.options)
+                scores.extend(batch_scores)
+                weird.extend(batch_weird)
+                # if string value specified in options is present in the generated output: assign corresponding score,
+                # if multiple values are present: take maximum value
+                scores.extend(scores)
+        
         torch.cuda.empty_cache()
-        return np.mean(scores), scores
+        return get_mean_without_unknown(scores), scores
 

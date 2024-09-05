@@ -2,7 +2,9 @@
 
 [BERGEN](https://github.com/naver/bergen) is a library to benchmark retrieval-augmented generation (RAG) systems.
 BERGEN supports experimenting with multilingual user queries and/or multlingual datastore. 
-This guide explains how to launch such multilingual evaluation.
+This guide explains how to launch such multilingual evaluation. 
+
+Check out our [preprint](https://arxiv.org/abs/2407.01463) reporting our experiments on building a strong baseline for multilingual RAG!
 
 ## Quick start
 
@@ -16,6 +18,9 @@ You can add `++experiments_folder=$exp_folder` to specify a custom folder to sav
 
 For more details on installing BEGREN and running experiments, please refer to the [main readme](https://github.com/naver/bergen/tree/main). 
 
+## Downloads
+* [archive with our main experiments](https://download.europe.naverlabs.com/bergen/bergen_multilingual_exps.zip)
+* [archived search indexes for 12 languages](https://download.europe.naverlabs.com/bergen/mrag_indexes/). Each index represents Wikipedia in a chosen language, encoded with `BGE-m3`. To be unpacked in `indexes` directory, i.e. `indexes/wiki-100w-{lang}_doc_BAAI_bge-m3`
 
 ## Datasets
 
@@ -94,3 +99,25 @@ To add a new language supported in MKQA or XOR TyDi QA:
 * \[in case you use [scripts](https://github.com/naver/bergen/blob/main/scripts/multilingual)\], add your language in them as well
 
 In case you need to add a new dataset, retriever, or generator, please refer to the [BERGEN extensions guide](https://github.com/naver/bergen/blob/main/documentations/extensions.md).
+
+## Citation
+```
+@inproceedings{chirkova2024mrag,
+      title={Retrieval-augmented generation in multilingual settings}, 
+      author={Nadezhda Chirkova and David Rau and Hervé Déjean and Thibault Formal and Stéphane Clinchant and Vassilina Nikoulina},
+      booktitle={Towards Knowledgeable Language Models Workshop @ ACL 2024}
+      year={2021}, 
+}
+```
+
+```
+@misc{rau2024bergen,
+      title={BERGEN: A Benchmarking Library for Retrieval-Augmented Generation}, 
+      author={David Rau and Hervé Déjean and Nadezhda Chirkova and Thibault Formal and Shuai Wang and Vassilina Nikoulina and Stéphane Clinchant},
+      year={2024},
+      eprint={2407.01102},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2407.01102}, 
+}
+```

@@ -4,4 +4,4 @@ init_args:
   max_new_tokens: 64
   max_length: 2048
   batch_size: 256
-
+  gpu_memory_utilization: 0.2

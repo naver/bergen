@@ -1,0 +1,16 @@
+train:
+    doc: null
+    query: null
+dev:
+    doc: 
+        init_args:
+            _target_: modules.dataset_processor.Wikipedia2023_full
+            split: "train"
+    
+    query: 
+        init_args:
+            _target_: modules.dataset_processor.ASQA
+            split: "dev"
+test:
+    doc: null
+    query: null
