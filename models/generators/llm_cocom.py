@@ -59,9 +59,7 @@ class LLMCocom(Generator):
         self.model.bfloat16()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model.to(self.device)
-        
-        self.response_token_ids = self.get_response_template_ids()
-        
+                
     def generate(self, instr_tokenized):
         """
         Nothing to do here, just convey to cocom since instr_tokenized went throught the collate_fn
@@ -99,13 +97,6 @@ class LLMCocom(Generator):
                 generated_response = self.generate(data_dict['model_input'])
                 responses += generated_response
         return query_ids, queries, instructions, responses, labels, ranking_labels
-
-    def get_response(self):
-        return '[/INST]' # TODO 
-
-    def get_response_template_ids(self):
-        response_template = self.get_response()
-        return self.model.decoder_tokenizer.encode(response_template, add_special_tokens=False)
     
     def collate_fn(self, examples, eval=False):
         """
@@ -162,13 +153,11 @@ class LLMCocom(Generator):
             label = [[e['label']] if isinstance(e['label'], str) else e['label'] for e in examples]
             instr = [self.blend_prompt_and_memory_tokens(self.model.decoder_tokenizer, mem_tokens_str, query=q) for q in query]
 
-            # instr = [self.model.decoder_tokenizer.bos_token + mem_tokens * self.model.generation_top_k + '[INST]' + q + self.get_response() for q in query]
             inp_dec = self.model.decoder_tokenizer(instr, return_tensors='pt', padding="longest", add_special_tokens=False,
                                         truncation=True,  max_length=self.model_max_length)
         else:
             label = [e['label'] if isinstance(e['label'], str) else random.choice(e['label']) for e in examples]
             instr = [self.blend_prompt_and_memory_tokens(self.model.decoder_tokenizer, mem_tokens_str, query=q, label=e) for q, e in zip(query, label)]
-            # instr = [self.model.decoder_tokenizer.bos_token + mem_tokens * self.model.generation_top_k + '[INST]' + q + self.get_response() + e + self.model.decoder_tokenizer.eos_token  for q, e in zip(query, label)]
             inp_dec = self.model.decoder_tokenizer(instr, return_tensors='pt', padding="longest", add_special_tokens=False,
                                                    truncation=True, max_length=self.model_max_length)
             
