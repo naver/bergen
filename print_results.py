@@ -81,8 +81,7 @@ def main(args):
                 ranking_metric = None
                 files = [f.name for f in current_folder.iterdir()]
 
-                if f'eval_{split}_metrics.json' in files:
-
+                if f"eval_{split}_metrics.json" in files:
                     for file_in_subfolder in current_folder.iterdir():
                         # try:
                         if 'config.yaml' in str(file_in_subfolder):
