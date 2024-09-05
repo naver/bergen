@@ -150,22 +150,24 @@ class LLMCocom(Generator):
                                                                                       num_mem_tokens,
                                                                                       self.model.decoder_tokenizer)
 
-        mem_tokens = self.model.decoder_tokenizer.mem_token * num_mem_tokens
+        assert num_mem_tokens == len(self.model.decoder_tokenizer.mem_tokens)
+        mem_tokens_str = ''.join(self.model.decoder_tokenizer.mem_tokens)
+        
         if self.model.sep:
-            mem_tokens += self.model.decoder_tokenizer.sep_token
+            mem_tokens_str += self.model.decoder_tokenizer.sep_token
 
         # Internally, the model forward will concatenate the memory tokens from all documents for each query
         # We just need to leave some extra empty tokens when preparing the decoder inputs here:
         if eval:
             label = [[e['label']] if isinstance(e['label'], str) else e['label'] for e in examples]
-            instr = [self.blend_prompt_and_memory_tokens(self.model.decoder_tokenizer, mem_tokens, query=q) for q in query]
+            instr = [self.blend_prompt_and_memory_tokens(self.model.decoder_tokenizer, mem_tokens_str, query=q) for q in query]
 
             # instr = [self.model.decoder_tokenizer.bos_token + mem_tokens * self.model.generation_top_k + '[INST]' + q + self.get_response() for q in query]
             inp_dec = self.model.decoder_tokenizer(instr, return_tensors='pt', padding="longest", add_special_tokens=False,
                                         truncation=True,  max_length=self.model_max_length)
         else:
             label = [e['label'] if isinstance(e['label'], str) else random.choice(e['label']) for e in examples]
-            instr = [self.blend_prompt_and_memory_tokens(self.model.decoder_tokenizer, mem_tokens, query=q, label=e) for q, e in zip(query, label)]
+            instr = [self.blend_prompt_and_memory_tokens(self.model.decoder_tokenizer, mem_tokens_str, query=q, label=e) for q, e in zip(query, label)]
             # instr = [self.model.decoder_tokenizer.bos_token + mem_tokens * self.model.generation_top_k + '[INST]' + q + self.get_response() + e + self.model.decoder_tokenizer.eos_token  for q, e in zip(query, label)]
             inp_dec = self.model.decoder_tokenizer(instr, return_tensors='pt', padding="longest", add_special_tokens=False,
                                                    truncation=True, max_length=self.model_max_length)
