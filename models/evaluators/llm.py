@@ -28,7 +28,7 @@ class LLMeval():
         self.use_logits = eval_config.use_logits
         self.llm = instantiate(model_config['init_args'], prompt=eval_config['prompt'])
         self.options = eval_config.output_options
-        self.rubrik_section = "\n - ".join(sorted([f"{opt} answer" for opt in self.options]))
+        self.rubrik_section = ", ".join(["{"+opt+"}" for opt in self.options])
         self.prompt = eval_config['prompt']
         self.llm.max_new_tokens = eval_config['max_new_tokens']
         self.llm.batch_size = batch_size
@@ -61,7 +61,7 @@ class LLMeval():
         else:
             response = None
         prefix = []
-        if 'system' in self.llm.tokenizer.chat_template:
+        if getattr(self.llm.tokenizer, "chat_template") is not None and  'system' in self.llm.tokenizer.chat_template:
             prefix =  [{'role': 'system',
                 'content': self.system_prompt}]
             prefix.extend([{'role': 'user',
@@ -69,8 +69,8 @@ class LLMeval():
             )
         
         else:
-            prefix = ([{'role': 'user_without_system',
-                'content': eval(self.prompt.user).replace(':\ ', ': ')}]
+            prefix = ([{'role': 'user',
+                'content': eval(self.prompt.user_without_system).replace(':\ ', ': ')}]
             )
         if 'assistant' in self.prompt:
             prefix.extend([{'role': 'assistant',
@@ -91,7 +91,6 @@ class LLMeval():
 
     @torch.no_grad()
     def __call__(self, predictions, references, questions):
-        # Loading the TensorFlow Hub model
         assert len(predictions) == len(references) == len(questions)
         examples = [{'question': questions[i], 'reference': references[i], 'candidate': predictions[i]}  for i in range(len(predictions))]
         # The outputs are raw logits.
@@ -99,7 +98,7 @@ class LLMeval():
         weird = list()
         # Perform batch inference
         full_inputs, full_instrs = self.collate_fn(examples)
-        for i in tqdm(range(0, len(examples), self.llm.batch_size), desc=f'LLM evaluation with {self.llm.model_name}...'):
+        for i in (tq:=tqdm(range(0, len(examples), self.llm.batch_size), desc=f'LLM evaluation with {self.llm.model_name}...')):
             # Extract batch
             batch_examples = examples[i:i+self.llm.batch_size]
             inputs, instrs = self.collate_fn(batch_examples)
@@ -126,17 +125,22 @@ class LLMeval():
             else:
                 # discrete model output            
                 # get real answer generation
-                model_generations = self.llm.model.generate(input_ids,
-                                    attention_mask=attention_mask,
-                                    generation_config=self.generation_config 
-                                    )
-                batch_scores, batch_weird  = process_llm_outputs_assess_scores(model_generations, self.options)
-                scores.extend(batch_scores)
+                decoded = self.llm.generate(inputs)
+                # #model_generations = self.llm.model.generate(input_ids,
+                #                     attention_mask=attention_mask,
+                #                     generation_config=self.generation_config 
+                #                     )
+                # decoded = self.llm.tokenizer.batch_decode(model_generations)
+                # breakpoint()
+                batch_scores, batch_weird  = process_llm_outputs_assess_scores(decoded, self.options)
                 weird.extend(batch_weird)
                 # if string value specified in options is present in the generated output: assign corresponding score,
                 # if multiple values are present: take maximum value
-                scores.extend(scores)
+                scores.extend(batch_scores)
+                breakpoint()
+            tq.set_description(f" score: {get_mean_without_unknown(scores)* 100:4.1f}%, weird :{float(len(weird))/len(scores)*100:4.1f}%")
         
         torch.cuda.empty_cache()
+        gc.collect()
         return get_mean_without_unknown(scores), scores
 
