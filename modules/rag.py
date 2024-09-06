@@ -124,7 +124,6 @@ class RAG:
             "dev": RAGMetrics, 
             "test": None,
         }
-
         # init retriever
         self.retriever = Retrieve(
                     **retriever_config,
@@ -512,10 +511,9 @@ class RAG:
         
         # split train into train and test
         train_test_datasets = gen_dataset.train_test_split(self.training_config.test_size_ratio, seed=42)
-
         print("Preprocessing data...")
         train_test_datasets['train'] = Tokenized_Sorted_Dataset(train_test_datasets['train'], self.generator, training=True)
-        train_test_datasets['test'] = Tokenized_Sorted_Dataset(train_test_datasets['test'], self.generator, training=False)
+        train_test_datasets['test'] = Tokenized_Sorted_Dataset(train_test_datasets['test'], self.generator, training=True)
 
         # We keep some data to log in wandb, from the test set:
         call_back_data = Tokenized_Sorted_Dataset(train_test_datasets['test'], self.generator, training=False)
@@ -525,7 +523,6 @@ class RAG:
                                            collate_fn=lambda l: self.generator.model.collate_fn(l, eval=True))
 
         print("Data preprocessed")
-
         # if lora in train config
         if 'lora' in self.training_config:
             self.generator.model = prepare_model_for_kbit_training(self.generator.model)
@@ -557,7 +554,6 @@ class RAG:
             load_best_model_at_end=True,
             remove_unused_columns=False,
         )
-
         trainer = RAGTrainer(
             model=self.generator.model,
             model_prediction_step=self.generator.prediction_step,
@@ -568,6 +564,7 @@ class RAG:
             eval_dataset=train_test_datasets['test'],
             call_back_data=call_back_data_select
         )
+        #FIXME TODO: check if checkpoint_last.pt is present in the current folder, than resume_from_checkpoint=True
         trainer.train()
         self.generator.model = trainer.model
         move_finished_experiment(self.experiment_folder)
