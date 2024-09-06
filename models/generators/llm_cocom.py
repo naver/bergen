@@ -59,6 +59,7 @@ class LLMCocom(Generator):
         self.model.bfloat16()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model.to(self.device)
+        self.response_token_ids = self.get_response_template_ids()
                 
     def generate(self, instr_tokenized):
         """
@@ -97,6 +98,13 @@ class LLMCocom(Generator):
                 generated_response = self.generate(data_dict['model_input'])
                 responses += generated_response
         return query_ids, queries, instructions, responses, labels, ranking_labels
+    
+    def get_response(self):
+        return '[/INST]' # TODO: this shouldn't be hard-coded
+
+    def get_response_template_ids(self):
+        response_template = self.get_response()
+        return self.model.decoder_tokenizer.encode(response_template, add_special_tokens=False)
     
     def collate_fn(self, examples, eval=False):
         """
@@ -162,7 +170,6 @@ class LLMCocom(Generator):
                                                    truncation=True, max_length=self.model_max_length)
             
             label_ids = prepare_labels(inp_dec["input_ids"], self.response_token_ids[1:], ignore_index=ignore_index)
-            # We just decode the relevant part of the labels:
 
         data_dict = {}
         if not eval:
@@ -213,6 +220,7 @@ class LLMCocom(Generator):
         if label is not None:
             messages.append({"role": "assistant", "content": label})
             
+        # todo: when training, should add_generation_prompt be set to True ?
         prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
                     
         return prompt
