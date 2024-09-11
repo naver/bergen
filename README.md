@@ -71,7 +71,7 @@ Run the evaluation script to calculate metrics:
 python3 eval.py --experiments_folder experiments/ --llm_batch_size 16 --split 'dev' --vllm
 ```
 
-For more evaluation options and details, refer to the [Evaluation section](#evaluation) in the full documentation.
+For more evaluation options and details, refer to the [Evaluation section](documentations/evaluations.md) in the full documentation.
 
 ## RAG Baselines
 Bergen provides results for several models and many datasets aiming to **provide strong baselines**. On the important datasets for RAG, the match metric is given by this table (see more in our paper): 
