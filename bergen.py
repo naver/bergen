@@ -19,7 +19,6 @@ def main(config):
 
     if 'train' in config:
         rag.train()
-    breakpoint()
     if 'dataset_split' in config:
         dataset_split = config['dataset_split']
     else:
