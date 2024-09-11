@@ -45,3 +45,13 @@ python3 print_results.py --csv --folder experiments/
 exp_folder,Retriever,P_1,Reranker,Generator,gen_time,query_dataset,r_top,rr_top,M,EM,F1,P,R,Rg-1,Rg-2,Rg-L,BEM,LLMeval
 216567b3d48ef3fc,naver/splade-v3/,,naver/trecdl22-crossencoder-debertav3,TinyLlama/TinyLlama-1.1B-Chat-v1.0,00:03:53.19,KILTTriviaqa,100,100,0.6763772175536882,0.00018674136321195143,0.11749967712256401,0.07122756370055569,0.5380933823321367,0.1505780809175042,0.055962386132169924,0.14611799602749245,0.47356051206588745,
 ```
+
+
+## Output files
+Example files generated for split `dev` using `naver_splade-cocondenser-selfdistil` as a retriever.
+- `config.yaml` The parameters of the experiment in yaml format.
+- `eval_dev_generation_time.json` The generation time in json format.
+- `eval_dev_metrics.json` Generation evaluation metrics in json format.
+- `eval_dev_out.json` Output of the generation, contains `q_id` (str), `response` `(str)` the generated response, `label` `(list (str))` the answer reference (multiple possible), `instruction` `(str)` the instruction given to the generator, `ranking_label` `(list(list(str)), optional)` ids of reference paragraph (again multiple references possible).
+- `run.retrieve.top_5.kilt_nq.dev.naver_splade-cocondenser-selfdistil.trec` The retrieval run in `trec` format.
+- `eval_dev_ranking_metrics.json` Retrieval evaluation metrics in json format.
