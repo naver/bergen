@@ -15,24 +15,26 @@ from langchain_core.prompts import ChatPromptTemplate
 import omegaconf
 from models.evaluators.utils import *
 
-
 class OllamaEval:
     """
     - uses existing ollama server for inference, need to specify the url of the server via basic_url parameter 
     - output score for each sample is 1 (when positive word is present in llm output) or 0  (otherwise) 
     """
     def __init__(self, model_name, batch_size=1, config="default_qa", basic_url="http://localhost:11434"):
+        
         eval_config = omegaconf.OmegaConf.load(f"config/evaluator/{config}.yaml")
         self.batch_size = batch_size
         self.options = eval_config.output_options
         self.prompt = eval_config['prompt']
         self.max_new_tokens = eval_config['max_new_tokens']
         self.batch_size = batch_size
-        self.rubrik_section = "\n - ".join(sorted([f"{opt} answer" for opt in self.options]))
+        self.rubrik_section = ", ".join(["{{"+opt+"}}" for opt in self.options])
+
+        #self.rubrik_section = "\n - ".join(sorted([f"{opt} answer" for opt in self.options]))
         self.system_prompt = eval(self.prompt.system)
         self.output_values = torch.tensor([self.options[opt] for opt in sorted(self.options)]).float()
         self.model_name = model_name
-        self.model = Ollama(model=model_name, base_url=f"{basic_url}", system=eval(self.prompt.system))
+        self.model = Ollama(model=model_name, base_url=f"{basic_url}", temperature=0, system=eval(self.prompt.system))
        
 
     def create_instruction(self,sample):
