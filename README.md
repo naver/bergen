@@ -63,6 +63,8 @@ Check the [installation guide](documentations/INSTALL.md) for detailed instructi
    python3 bergen.py retriever="splade-v3" reranker="debertav3" generator='vllm_SOLAR-107B' dataset='kilt_nq'
    ```
 
+To fully configure BERGEN, please read our [configuration guide](documentations/config.md)
+
 ## Evaluation
 
 Run the evaluation script to calculate metrics:
