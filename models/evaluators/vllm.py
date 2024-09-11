@@ -30,7 +30,6 @@ class VLLMeval:
         self.llm = instantiate(model_config['init_args'], prompt=eval_config['prompt'])
         self.options = eval_config.output_options
         self.rubrik_section = ", ".join(["{"+opt+"}" for opt in self.options])
-
         self.prompt = eval_config['prompt']
         self.llm.sampling_params.max_new_token = eval_config['max_new_tokens']
         self.llm.batch_size = batch_size
@@ -57,8 +56,8 @@ class VLLMeval:
             )
         
         else:
-            prefix = ([{'role': 'user_without_system',
-                'content': eval(self.prompt.user).replace(':\ ', ': ')}]
+            prefix = ([{'role': 'user',
+                'content': eval(self.prompt.user_without_system).replace(':\ ', ': ')}]
             )
         if 'assistant' in self.prompt:
             prefix.extend([{'role': 'assistant',
@@ -89,8 +88,6 @@ class VLLMeval:
             batch_scores, batch_weird  = process_llm_outputs_assess_scores(decoded, self.options)
             scores.extend(batch_scores)
             weird.extend(batch_weird)
-            #scores.extend([ 1 if self.pos_word.lower() in rep.lower() else 0 for rep in decoded ])
-            #weird.extend([ 1 if (self.neg_word.lower() not in rep.lower() and self.pos_word not in rep.lower()) else 0 for rep in decoded ])
             tq.set_description(f" score: {get_mean_without_unknown(scores)* 100:4.1f}%, weird :{float(len(weird))/len(scores)*100:4.1f}%")
         logger.info(weird)
         print("Weird", len(weird))
