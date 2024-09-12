@@ -138,7 +138,7 @@ def main(args):
     
     df=df.sort_values(by=[args.sort])
     print('Split:', args.split)
-    print(df.to_markdown(floatfmt=".2f"))
+    print(df.to_markdown(floatfmt=".3f"))
     if args.csv:
         os.makedirs('results', exist_ok=True)
         file_name = args.folder.replace('/', '_')

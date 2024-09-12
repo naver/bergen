@@ -23,6 +23,7 @@ retrieve_top_k: 50
 rerank_top_k: 50
 generation_top_k: 5
 
+eval_split: 'dev'
 
 #
 pyserini_num_threads: 20

@@ -42,9 +42,10 @@ class LLMCocom(Generator):
                 compr_rate=compr_rate,
                 lora=True,
                 training_form='both_separately',
-                lora_r=16,
+                lora_r=64,
                 kbtc_training=False,
-                optimize_mem_tokens=False
+                optimize_mem_tokens=True,
+                different_mem_tokens=True
             )
             print('Creating brand new COCOM model:', cfg)
             self.model = COCOM(cfg)

@@ -20,7 +20,8 @@ def main(config):
     if 'train' in config:
         rag.train()
 
-    rag.eval(dataset_split='dev')
+    print(f'Bergen evaluation is running on {config.eval_split} split')
+    rag.eval(dataset_split=config.eval_split)
 
 if __name__ == "__main__":
     # needed for multiprocessing to avoid CUDA forked processes error

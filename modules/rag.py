@@ -182,7 +182,20 @@ class RAG:
                 doc_ids,
                 self.rerank_top_k,
                 )
-
+            
+        # Now in some cases the retrieval file is larger (because of idx_min, idx_max in dataset, but file was computed on whole dataset)
+        # We filter out irrelevant query_ids here:
+        filtered_query_ids, filtered_doc_ids = [], []
+        for q_id, d_id in zip(query_ids, doc_ids):
+            if q_id in dataset['query'].id2index:
+                filtered_query_ids += [q_id]
+                filtered_doc_ids += [d_id]
+                
+        query_ids = filtered_query_ids
+        doc_ids = filtered_doc_ids
+                
+        print('Kept:', len(query_ids))
+                
         # generate
         if self.generator is not None:
             questions, _, predictions, references = self.generate(
@@ -280,6 +293,7 @@ class RAG:
                     top_k=self.generation_top_k, 
                     debug=self.debug,
                     )
+                
         return query_ids, doc_ids, scores
 
     def rerank(self, 
@@ -338,6 +352,7 @@ class RAG:
                 reranking=True, 
                 debug=self.debug
                 )
+            
         return query_ids, doc_ids, scores
 
     def process_context(self, gen_dataset, 
@@ -522,6 +537,10 @@ class RAG:
                 kept_adapters = [elt for elt in self.generator.model.adapter_keys if elt != 'encoder_adapter']
                 print('Freezing the compressor, keeping only', kept_adapters)
                 self.generator.model.decoder.set_adapter(kept_adapters)
+                
+            # We need to re-activate the gradients for these tokens if needed
+            self.generator.model.prepare_mem_tokens_optimization()
+                            
 
         print("Data preprocessed")
 
@@ -538,7 +557,9 @@ class RAG:
             self.generator.model = get_peft_model(self.generator.model, lora_config)
             self.generator.model.print_trainable_parameters()
             self.generator.model = self.generator.model.bfloat16()
-
+            
+        # TODO: for other models, seems like '.eval' was called, we should do .train()            
+            
         args = TrainingArguments(
             run_name=self.run_name,
             output_dir=f'{self.experiment_folder}/train/',

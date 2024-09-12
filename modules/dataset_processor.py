@@ -28,7 +28,9 @@ class Processor(object):
                 overwrite, 
                 debug, 
                 oracle_provenance, 
-                shuffle_labels
+                shuffle_labels,
+                idx_min: int = None,
+                idx_max: int = None
                 ):
         self.dataset_name = dataset_name
         self.split = split
@@ -38,6 +40,11 @@ class Processor(object):
         self.debug = debug
         self.oracle_provenance = oracle_provenance
         self.shuffle_labels = shuffle_labels
+        self.use_cache = True # if set to False, then no cache file is read or written for the dataset
+        
+        # Ids used to work only with a subset of the dataset: we'll select range(idx_min, idx_max)
+        self.idx_min = idx_min
+        self.idx_max = idx_max
 
     def process():
         raise NotImplementedError()
@@ -54,7 +61,7 @@ class Processor(object):
     def shuffled_labels_as_content(self, dataset):
         import random
         random.seed(42)
-        col = dataset['label']
+        col = dataset['label']  
         random.shuffle(col)
         dataset_dict = dataset.to_dict()
         dataset_dict['ranking_label'] = [el[0] for el in col]
@@ -64,9 +71,14 @@ class Processor(object):
         print(f"Processing dataset {self.dataset_name} in {self.split} split ")
         debug_str = '_debug' if self.debug else ''
         assert self.dataset_name != None # dataset name needs to be set in processor class
+        # if self.dataset_name == 'kilt_combined_qa':
+        #     print('Overrinding oracle for dataset loading ')
+        #     oracle_provenance_str = ''
+        # else:
         oracle_provenance_str = '_oracle_provenance' if self.oracle_provenance else ''
+        # oracle_provenance_str = ''
         out_folder = os.path.join(f'{self.out_folder}', f'{self.dataset_name}_{self.split}{oracle_provenance_str}')
-        if os.path.exists(out_folder) and not self.overwrite:
+        if os.path.exists(out_folder) and not self.overwrite and self.use_cache:
             dataset = datasets.load_from_disk(out_folder)
             if self.debug:
                 dataset = dataset.select(range(15))
@@ -74,19 +86,34 @@ class Processor(object):
                 dataset = self.shuffled_labels_as_content(dataset)
             #id2index = self.tsv_to_dict(f'{out_folder}/id2index.csv')
             id2index = pickle.load(open(f'{out_folder}/id2index.p', 'rb'))
-            dataset.id2index = id2index
         else:
             dataset = self.process()
-            dataset.save_to_disk(out_folder)
             id2index = self.get_index_to_id(dataset) 
-            pickle.dump(id2index, open(f'{out_folder}/id2index.p', 'wb'))
+            if self.use_cache: # saving only if use_cache set (true most of the time)
+                dataset.save_to_disk(out_folder)
+                pickle.dump(id2index, open(f'{out_folder}/id2index.p', 'wb'))
             if self.debug:
                 dataset = dataset.select(range(15))
             if self.shuffle_labels:
                 dataset = self.shuffled_labels_as_content(dataset)
+        
+        # If ids are provided, we select the corresponding range:
+        # We then filter the 'id2index' to keep only ids/index present in the dataset
+        idx_min = self.idx_min or 0
+        idx_max = self.idx_max or len(dataset)
+        if idx_max == -1:
+            idx_max = len(dataset)
+        assert 0 <= idx_min < len(dataset), f"{idx_min} but {len(dataset)}"
+        assert 0 < idx_max <= len(dataset), f"{idx_max} but {len(dataset)}"
+        if idx_min != 0 or idx_max != len(dataset):
+            print(f"Selecting {idx_min} to {idx_max} in dataset {self.dataset_name} of length {len(dataset)}")
+            dataset = dataset.select(range(idx_min, idx_max))
+            dataset.id2index = self.get_index_to_id(dataset) # we recompute it
+        else:
             dataset.id2index = id2index
-            #self.dict_to_tsv(id2index, f'{out_folder}/id2index.csv')
+            
         dataset.name = self.dataset_name + debug_str + oracle_provenance_str
+        
         return dataset
     
     def dict_to_tsv(self, id_to_index, file_path):
@@ -651,7 +678,7 @@ class ProcessDatasets:
                         num_proc=num_proc, 
                         overwrite=overwrite, 
                         debug= debug if query_or_doc == 'query' else False, 
-                        oracle_provenance= oracle_provenance if query_or_doc == 'doc' else False, 
+                        oracle_provenance=oracle_provenance if query_or_doc == 'doc' else False, 
                         shuffle_labels= shuffle_labels if query_or_doc == 'query' else False
                         )
                     dataset = processor.get_dataset()
@@ -682,12 +709,38 @@ class ProcessDatasets:
 
 
 class KILTMULTIQA(Processor):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, response_files: list = None, *args, **kwargs):
         dataset_name = 'kilt_combined_qa'
         super().__init__(*args, **kwargs, dataset_name=dataset_name)
-    
+        self.response_files = response_files
+        if response_files is not None:
+            self.response_files = response_files
+            self.use_cache = False # we'll use labels coming from some input file: we don't want to overwrite anything in this case.
+            
     def process(self):
         dataset = datasets.load_dataset("dmrau/combined_qa")[self.split]
+        if self.response_files is not None:
+            new_data = {}
+            # We load the files, they are output files from bergen runs.
+            for response_file in self.response_files:
+                print('Reading response file', response_file)
+                with open(response_file, 'r') as f:
+                    data = json.load(f)
+                for elt in data:
+                    new_data[elt['q_id']] = elt['response']
+                    
+        # We assert that we obtained all ids:
+        original_ids = set(dataset['id'])
+        new_ids = set(new_data.keys())
+        assert  original_ids == new_ids , f"{len(original_ids)} vs {len(new_ids)}"
+        
+        def replace_label(example):
+            example['label'] = [new_data[example['id']]]
+            return example
+                    
+        print('Replacing labels in dataset with read responses...')
+        dataset = dataset.map(replace_label)
+        
         return dataset
 
     
