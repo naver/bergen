@@ -124,8 +124,9 @@ def match_single(prediction, ground_truth):
 
 
 def match_score(predictions, references):
-    if not isinstance(references[0], list):
-        warnings.warn(f"Labels are type {type(references[0])}, but are expected to be a list of strings (even if only one label). Metrics computation may run but procude false results.", UserWarning)
+    # if not isinstance(references[0], list):
+    #    warnings.warn(f"Labels are type {type(references[0])}, but are expected to be a list of strings (even if only one label). Metrics computation may run but procude false results.", UserWarning)
+    assert isinstance(references[0], list), f"Labels are type {type(references[0])}, but are expected to be a list of strings (even if only one label). Metrics computation may run but procude false results."
     return np.mean([max([match_single(prediction, gt) for gt in ground_truths]) for ground_truths, prediction in zip(references, predictions)])
 
 
