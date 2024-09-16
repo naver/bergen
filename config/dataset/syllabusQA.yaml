@@ -1,0 +1,12 @@
+dev:
+    doc: 
+        init_args:
+            _target_: modules.dataset_processor.SyllabusQA_syllabi
+            split: "train"
+    query: 
+        init_args:
+            _target_: modules.dataset_processor.SyllabusQA
+            split: "train"
+test:
+    doc: null
+    query: null

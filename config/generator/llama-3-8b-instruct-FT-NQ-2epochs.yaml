@@ -1,0 +1,9 @@
+init_args: 
+  _target_: models.generators.llm.LLM
+  model_name: "experiments/FT/FT_NQ_llama3_8b_lora_bm25_basicprompt/train/checkpoint-10812"
+  # model_name: "meta-llama/Meta-Llama-3-8B-Instruct"
+  max_new_tokens: 128
+  max_length: 2048
+  quantization: "int4"
+  batch_size: 8
+  local_path: True

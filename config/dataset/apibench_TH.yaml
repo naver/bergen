@@ -1,0 +1,9 @@
+dev:
+    doc:
+        init_args:
+            _target_: modules.dataset_processor.API_gorilla_TH
+            split: eval
+    query: 
+        init_args:
+            _target_: modules.dataset_processor.APIBench_gorilla_TH
+            split: eval

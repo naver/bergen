@@ -25,7 +25,9 @@ class LLM(Generator):
                 max_length=None,
                 prompt=None,
                 quantization=None,
-                attn_implementation="flash_attention_2"
+                gguf_file=None,  # for gguf model format
+                attn_implementation="flash_attention_2",
+                local_path=False, # activates local_files_only argument for AutoModel.from_pretrained() method; used to load local models after fine-tuning
                  ):
         Generator.__init__(self, model_name=model_name, batch_size=batch_size)
         # device_index = Accelerator().process_index
@@ -54,14 +56,14 @@ class LLM(Generator):
                 model_class = AutoModelForCausalLM
         print(tokenizer_name)
         try:
-            self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+            self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name, gguf_file=gguf_file)
         except:
 
             config_dict = os.path.join(tokenizer_name, 'config.json')
             with open(config_dict, 'r') as f:
                 config = json.load(f)
             tokenizer_name = config['_name_or_path']
-            self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+            self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name, gguf_file=gguf_file)
 
 
         self.tokenizer.padding_side = "left"
@@ -78,6 +80,7 @@ class LLM(Generator):
                 attn_implementation=attn_implementation,
                 torch_dtype=torch.bfloat16,
                 device_map='auto',
+                local_files_only=local_path,
             )
 
 
@@ -94,11 +97,13 @@ class LLM(Generator):
                 attn_implementation=attn_implementation,
                 torch_dtype=torch.bfloat16,
                 device_map='auto',
+                local_files_only=local_path,
             )
         else:
             self.model = model_class.from_pretrained(
                 self.model_name,
                 device_map='auto',
+                gguf_file=gguf_file,
             )
 
         # self.model.merge_and_unload()

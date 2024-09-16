@@ -1,0 +1,17 @@
+init_args: 
+  _target_: models.query_generators.unfold_api_query.UnfoldAPIQuery
+  name: "unfolded_query"
+  model: "generator"
+  prompt: "Take a look at the following user prompt. '{user_prompt}'. If not explicitly mentionned, the prompt hides a request to a type of machine learning model required for a specific ML task. Reformulate the request so that it asks for a model of the correct ML task. Answer with 1 sentence, and do not say anything else than the reformulated prompt. "
+  
+# init_args: 
+#   _target_: models.query_generators.unfold_api_query.UnfoldAPIQuery
+#   name: "unfolded_query_simple"
+#   model: "generator"
+#   prompt: "Take a look at the following user query. <begin_user_query>'{user_prompt}'<end_user_query>. If not explicitly mentionned, the query hides a type of machine learning task. First, without saying anything more, please repeat the user query. Then, please say the type of ML task. Just say the task, do not say anything else. For example: 'I need to detect the lamps in the picture. Task: computer vision object detection' "
+
+# init_args: 
+#   _target_: models.query_generators.unfold_api_query.UnfoldAPIQuery
+#   name: "unfolded_query_advanced"
+#   model: "generator"
+#   prompt: "Take a look at the following user query. <begin_user_query>'{user_prompt}'<end_user_query>. If not explicitly mentionned, the query hides a type of machine learning model required for a specific ML task. Please reformulate the request so that it explicitly asks for a model type of the relevant ML task. Include all details from the user query that can be relevant to get the most specific model possible. However, do not include any explicit model name, model family name, or architecture type that could bias the answer. Please give your reformulated query with 1 sentence, and do not say anything else! Just give the reformulated prompt right away."
