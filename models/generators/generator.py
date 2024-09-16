@@ -44,6 +44,7 @@ class Generator(ABC):
                 instructions += instruction
                 generated_response = self.generate(data_dict['model_input'])
                 responses += generated_response
+                torch.cuda.empty_cache()
             return query_ids, queries, instructions, responses, labels, ranking_labels
 
 

@@ -81,7 +81,7 @@ class Processor(object):
         if os.path.exists(out_folder) and not self.overwrite and self.use_cache:
             dataset = datasets.load_from_disk(out_folder)
             if self.debug:
-                dataset = dataset.select(range(15))
+                dataset = dataset.select(range(min(50, len(dataset))))
             if self.shuffle_labels:
                 dataset = self.shuffled_labels_as_content(dataset)
             #id2index = self.tsv_to_dict(f'{out_folder}/id2index.csv')

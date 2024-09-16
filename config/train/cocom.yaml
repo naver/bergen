@@ -1,5 +1,5 @@
 generate_test_samples: 5
-test_size_ratio: 0.01
+test_size_ratio: 256
 trainer:
   dataloader_num_workers: 4
   eval_accumulation_steps: 16

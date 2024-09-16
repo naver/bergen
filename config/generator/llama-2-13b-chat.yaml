@@ -5,4 +5,3 @@ init_args:
   max_length: 2048
   quantization: "int4"
   batch_size: 16
-

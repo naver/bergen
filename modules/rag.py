@@ -518,6 +518,9 @@ class RAG:
                                                dataset_split)
         
         # split train into train and test
+        if isinstance(self.training_config.test_size_ratio, int):
+            self.training_config.test_size_ratio = min(len(gen_dataset)//2, self.training_config.test_size_ratio)
+            
         train_test_datasets = gen_dataset.train_test_split(self.training_config.test_size_ratio, seed=42)
         
         print("Preprocessing data...")
@@ -541,7 +544,6 @@ class RAG:
             # We need to re-activate the gradients for these tokens if needed
             self.generator.model.prepare_mem_tokens_optimization()
                             
-
         print("Data preprocessed")
 
         # if lora in train config
@@ -565,7 +567,7 @@ class RAG:
             output_dir=f'{self.experiment_folder}/train/',
             **self.training_config.trainer,
             eval_strategy="steps",
-            eval_steps=10000, # not useful for cocom models (todo ?) 
+            eval_steps=100,
             save_strategy='steps',
             save_steps=500,
             save_total_limit=20,
