@@ -48,6 +48,7 @@ def get_scores(file, decimals=2):
     ll70b = float(data['LLM_ll70b']) if 'LLM_ll70bsol' in data else None
     mix7b = float(data['LLM_mix7b']) if 'LLM_mix7b' in data else None
     LLMeval = float(data['LLMeval']) if 'LLMeval' in data else None
+    VLLMeval = float(data['VLLMeval']) if 'VLLMeval' in data else None
     m = float(data['M'])
     em = float(data['EM'])
     f1 = float(data['F1'])
@@ -57,7 +58,7 @@ def get_scores(file, decimals=2):
     rouge2 = float(data['Rouge-2'])
     rougel = float(data['Rouge-L'])
 
-    return m, em, f1, precision, recall, rouge1, rouge2, rougel, bem, LLMeval #ll7b,ll13b,ll70b,  mix7b
+    return m, em, f1, precision, recall, rouge1, rouge2, rougel, bem, LLMeval, VLLMeval #ll7b,ll13b,ll70b,  mix7b
 
 def get_generation_time(file):
     data = json.load(open(file))
@@ -88,7 +89,7 @@ def main(args):
                             dataset_query, dataset_doc, retriever, reranker, generator, prompt, retrieve_top_k, rerank_top_k = get_config(file_in_subfolder, split)
 
                         if f'eval_{split}_metrics.json' in str(file_in_subfolder):
-                            m, em, f1, precision, recall, rouge1, rouge2, rougel, bem, LLMeval= get_scores(file_in_subfolder)
+                            m, em, f1, precision, recall, rouge1, rouge2, rougel, bem, LLMeval, VLLMEval = get_scores(file_in_subfolder)
                         if f'eval_{split}_generation_time.json' in str(file_in_subfolder) :
                             gen_time = get_generation_time(file_in_subfolder) 
 
@@ -114,7 +115,7 @@ def main(args):
                     elif args.format =='tiny':
                         ltuple.append([current_folder.name, dataset_query, generator_basename,retriever_basename, reranker_basename, m, LLMeval])
                     elif args.format=='full':     
-                        ltuple.append([current_folder.name, retriever, ranking_metric, reranker, generator,  gen_time, dataset_query, retrieve_top_k, rerank_top_k, m, em, f1, precision, recall, rouge1, rouge2, rougel, bem, LLMeval])
+                        ltuple.append([current_folder.name, retriever, ranking_metric, reranker, generator,  gen_time, dataset_query, retrieve_top_k, rerank_top_k, m, em, f1, precision, recall, rouge1, rouge2, rougel, bem, LLMeval, VLLMEval])
                     else:
                         raise ValueError('Invalid output format')
     
@@ -132,7 +133,7 @@ def main(args):
         #ltuple.append([current_folder.name, dataset_query, generator,retriever, reranker, m, LLMeval])
         df.columns = ['exp_folder', 'query_dataset', 'Generator', 'Retriever', 'Reranker', "M", "LLMeval"]
     elif args.format =='full':
-        df.columns = ['exp_folder', 'Retriever', 'P_1', 'Reranker', 'Generator',  'gen_time', 'query_dataset', "r_top", "rr_top", "M", "EM", "F1", "P", "R", "Rg-1", "Rg-2", "Rg-L", "BEM", "LLMeval"]
+        df.columns = ['exp_folder', 'Retriever', 'P_1', 'Reranker', 'Generator',  'gen_time', 'query_dataset', "r_top", "rr_top", "M", "EM", "F1", "P", "R", "Rg-1", "Rg-2", "Rg-L", "BEM", "LLMeval", "VLLMeval"]
     else:
         raise ValueError('Invalid output format')
     
@@ -141,7 +142,7 @@ def main(args):
     print(df.to_markdown(floatfmt=".3f"))
     if args.csv:
         os.makedirs('results', exist_ok=True)
-        file_name = args.folder.replace('/', '_')
+        file_name = args.folder.rstrip('/').replace('/', '_')
         df.to_csv(f'results/{file_name}.csv', index=False)
     
 
