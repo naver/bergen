@@ -2,7 +2,8 @@ init_args:
     _target_: models.generators.llm_cocom.LLMCocom
     model_name: "cocom"
     batch_size: 64
-    checkpoint_path: "/scratch/1/user/mlouis/calmar/expcocom/unique_adapter_128/0ad95c551c7923fc/last_model"
+    decoder_model_name: 'mistralai/Mistral-7B-Instruct-v0.2'
+    checkpoint_path: null
     context_max_length: 128
     max_new_tokens: 128
     model_max_length: 1280

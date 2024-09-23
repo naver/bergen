@@ -14,6 +14,7 @@ class LLMCocom(Generator):
                  batch_size: int,
                  checkpoint_path: str,
                  context_max_length: int = 128,
+                 decoder_model_name: str = 'mistralai/Mistral-7B-Instruct-v0.2',
                  max_new_tokens: int = 128,
                  model_max_length: int = 1280,
                  prompt: str = None,
@@ -35,7 +36,7 @@ class LLMCocom(Generator):
             self.model = COCOM.from_pretrained(checkpoint_path)
         else:
             cfg = COCOMConfig(
-                decoder_model_name='mistralai/Mistral-7B-Instruct-v0.2',
+                decoder_model_name=decoder_model_name,
                 max_new_tokens=128,
                 quantization='no',
                 compr_model_name=None,
@@ -60,7 +61,7 @@ class LLMCocom(Generator):
         self.model.bfloat16()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model.to(self.device)
-        self.response_token_ids = self.get_response_template_ids()
+        # self.response_token_ids = self.get_response_template_ids()
                 
     def generate(self, instr_tokenized):
         """
@@ -100,12 +101,12 @@ class LLMCocom(Generator):
                 responses += generated_response
         return query_ids, queries, instructions, responses, labels, ranking_labels
     
-    def get_response(self):
-        return '[/INST]' # TODO: this shouldn't be hard-coded
+    # def get_response(self):
+    #     return '[/INST]' # TODO: this shouldn't be hard-coded
 
-    def get_response_template_ids(self):
-        response_template = self.get_response()
-        return self.model.decoder_tokenizer.encode(response_template, add_special_tokens=False)
+    # def get_response_template_ids(self):
+    #     response_template = self.get_response()
+    #     return self.model.decoder_tokenizer.encode(response_template, add_special_tokens=False)
     
     def collate_fn(self, examples, eval=False):
         """
@@ -120,6 +121,7 @@ class LLMCocom(Generator):
             dict: Collated batch of data.
         """
         from cocom.utils import add_memory_tokens_to_inputs
+        batch_size = len(examples)
 
         ignore_index = -100
         q_ids = [e['q_id'] for e in examples]
@@ -128,15 +130,14 @@ class LLMCocom(Generator):
         ranking_label = [e['ranking_label'] for e in examples] if 'ranking_label' in examples[0] else [None] * len(examples)
 
         for ex in examples:
-            assert len(ex['doc']) == self.model.generation_top_k, f"Not all queries of the same number of docs: not supported here: {len(ex['doc'])} vs {self.model.generation_top_k}"
-
-        docs = sum([example['doc'] for example in examples], []) # flatten all the docs for encoder input
+            assert len(ex['doc']) == self.model.generation_top_k, \
+                f"Not all queries of the same number of docs: not supported here: {len(ex['doc'])} vs {self.model.generation_top_k}"
 
         compressor_tokenizer = self.model.compr.tokenizer if self.model.compr else self.model.decoder_tokenizer
-
         assert compressor_tokenizer == self.model.decoder_tokenizer, 'Not supported yet'
 
-        # Building encoder inputs, for each doc:
+        #### BULIDING ENCODER INPUTS ####
+        docs = sum([example['doc'] for example in examples], []) # flatten all the docs for encoder input
         inp_enc = [self.model.decoder_tokenizer.enc_token + self.model.decoder_tokenizer.bos_token + doc + self.model.decoder_tokenizer.eos_token for doc in docs]
         inp_enc = self.model.decoder_tokenizer(inp_enc, return_tensors='pt', padding="longest", max_length=self.context_max_length+3,
                                                truncation=True, add_special_tokens=False)
@@ -144,12 +145,21 @@ class LLMCocom(Generator):
         # Getting the number of memory tokens to use for this batch
         num_mem_tokens = math.ceil((inp_enc['input_ids'].size(1)- 3) / self.model.compr_rate)
 
-
-        inp_enc['input_ids'], inp_enc['attention_mask'] = add_memory_tokens_to_inputs(inp_enc['input_ids'],
+        enc_input_ids, enc_attention_mask = add_memory_tokens_to_inputs(inp_enc['input_ids'],
                                                                                       inp_enc['attention_mask'],
                                                                                       num_mem_tokens,
                                                                                       self.model.decoder_tokenizer)
+        # input_ids are of shape (top_k * batch_size, enc_token_length)
+        # We can reshape it to (batch_size, top_k, enc_token_length)
+        # for proper batching (important with multi-gpu training)
+        assert enc_input_ids.size(0) == self.model.generation_top_k * batch_size
+        assert len(enc_input_ids.size()) == 2
+        assert enc_attention_mask.size(0) == self.model.generation_top_k * batch_size
+        assert len(enc_attention_mask.size()) == 2
+        enc_input_ids = enc_input_ids.view(batch_size, self.model.generation_top_k, -1)
+        enc_attention_mask = enc_attention_mask.view(batch_size, self.model.generation_top_k, -1)
 
+        #### BUILDING DECODER INPUTS ####
         assert num_mem_tokens == len(self.model.decoder_tokenizer.mem_tokens)
         mem_tokens_str = ''.join(self.model.decoder_tokenizer.mem_tokens)
         
@@ -160,25 +170,35 @@ class LLMCocom(Generator):
         # We just need to leave some extra empty tokens when preparing the decoder inputs here:
         if eval:
             label = [[e['label']] if isinstance(e['label'], str) else e['label'] for e in examples]
-            instr = [self.blend_prompt_and_memory_tokens(self.model.decoder_tokenizer, mem_tokens_str, query=q) for q in query]
+            instr = [self.blend_prompt_and_memory_tokens(self.model.decoder_tokenizer, mem_tokens_str, query=q)[0] for q in query]
 
             inp_dec = self.model.decoder_tokenizer(instr, return_tensors='pt', padding="longest", add_special_tokens=False,
                                         truncation=True,  max_length=self.model_max_length)
         else:
             label = [e['label'] if isinstance(e['label'], str) else random.choice(e['label']) for e in examples]
-            instr = [self.blend_prompt_and_memory_tokens(self.model.decoder_tokenizer, mem_tokens_str, query=q, label=e) for q, e in zip(query, label)]
+            
+            instr, labels_start = zip(*[self.blend_prompt_and_memory_tokens(self.model.decoder_tokenizer, mem_tokens_str, query=q, label=e)
+                                        for q, e in zip(query, label)])
+            instr, labels_start = list(instr), list(labels_start)
+                
             inp_dec = self.model.decoder_tokenizer(instr, return_tensors='pt', padding="longest", add_special_tokens=False,
                                                    truncation=True, max_length=self.model_max_length)
             
-            label_ids = prepare_labels(inp_dec["input_ids"], self.response_token_ids[1:], ignore_index=ignore_index)
+            # sadly the tokenization with padding added some left padding, so we must update labels accordingly
+            label_ids = inp_dec['input_ids'].clone()
+            for i in range(len(label_ids)):
+                # this counts the amount of left padding added to this particular item in the batch:
+                left_padding_count = (inp_dec['attention_mask'][i] == 0).sum().item()  # This counts the number of padding tokens on the left
+                # we do not count in the loss the padding elements and the question part:
+                label_ids[i, :labels_start[i]+left_padding_count] = ignore_index
 
         data_dict = {}
         if not eval:
             data_dict['label_ids'] =  label_ids
 
         model_input = {
-            'enc_input_ids': inp_enc['input_ids'],
-            'enc_attention_mask': inp_enc['attention_mask'],
+            'enc_input_ids': enc_input_ids,
+            'enc_attention_mask': enc_attention_mask,
             'dec_input_ids': inp_dec['input_ids'],
             'dec_attention_mask': inp_dec['attention_mask'],
         }
@@ -209,8 +229,9 @@ class LLMCocom(Generator):
     def blend_prompt_and_memory_tokens(self, tokenizer, mem_tokens: str, query: str, label: str=None):
         """
         Takes care of blending the prompt with the memory tokens:
+        Also returns, if a label is provided, the position of the first token index of the label (for loss comp later on)
         """        
-        # proper name for "eval" call
+        # proper names for "eval" call, don't remove these lines
         docs = mem_tokens * self.model.generation_top_k
         question = query
         
@@ -218,13 +239,18 @@ class LLMCocom(Generator):
             {"role": "system", "content": self.prompt.system},
             {"role": "user", "content": eval(self.prompt.user).replace(':\ ', ': ')}
         ]
+        
+        label_start = None
+        
         if label is not None:
             messages.append({"role": "assistant", "content": label})
-            
+            # Compute the start position of the label in the input_ids
+            label_start = len(tokenizer.apply_chat_template(messages[:-1], tokenize=True, add_generation_prompt=True, add_special_tokens=False))
+
         # todo: when training, should add_generation_prompt be set to True ?
-        prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-                    
-        return prompt
+        prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=False)
+        
+        return prompt, label_start
 
 
 class LLMCocomOnlyDecoder(LLM):

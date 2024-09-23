@@ -527,7 +527,7 @@ class RAG:
         from models.generators.llm_cocom import LLMCocom
         if not isinstance(self.generator, LLMCocom):
             train_test_datasets['train'] = Tokenized_Sorted_Dataset(train_test_datasets['train'], self.generator, training=True)
-            train_test_datasets['test'] = Tokenized_Sorted_Dataset(train_test_datasets['test'], self.generator, training=False)
+            train_test_datasets['test'] = Tokenized_Sorted_Dataset(train_test_datasets['test'], self.generator, training=True)
         else:
             # Preprocessing for COCOM is all done in the collate_fn function.
             self.generator.model.generation_top_k = self.generation_top_k
@@ -561,7 +561,9 @@ class RAG:
             self.generator.model = self.generator.model.bfloat16()
             
         # TODO: for other models, seems like '.eval' was called, we should do .train()            
-            
+        model = self.generator.model
+        accelerator = Accelerator(split_batches=False)
+
         args = TrainingArguments(
             run_name=self.run_name,
             output_dir=f'{self.experiment_folder}/train/',
@@ -577,20 +579,19 @@ class RAG:
         )
 
         trainer = RAGTrainer(
-            model=self.generator.model,
-            model_prediction_step=self.generator.prediction_step,
+            model=model,
             args=args,
             data_collator=self.generator.collate_fn,
             train_dataset=train_test_datasets['train'],
             eval_dataset=train_test_datasets['test']
         )
         
-        accelerator = Accelerator(split_batches=False)
-        model, _, _, _ = accelerator.prepare(trainer.model, 
-                                             trainer.optimizer, 
-                                             trainer.get_train_dataloader(),
-                                             trainer.get_eval_dataloader())
-        # _ = trainer.evaluate() # for debugging
+        model, _, _, _ = accelerator.prepare(
+            model, 
+            trainer.optimizer, 
+            trainer.get_train_dataloader(), 
+            trainer.get_eval_dataloader()
+        )
         
         trainer.train(resume_from_checkpoint=None)
         accelerator.wait_for_everyone()
@@ -599,6 +600,6 @@ class RAG:
         self.generator.model = unwrapped_model
         
         if accelerator.is_main_process:
-            self.generator.model.save_pretrained(f"{self.experiment_folder}/last_model")
+            model.save_pretrained(f"{self.experiment_folder}/last_model")
             move_finished_experiment(self.experiment_folder)
             self.experiment_folder = get_finished_experiment_name(self.experiment_folder)
