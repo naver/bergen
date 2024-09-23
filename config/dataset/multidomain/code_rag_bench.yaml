@@ -1,14 +1,12 @@
 dev:
 
     # retrieve from oracle docs for HumanEval and MBPP
-
     # doc: 
     #     init_args:
     #         _target_: modules.dataset_processor.CodeRAGBench_programming_solutions
     #         split: "train"
 
     # retrieve from all other docs
-
     doc: 
         init_args:
             _target_: modules.dataset_processor.MergedDocDataset
@@ -17,9 +15,11 @@ dev:
             out_dataset_name: "CodeRAGBench_database_by_source_minus_humaneval"
             split: "train"
 
+    # choose a query dataset: HumanEval or MBPP already implemented
     query: 
         init_args:
-            _target_: modules.dataset_processor.CodeRAGBench_HumanEval   # modules.dataset_processor.CodeRAGBench_MBPP
+            _target_: modules.dataset_processor.CodeRAGBench_HumanEval   
+            # _target_: modules.dataset_processor.CodeRAGBench_MBPP
             split: "train"
 test:
     doc: null

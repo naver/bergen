@@ -1,0 +1,12 @@
+dev:
+    doc: 
+        init_args:
+            _target_: modules.processors.multidomain_dataset_processor.CodeRAGBench_programming_solutions
+            split: "train"
+    query: 
+        init_args:
+            _target_: modules.processors.multidomain_dataset_processor.CodeRAGBench_HumanEval
+            split: "train"
+test:
+    doc: null
+    query: null

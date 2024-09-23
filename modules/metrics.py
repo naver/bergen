@@ -6,7 +6,6 @@ import numpy as np
 from rouge import Rouge
 from tqdm import tqdm
 from collections import Counter
-import warnings
 
 # partly adapted from https://github.com/facebookresearch/atlas/blob/0ec8889492d5187b26c51b8d1781239a4cf6741e/src/evaluation.py
 
@@ -124,9 +123,7 @@ def match_single(prediction, ground_truth):
 
 
 def match_score(predictions, references):
-    # if not isinstance(references[0], list):
-    #    warnings.warn(f"Labels are type {type(references[0])}, but are expected to be a list of strings (even if only one label). Metrics computation may run but procude false results.", UserWarning)
-    assert isinstance(references[0], list), f"Labels are type {type(references[0])}, but are expected to be a list of strings (even if only one label). Metrics computation may run but procude false results."
+    assert isinstance(references[0], list), f"during metrics computation: Labels are type {type(references[0])}, but are expected to be a list of strings (even if only one label). Metrics computation may run but produce false results."
     return np.mean([max([match_single(prediction, gt) for gt in ground_truths]) for ground_truths, prediction in zip(references, predictions)])
 
 

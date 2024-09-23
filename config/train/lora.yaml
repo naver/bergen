@@ -1,5 +1,7 @@
 generate_test_samples: 5
 test_size_ratio: 0.01
+num_saving_steps: 10
+wandb_project_name: null # used if trainer.report_to == "wandb"
 trainer:
   dataloader_num_workers: 4
   eval_accumulation_steps: 4
