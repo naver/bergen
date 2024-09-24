@@ -9,3 +9,4 @@ tests/index/
 tests/exp/
 tests/run/
 outputs/
+wandb/
