@@ -1,12 +1,27 @@
-dev:
+train:
     doc: 
         init_args:
             _target_: modules.processors.multidomain_dataset_processor.SyllabusQA_syllabi
-            split: "train"
+            split: "all"
     query: 
         init_args:
             _target_: modules.processors.multidomain_dataset_processor.SyllabusQA
             split: "train"
+dev:
+    doc: 
+        init_args:
+            _target_: modules.processors.multidomain_dataset_processor.SyllabusQA_syllabi
+            split: "all"
+    query: 
+        init_args:
+            _target_: modules.processors.multidomain_dataset_processor.SyllabusQA
+            split: "val"
 test:
-    doc: null
-    query: null
+    doc: 
+        init_args:
+            _target_: modules.processors.multidomain_dataset_processor.SyllabusQA_syllabi
+            split: "all"
+    query: 
+        init_args:
+            _target_: modules.processors.multidomain_dataset_processor.SyllabusQA
+            split: "test"

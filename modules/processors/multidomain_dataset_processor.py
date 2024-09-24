@@ -345,7 +345,8 @@ class SyllabusQA(Processor):
         super().__init__(*args, **kwargs, dataset_name=self.dataset_name)
     
     def process(self):
-        url = "https://raw.githubusercontent.com/umass-ml4ed/SyllabusQA/main/data/dataset_split/test.csv"
+        assert self.split in ['train', 'val', 'test'], "Wrong dataset split, should be one of 'train', 'val', or 'test'."
+        url = f"https://raw.githubusercontent.com/umass-ml4ed/SyllabusQA/main/data/dataset_split/{self.split}.csv"
         df = pd.read_csv(url)
         def merge_syllabusname_question(row):
             row['content'] = row['syllabus_name'] + ": " + row['question']
