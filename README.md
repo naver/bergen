@@ -41,27 +41,20 @@ python3 bergen.py retriever="bm25" reranker="minilm6" generator='tinyllama-chat'
 Check the [installation guide](documentations/INSTALL.md) for detailed instructions.
 
 
-## Usage Examples
+## Usage
 
-1. Generation without Retrieval (Closed Book):
-   ```bash
-   python3 bergen.py generator='tinyllama-chat' dataset='kilt_nq'
-   ```
+```
+# simple setup for benchmarking
+# run the retriever and cache results
+# do the generation with VLLM
+for dataset in kilt_nq kilt_hotpotqa kilt_triviaqa asqa popqa ; do
+   
+   python3 bergen.py  retriever=splade-v3 reranker=debertav3  dataset=$dataset
+    
+   python3 bergen.py  retriever=splade-v3 reranker=debertav3 dataset=$dataset  generator=vllm_SOLAR-107B
+done
+```
 
-2. Retriever - only first stage:
-   ```bash
-   python3 bergen.py retriever="splade-v3" generator='tinyllama-chat' dataset='kilt_nq'
-   ```
-
-3. Retriever + Reranker:
-   ```bash
-   python3 bergen.py retriever="splade-v3" reranker="debertav3" generator='tinyllama-chat' dataset='kilt_nq'
-   ```
-
-4. Using vllm for faster generation:
-   ```bash
-   python3 bergen.py retriever="splade-v3" reranker="debertav3" generator='vllm_SOLAR-107B' dataset='kilt_nq'
-   ```
 
 To fully configure BERGEN, please read our [configuration guide](documentations/config.md)
 

@@ -1,6 +1,29 @@
 ### Configs for BERGEN
 
-All the  configuration files are located in the config dir.
+Usage Examples
+
+1. Generation without Retrieval (Closed Book):
+   ```bash
+   python3 bergen.py generator='tinyllama-chat' dataset='kilt_nq'
+   ```
+
+2. Retriever - only first stage:
+   ```bash
+   python3 bergen.py retriever="splade-v3" generator='tinyllama-chat' dataset='kilt_nq'
+   ```
+
+3. Retriever + Reranker:
+   ```bash
+   python3 bergen.py retriever="splade-v3" reranker="debertav3" generator='tinyllama-chat' dataset='kilt_nq'
+   ```
+
+4. Using vllm for faster generation:
+   ```bash
+   python3 bergen.py retriever="splade-v3" reranker="debertav3" generator='vllm_SOLAR-107B' dataset='kilt_nq'
+   ```
+
+
+All those different pipelines rely on  configuration files located in the config dir.
 The main config file is located in config/rag.yaml
 
 ```
@@ -32,7 +55,6 @@ Experiments are saved under `experiments_folder`. The experiment folder is named
 
 
 - To overwrite the experiment add `+overwrite_exp=True` as an argument, due to a bug or another update in the config 
-- To overwrite an existing retrieval run, `+overwrite_run=True` as an argument.
 -  To rebuild the index (and subsequently the ranking run) add `+overwrite_index=True` as an argument.
 
 To print the results in a table run the following commands. By default, this will print all experiments that contain generation metric files in `experiments/` and sort them by the `generator`.
