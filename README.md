@@ -1,5 +1,4 @@
-
-![Al](https://upload.wikimedia.org/wikipedia/commons/6/62/Night_view_from_Mount_Floyen_-_Bergen%2C_Norway.jpg)
+<img src="https://upload.wikimedia.org/wikipedia/commons/6/62/Night_view_from_Mount_Floyen_-_Bergen%2C_Norway.jpg" width="500">
 
 # BERGEN: A Benchmarking Library for Retrieval-Augmented Generation
  
@@ -60,10 +59,13 @@ To fully configure BERGEN, please read our [configuration guide](documentations/
 
 ## Evaluation
 
-Run the evaluation script to calculate metrics:
+Run the evaluation script to calculate LLMEval  metrics and print the results:
 
 ```bash
-python3 eval.py --experiments_folder experiments/ --llm_batch_size 16 --split 'dev' --vllm
+python3 eval.py --experiments_folder experiments/ --llm_batch_size 16 --split 'dev' --vllm SOLAR-107B
+
+#parse all the experiments files into a panda dataframe
+python print_results.py --folder experiments/ --format=tiny
 ```
 
 For more evaluation options and details, refer to the [Evaluation section](documentations/evaluations.md) in the full documentation.
