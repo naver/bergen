@@ -2,10 +2,11 @@ import argparse
 import json
 from pathlib import Path
 from omegaconf import OmegaConf
+import pandas as pd
 import os 
 
 
-import pandas as pd
+
 
 def get_info(file):
     res= json.load( open(file))
@@ -22,6 +23,7 @@ def get_info(file):
 def get_em_score(file):
     res= json.load( open(file))
     return res['em']
+
 
 def get_bem_score(file):
     with open(file) as fd:
@@ -42,22 +44,7 @@ def get_config(file, split):
 
 def get_scores(file, decimals=2):
     data = json.load(open(file))
-    bem = float(data['BEM']) if 'BEM' in data else None
-    ll7b = float(data['LLM_ll7b']) if 'LLM_ll7b' in data else None
-    ll13b = float(data['LLM_ll13b']) if 'LLM_ll13b' in data else None
-    ll70b = float(data['LLM_ll70b']) if 'LLM_ll70bsol' in data else None
-    mix7b = float(data['LLM_mix7b']) if 'LLM_mix7b' in data else None
-    LLMeval = float(data['LLMeval']) if 'LLMeval' in data else None
-    m = float(data['M'])
-    em = float(data['EM'])
-    f1 = float(data['F1'])
-    precision = float(data['Precision'])
-    recall = float(data['Recall'])
-    rouge1 = float(data['Rouge-1'])
-    rouge2 = float(data['Rouge-2'])
-    rougel = float(data['Rouge-L'])
-
-    return m, em, f1, precision, recall, rouge1, rouge2, rougel, bem, LLMeval #ll7b,ll13b,ll70b,  mix7b
+    return data
 
 def get_generation_time(file):
     data = json.load(open(file))
@@ -82,53 +69,62 @@ def main(args):
                 files = [f.name for f in current_folder.iterdir()]
 
                 if f'eval_{split}_metrics.json' in files:
-
+                    x={}
                     for file_in_subfolder in current_folder.iterdir():
                         # try:
+                        
                         if 'config.yaml' in str(file_in_subfolder):
                             dataset_query, dataset_doc, retriever, reranker, generator, prompt, retrieve_top_k, rerank_top_k = get_config(file_in_subfolder, split)
 
+                            #preprocess the generator name,retriever,reranker name
+                            generator_basename = os.path.basename(generator)
+                            retriever_basename = os.path.basename(retriever)
+                            reranker_basename = os.path.basename(reranker)
+                            
+                            x['exp_folder']=current_folder.name
+                            x['query_dataset']=dataset_query.split('.')[-1]
+                            x['Retriever']=retriever_basename
+                            x['Reranker']=reranker_basename
+                            x['Generator']=generator_basename
+                                                    
                         if f'eval_{split}_metrics.json' in str(file_in_subfolder):
-                            m, em, f1, precision, recall, rouge1, rouge2, rougel, bem, LLMeval= get_scores(file_in_subfolder)
+                            #m, em, f1, precision, recall, rouge1, rouge2, rougel, bem, LLMeval= get_scores(file_in_subfolder)
+                            x_s=get_scores(file_in_subfolder)
+                            x.update(x_s)
                         if f'eval_{split}_generation_time.json' in str(file_in_subfolder) :
                             gen_time = get_generation_time(file_in_subfolder) 
+                            x['gen_time']=gen_time
 
                         if f'eval_{split}_ranking_metrics.json' in str(file_in_subfolder) :
                             ranking_metric = get_ranking_metrics(file_in_subfolder)
+                            x['P_1']=ranking_metric
                         # except:
                         #     print(f'Failed to load {current_folder}!')  
-                    #preprocess the generator name,retriever,reranker name
-                    generator_basename = os.path.basename(generator)
-                    retriever_basename = os.path.basename(retriever)
-                    reranker_basename = os.path.basename(reranker)
                     
-                    if args.format =='simple':
-                        ltuple.append([current_folder.name, dataset_query, generator_basename,retriever_basename, reranker_basename, m, em, recall, rougel, bem, LLMeval])
-                    elif args.format =='tiny':
-                        ltuple.append([current_folder.name, dataset_query, generator_basename,retriever_basename, reranker_basename, m, LLMeval])
-                    elif args.format=='full':     
-                        ltuple.append([current_folder.name, retriever, ranking_metric, reranker, generator,  gen_time, dataset_query, retrieve_top_k, rerank_top_k, m, em, f1, precision, recall, rouge1, rouge2, rougel, bem, LLMeval])
-                    else:
-                        raise ValueError('Invalid output format')
-    
-        except:
+                    ltuple.append(x)
+                    
+        except Exception as e:
             print(f'Skipping {current_folder} due to parsing errors!')
+            print(e)
     
     if len(ltuple) == 0:
         print(f'No results in folder "{args.folder}" yet!')
         exit()
     df= pd.DataFrame(ltuple)
+    col=list(df.columns)
+    llmeval_col = [c for c in col if 'llmeval' in c.lower()]
+
     if args.format =='simple':
-        # ltuple.append([current_folder.name, dataset_query, generator,retriever, reranker, m, em, recall, rougel, bem, LLMeval])
-        df.columns = ['exp_folder', 'query_dataset', 'Generator', 'Retriever', 'Reranker', "M", "EM", "R", "Rg-L", "BEM", "LLMeval"]
+        sel_col = ['exp_folder', 'query_dataset', 'Generator', 'Retriever', 'Reranker', "M", "EM", "Recall"] + llmeval_col
     elif args.format =='tiny':
-        #ltuple.append([current_folder.name, dataset_query, generator,retriever, reranker, m, LLMeval])
-        df.columns = ['exp_folder', 'query_dataset', 'Generator', 'Retriever', 'Reranker', "M", "LLMeval"]
+        sel_col =['exp_folder', 'query_dataset', 'Generator', 'Retriever', 'Reranker', "M"] + llmeval_col
     elif args.format =='full':
-        df.columns = ['exp_folder', 'Retriever', 'P_1', 'Reranker', 'Generator',  'gen_time', 'query_dataset', "r_top", "rr_top", "M", "EM", "F1", "P", "R", "Rg-1", "Rg-2", "Rg-L", "BEM", "LLMeval"]
+        sel_col = ['exp_folder', 'Retriever', 'P_1', 'Reranker', 'Generator',  'gen_time', 'query_dataset', "M", "EM", "F1", "Precision", "Recall","Recall_char3gram", "Rouge-L"]+llmeval_col
     else:
         raise ValueError('Invalid output format')
+    df=df[sel_col]
     
+   
     df=df.sort_values(by=[args.sort])
     print('Split:', args.split)
     print(df.to_markdown(floatfmt=".2f"))

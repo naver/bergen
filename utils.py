@@ -45,6 +45,8 @@ def load_embeddings(index_path):
         raise IOError(f'Embedding index corrupt. Please delete folder "{index_path}" and run again.')
     return embeds
 
+'''
+seem deprecated here
 def get_embeddings_by_id(ids, index_path):
     if not isinstance(ids[0], list):
         ids = [ids]
@@ -71,7 +73,10 @@ def get_embeddings_by_id(ids, index_path):
         embeds.append(embeds_q)
     embeds = torch.stack(embeds)
     return embeds
+'''
 
+
+'''
 def get_doc_embeds_from_dataset(d_ids, embeds_dataset):
     if len(d_ids) == 0:
         return None
@@ -84,6 +89,8 @@ def get_doc_embeds_from_dataset(d_ids, embeds_dataset):
     doc_embeds = torch.stack(doc_embeds) 
 
     return doc_embeds.cpu()
+'''
+
 
 # horrible function :/ needs to be refactored into mult_doc and single doc
 # gets q_ids and d_ids and does a lookup by id to get the content
@@ -100,6 +107,7 @@ def prepare_dataset_from_ids(dataset, q_ids, d_ids, multi_doc=False, query_embed
 
         dataset_dict.update({'label': dataset['query']['label'] } if 'label' in dataset['query'].features else {})
         dataset_dict.update({'ranking_label': dataset['query']['ranking_label']} if 'ranking_label' in dataset['query'].features else {})
+        return datasets.Dataset.from_dict(dataset_dict)
     else:
         dataset_dict = defaultdict(list)
         # get labels
@@ -109,39 +117,38 @@ def prepare_dataset_from_ids(dataset, q_ids, d_ids, multi_doc=False, query_embed
         # get queries
         queries = get_by_id(dataset['query'], q_ids, query_field)
         # put together dataset_dict for each query
-        for i, q_id in tqdm(enumerate(q_ids), desc='Fetching data from dataset...', total=len(q_ids)):
-            docs = get_by_id(dataset['doc'], d_ids[i], 'content') 
-            doc_idxs = get_by_id(dataset['doc'], d_ids[i])
-            # for multi_doc=True, all documents are saved to the 'doc' entry
+        def mygen():
+            for i, q_id in tqdm(enumerate(q_ids), desc='Fetching data from dataset...', total=len(q_ids)):
+                docs = get_by_id(dataset['doc'], d_ids[i], 'content') 
+                doc_idxs = get_by_id(dataset['doc'], d_ids[i])
+                # for multi_doc=True, all documents are saved to the 'doc' entry
 
-            if multi_doc:
-                dataset_dict['doc'].append(docs)
-                dataset_dict['query'].append(queries[i])
-                dataset_dict['q_id'].append(q_id)
-                dataset_dict['d_id'].append(d_ids[i])
-                dataset_dict['d_idx'].append(doc_idxs)
-                # add labels if they exist in datset
-                if len(labels) > 0:
-                    dataset_dict['label'].append(labels[i])
-                # add ranking_labels if they exist in datset
-                if len(ranking_labels) > 0:
-                    dataset_dict['ranking_label'].append(ranking_labels[i])
-            else:
-                # for multi_doc=False, we save every document to a new entry
-                    for d_id, doc, d_idx in zip(d_ids[i], docs, doc_idxs):
-                        dataset_dict['d_id'].append(d_id)
-                        dataset_dict['d_idx'].append(d_idx)
-                        dataset_dict['doc'].append(doc)
-                        dataset_dict['query'].append(queries[i])
-                        dataset_dict['q_id'].append(q_id)
-                        # add labels if they exist in datset
-                        if len(labels) > 0 :
-                            dataset_dict['label'].append(labels[i])
-                        # add ranking_labels if they exist in datset
-                        if len(ranking_labels) > 0:
-                            dataset_dict['ranking_label'].append(ranking_labels[i])
+                if multi_doc:
+                    x={'doc':docs, 'query': queries[i],'q_id':q_id,'d_id':d_ids[i],'d_idx':doc_idxs}
+                    # add labels if they exist in datset
+                    if len(labels) > 0:
+                        #dataset_dict['label'].append(labels[i])
+                        x['label']=labels[i]
+                    # add ranking_labels if they exist in datset
+                    if len(ranking_labels) > 0:
+                        #dataset_dict['ranking_label'].append(ranking_labels[i])
+                        x['ranking_labels']=ranking_labels[i]
+                    yield x
+                else:
+                    # for multi_doc=False, we save every document to a new entry
+                        for d_id, doc, d_idx in zip(d_ids[i], docs, doc_idxs):
+                            x= {'d_id': d_id, 'd_idx':d_idx,'doc': doc, 'query':queries[i],'q_id':q_id} 
+                            # add labels if they exist in datset
+                            if len(labels) > 0 :
+                                dataset_dict['label'].append(labels[i])
+                                x['label']=labels[i]
+                            # add ranking_labels if they exist in datset
+                            if len(ranking_labels) > 0:
+                                dataset_dict['ranking_label'].append(ranking_labels[i])
+                                x['ranking_labels']=ranking_labels[i]
+                            yield x
 
-    return datasets.Dataset.from_dict(dataset_dict)
+        return datasets.Dataset.from_generator(mygen)
 
 def print_generate_out(queries, instructions, responses, query_ids, labels, ranking_labels, n=5):
     rand = random.sample(range(len(query_ids)), n)
