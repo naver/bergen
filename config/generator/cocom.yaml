@@ -8,3 +8,4 @@ init_args:
     max_new_tokens: 128
     model_max_length: 1280
     compr_rate: null
+    quantization: 'no'

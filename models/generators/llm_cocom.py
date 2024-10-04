@@ -1,11 +1,10 @@
-import math
 import torch
 import random
 from tqdm import tqdm
 from models.generators.generator import Generator
 from models.generators.llm import LLM
 from torch.utils.data import DataLoader
-from utils import prepare_labels
+from jinja2.exceptions import TemplateError
 
 
 class LLMCocom(Generator):
@@ -16,9 +15,11 @@ class LLMCocom(Generator):
                  context_max_length: int = 128,
                  decoder_model_name: str = 'mistralai/Mistral-7B-Instruct-v0.2',
                  max_new_tokens: int = 128,
+                 quantization='no',
                  model_max_length: int = 1280,
                  prompt: str = None,
-                 compr_rate: float = None):
+                 compr_rate: float = None,
+                 device_map = 'auto'):
         """
         Class to use cocom with compression
         checkpoint_path: path to a COCOM checkpoint
@@ -33,12 +34,12 @@ class LLMCocom(Generator):
 
         # Loading the cocom model:
         if checkpoint_path is not None:
-            self.model = COCOM.from_pretrained(checkpoint_path)
+            self.model = COCOM.from_pretrained(checkpoint_path, device_map=device_map)
         else:
             cfg = COCOMConfig(
                 decoder_model_name=decoder_model_name,
                 max_new_tokens=128,
-                quantization='no',
+                quantization=quantization,
                 compr_model_name=None,
                 compr_rate=compr_rate,
                 lora=True,
@@ -46,28 +47,25 @@ class LLMCocom(Generator):
                 lora_r=16,
                 kbtc_training=False,
                 optimize_mem_tokens=True,
-                different_mem_tokens=True
+                different_mem_tokens=True,
+                device_map=device_map,
             )
             print('Creating brand new COCOM model:', cfg)
             self.model = COCOM(cfg)
             
-        self.model.eval()
+        #self.model.eval()
         
         self.prompt = prompt
         self.context_max_length = context_max_length
         self.max_new_tokens = max_new_tokens
         self.model_max_length = model_max_length
-        
-        self.model.bfloat16()
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.model.to(self.device)
-        # self.response_token_ids = self.get_response_template_ids()
                 
     def generate(self, instr_tokenized):
         """
         Nothing to do here, just convey to cocom since instr_tokenized went throught the collate_fn
         """
-        instr_tokenized = {k: v.to(self.device) for k,v in instr_tokenized.items() if isinstance(v, torch.Tensor)}
+        device = next(self.model.parameters()).device
+        instr_tokenized = {k: v.to(device) for k,v in instr_tokenized.items() if isinstance(v, torch.Tensor)}
         return self.model.generate(instr_tokenized, max_new_tokens=self.max_new_tokens)
 
     def eval(self, dataset):
@@ -77,6 +75,7 @@ class LLMCocom(Generator):
         dataset: returned by utils.prepare_dataset_from_ids
         """
         assert len(dataset) > 0, 'Empty dataset'
+        self.model.eval() # setting eval mode
 
         # We get here the generation top k value, used in the encoder/decoder routine to batch encodings.
         # ideally we would convey it somewhere else, but we use asserts later on to continuously check it's unchanged
@@ -100,13 +99,6 @@ class LLMCocom(Generator):
                 generated_response = self.generate(data_dict['model_input'])
                 responses += generated_response
         return query_ids, queries, instructions, responses, labels, ranking_labels
-    
-    # def get_response(self):
-    #     return '[/INST]' # TODO: this shouldn't be hard-coded
-
-    # def get_response_template_ids(self):
-    #     response_template = self.get_response()
-    #     return self.model.decoder_tokenizer.encode(response_template, add_special_tokens=False)
     
     def collate_fn(self, examples, eval=False):
         """
@@ -139,11 +131,10 @@ class LLMCocom(Generator):
         #### BULIDING ENCODER INPUTS ####
         docs = sum([example['doc'] for example in examples], []) # flatten all the docs for encoder input
         inp_enc = [self.model.decoder_tokenizer.enc_token + self.model.decoder_tokenizer.bos_token + doc + self.model.decoder_tokenizer.eos_token for doc in docs]
-        inp_enc = self.model.decoder_tokenizer(inp_enc, return_tensors='pt', padding="longest", max_length=self.context_max_length+3,
-                                               truncation=True, add_special_tokens=False)
+        inp_enc = self.model.decoder_tokenizer(inp_enc, return_tensors='pt', padding="longest", max_length=self.context_max_length+3, truncation=True, add_special_tokens=False)
 
         # Getting the number of memory tokens to use for this batch
-        num_mem_tokens = math.ceil((inp_enc['input_ids'].size(1)- 3) / self.model.compr_rate)
+        num_mem_tokens = 128 // self.model.compr_rate # TODO: should not be hard-coded like this.
 
         enc_input_ids, enc_attention_mask = add_memory_tokens_to_inputs(inp_enc['input_ids'],
                                                                                       inp_enc['attention_mask'],
@@ -194,7 +185,14 @@ class LLMCocom(Generator):
 
         data_dict = {}
         if not eval:
-            data_dict['label_ids'] =  label_ids
+            #data_dict['labels'] =  label_ids
+            return {
+            'enc_input_ids': enc_input_ids,
+            'enc_attention_mask': enc_attention_mask,
+            'dec_input_ids': inp_dec['input_ids'],
+            'dec_attention_mask': inp_dec['attention_mask'],
+            'labels': label_ids
+        }
 
         model_input = {
             'enc_input_ids': enc_input_ids,
@@ -235,21 +233,57 @@ class LLMCocom(Generator):
         docs = mem_tokens * self.model.generation_top_k
         question = query
         
+        # label_start = None
+        
+        # if label is not None:
+        #     messages.append({"role": "assistant", "content": label})
+        #     # Compute the start position of the label in the input_ids
+        #     label_start = len(tokenizer.apply_chat_template(messages[:-1], tokenize=True, add_generation_prompt=True, add_special_tokens=False))
+
+        # # todo: when training, should add_generation_prompt be set to True ?
+        # prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=False)
+        
+        # return prompt, label_start
+    
+        # Prepare the messages with system and user roles
         messages = [
             {"role": "system", "content": self.prompt.system},
             {"role": "user", "content": eval(self.prompt.user).replace(':\ ', ': ')}
         ]
-        
-        label_start = None
-        
-        if label is not None:
-            messages.append({"role": "assistant", "content": label})
-            # Compute the start position of the label in the input_ids
-            label_start = len(tokenizer.apply_chat_template(messages[:-1], tokenize=True, add_generation_prompt=True, add_special_tokens=False))
 
-        # todo: when training, should add_generation_prompt be set to True ?
-        prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=False)
-        
+        # Attempt to apply the system role and catch if it's not supported
+        try:
+            # Handle the label
+            label_start = None
+            if label is not None:
+                messages.append({"role": "assistant", "content": label})
+                # Compute the start position of the label in the input_ids
+                label_start = len(tokenizer.apply_chat_template(
+                    messages[:-1], tokenize=True, add_generation_prompt=True, add_special_tokens=False))
+
+            # Tokenize the full messages list, including system role
+            prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=False)
+            
+        except TemplateError as e:
+            # Catch the error related to system role and handle it (e.g. gemma)
+            if "System role not supported" in str(e):
+                # Remove system role and proceed with only the user role
+                messages = [{"role": "user", "content": messages[0]['content'] + '\n' + messages[1]['content']}]
+                
+                label_start = None
+                
+                if label is not None:
+                    messages.append({"role": "assistant", "content": label})
+                    # Recompute the label_start without the system role
+                    label_start = len(tokenizer.apply_chat_template(
+                        messages[:-1], tokenize=True, add_generation_prompt=True, add_special_tokens=False))
+                
+                # Apply template again without system role
+                prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=False)
+            else:
+                # Re-raise the exception if it's unrelated to system role
+                raise e
+
         return prompt, label_start
 
 

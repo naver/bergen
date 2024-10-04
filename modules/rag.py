@@ -32,7 +32,6 @@ class RAG:
                 reranker=None,
                 query_generator=None, 
                 context_processor=None,
-                
                 runs_folder=None,
                 run_name=None, 
                 dataset=None, 
@@ -137,13 +136,19 @@ class RAG:
             ) if reranker_config is not None else None
 
         # Hydra way of instantiating generator object defined in config.
-        self.generator = instantiate(generator_config.init_args, prompt=prompt) if generator_config is not None else None
+        self.generator_config = generator_config
+        self.prompt = prompt
+        # is_deepspeed = False
+        # if 'train' in config:
+        #     if 'deepspeed' in config.train:
+        #         is_deepspeed = config.train.deepspeed
+        self.generator = instantiate(generator_config.init_args, prompt=prompt, device_map='auto') if generator_config is not None else None
 
         self.query_generator = GenerateQueries(**query_generator_config) if query_generator_config != None else None
 
         self.context_processor = ProcessContext(**context_processor_config) if context_processor_config != None else None
         
-                # print RAG model
+        # print RAG model
         print_rag_model(self, retriever_config, reranker_config, generator_config)
         
     def eval(self, dataset_split):
@@ -185,16 +190,17 @@ class RAG:
             
         # Now in some cases the retrieval file is larger (because of idx_min, idx_max in dataset, but file was computed on whole dataset)
         # We filter out irrelevant query_ids here:
-        filtered_query_ids, filtered_doc_ids = [], []
-        for q_id, d_id in zip(query_ids, doc_ids):
-            if q_id in dataset['query'].id2index:
-                filtered_query_ids += [q_id]
-                filtered_doc_ids += [d_id]
-                
-        query_ids = filtered_query_ids
-        doc_ids = filtered_doc_ids
-                
-        print('Kept:', len(query_ids))
+        if query_ids is not None:
+            filtered_query_ids, filtered_doc_ids = [], []
+            for q_id, d_id in zip(query_ids, doc_ids):
+                if q_id in dataset['query'].id2index:
+                    filtered_query_ids += [q_id]
+                    filtered_doc_ids += [d_id]
+                    
+            query_ids = filtered_query_ids
+            doc_ids = filtered_doc_ids
+                    
+            print('Kept:', len(query_ids))
                 
         # generate
         if self.generator is not None:
@@ -460,11 +466,12 @@ class RAG:
     
 
     def train(self):
-        from transformers import TrainingArguments
+        import torch
+        from transformers import TrainingArguments, Trainer
         from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
-        from modules.trainer import RAGTrainer
+        from modules.trainer import ds_config
         from modules.dataset import Tokenized_Sorted_Dataset
-        from accelerate import Accelerator
+        from models.generators.llm_cocom import LLMCocom
 
         dataset_split = 'train'
         dataset = self.datasets[dataset_split] 
@@ -522,9 +529,8 @@ class RAG:
             self.training_config.test_size_ratio = min(len(gen_dataset)//2, self.training_config.test_size_ratio)
             
         train_test_datasets = gen_dataset.train_test_split(self.training_config.test_size_ratio, seed=42)
-        
+
         print("Preprocessing data...")
-        from models.generators.llm_cocom import LLMCocom
         if not isinstance(self.generator, LLMCocom):
             train_test_datasets['train'] = Tokenized_Sorted_Dataset(train_test_datasets['train'], self.generator, training=True)
             train_test_datasets['test'] = Tokenized_Sorted_Dataset(train_test_datasets['test'], self.generator, training=True)
@@ -559,10 +565,15 @@ class RAG:
             self.generator.model = get_peft_model(self.generator.model, lora_config)
             self.generator.model.print_trainable_parameters()
             self.generator.model = self.generator.model.bfloat16()
-            
+                    
         # TODO: for other models, seems like '.eval' was called, we should do .train()            
-        model = self.generator.model
-        accelerator = Accelerator(split_batches=False)
+        # if self.training_config.deepspeed:
+        #     print('Using deepspeed, destructing model to instantiate it after distrib init')
+        #     import gc
+        #     del self.generator
+        #     gc.collect()
+            
+        print(self.training_config.trainer)
 
         args = TrainingArguments(
             run_name=self.run_name,
@@ -570,15 +581,39 @@ class RAG:
             **self.training_config.trainer,
             eval_strategy="steps",
             eval_steps=100,
-            save_strategy='steps',
+            save_strategy='steps', # 'no' if self.training_config.deepspeed else 'steps'
             save_steps=500,
             save_total_limit=20,
             logging_strategy='steps',
             logging_steps=100,
+            local_rank=-1,
             remove_unused_columns=False,
+            # deepspeed=ds_config if self.training_config.deepspeed else None
         )
+        
+        # if self.training_config.deepspeed:
+        #     # With deepspeed, model needs to be instantiated AFTER training arguments have been called
+        #     # https://huggingface.co/docs/transformers/deepspeed?zero-config=ZeRO-3#zero-configuration
+        #     print('Re-instantiating the generator after training args:')
+        #     self.generator = instantiate(self.generator_config.init_args, prompt=self.prompt, device_map=None)
+        #     # Preprocessing for COCOM is all done in the collate_fn function.
+        #     self.generator.model.generation_top_k = self.generation_top_k
+            
+        #     # While we are at it we add the "sep" ! 
+        #     self.generator.model.sep = True
+        #     self.generator.model.config.sep = True # also in the config so that it'll be saved (probably!)
+            
+        #     if  self.training_config.get("freeze_compressor", False):
+        #         kept_adapters = [elt for elt in self.generator.model.adapter_keys if elt != 'encoder_adapter']
+        #         print('Freezing the compressor, keeping only', kept_adapters)
+        #         self.generator.model.decoder.set_adapter(kept_adapters)
+                
+        #     # We need to re-activate the gradients for these tokens if needed
+        #     self.generator.model.prepare_mem_tokens_optimization()
+        
+        model = self.generator.model
 
-        trainer = RAGTrainer(
+        trainer = Trainer(
             model=model,
             args=args,
             data_collator=self.generator.collate_fn,
@@ -586,20 +621,48 @@ class RAG:
             eval_dataset=train_test_datasets['test']
         )
         
-        model, _, _, _ = accelerator.prepare(
-            model, 
-            trainer.optimizer, 
-            trainer.get_train_dataloader(), 
-            trainer.get_eval_dataloader()
-        )
-        
         trainer.train(resume_from_checkpoint=None)
-        accelerator.wait_for_everyone()
-        unwrapped_model = accelerator.unwrap_model(model)
+        #trainer.save_model(f"{self.experiment_folder}/last_model_trainer_style")
 
-        self.generator.model = unwrapped_model
+        # if self.training_config.deepspeed:
+        #     # Model with deepspeed is sharded and there is no way to unshard without saving a checkpoint
+        #     # So we save a checkpoint (deepspeed format) 
+        #     import gc
+        #     print('Saving deepspeed checkpoint...')
+        #     trainer.save_model(f"{self.experiment_folder}/last_model_deepspeed")
+            
+        #     torch.distributed.barrier()
+
+        #     assert False, 'Training done ! all successful in fact, but need to get out of deepspeed context :)'
+            
+        #     # # Cleaning
+        #     # del trainer, model, self.generator.model, self.generator
+        #     # gc.collect()
+        #     # torch.cuda.empty_cache()
+        #     # torch.cuda.synchronize()
+            
+        #     # # At this point we need to wait for all processes to synchronize
+            
+        #     # if torch.distributed.get_rank() == 0:
+        #     #     # Very touchy code, don't modify lightly
+        #     #     print('Loading deepspeed checkpoint...')
+        #     #     # Re-instantiating a model, place holder for loading the ZeRO state dict
+        #     #     generator = instantiate(self.generator_config.init_args, prompt=self.prompt, device_map=None)
+        #     #     print('Extracting state dict from deepspeed ckpt')
+        #     #     state_dict = get_fp32_state_dict_from_zero_checkpoint(f"{self.experiment_folder}/last_model_deepspeed") # already on cpu
+        #     #     print('Loading state dict into new model')
+        #     #     generator.model.load_state_dict(state_dict)
+        #     #     print('Saving with usual checkpoint style')
+        #     #     generator.model.save_pretrained(f"{self.experiment_folder}/last_model")  
+        #     #     print('Done saving, cleaning deepspeed checkpoint...')
+        #     #     shutil.rmtree(f"{self.experiment_folder}/last_model_deepspeed")
+                
+        #     #     self.generator = generator # 
+            
+        # else:
+        model = trainer.model
+        model.save_pretrained(f"{self.experiment_folder}/last_model")
+        self.generator.model = model
         
-        if accelerator.is_main_process:
-            model.save_pretrained(f"{self.experiment_folder}/last_model")
-            move_finished_experiment(self.experiment_folder)
-            self.experiment_folder = get_finished_experiment_name(self.experiment_folder)
+        move_finished_experiment(self.experiment_folder)
+        self.experiment_folder = get_finished_experiment_name(self.experiment_folder)

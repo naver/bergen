@@ -90,7 +90,7 @@ class LLM(Generator):
     def format_instruction(self, sample):
         # will be injected into formatted prompt string
         question = sample['query']
-        # in case we have previously retrieved documents
+        # in case we have previously retrieved documents    
         if 'doc' in sample:
             docs = ''
             for i, doc in enumerate(sample['doc']):
