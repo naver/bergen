@@ -37,7 +37,7 @@ class PubMed2023_Ragged(Processor):
     
     def process(self):
         hf_name = "jenhsia/ragged"
-        dataset = datasets.load_dataset(hf_name, 'pubmed', num_proc=self.num_proc)[self.split].select(range(100))
+        dataset = datasets.load_dataset(hf_name, 'pubmed', num_proc=self.num_proc)[self.split]
 
         concatenated_data = {}
         for row in tqdm(dataset):
