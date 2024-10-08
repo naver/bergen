@@ -9,6 +9,7 @@ from modules.dataset import Tokenized_Sorted_Dataset
 from torch.utils.data import Dataset, DataLoader
 import torch
 from tqdm import tqdm
+from jinja2.exceptions import TemplateError
 
 
 class Generator(ABC):
@@ -60,19 +61,26 @@ class Generator(ABC):
         # check if chat template allows for system prompts
 
         # if has chat_template e.g. gamma does not use it
-        if self.tokenizer.chat_template == None:
+        if self.tokenizer.chat_template is None:
             user_prompt_with_values = eval(user_prompt).replace(':\ ', ': ')
             return f"{system_prompt}\n{user_prompt_with_values}"
         else:
-            if 'system' in self.tokenizer.chat_template:
+            # We try using the chat template with a system
+            # Sometimes system not supported: we catch it.
+            try:
                 instr_prompt = [
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": eval(user_prompt).replace(':\ ', ': ')}
                 ]
-            # if no system prompts are allowed just append system prompt to user prompt
-            else:
-                user_prompt_with_values = eval(user_prompt).replace(':\ ', ': ')
-                instr_prompt = [
-                    {"role": "user", "content": f"{system_prompt}\n{user_prompt_with_values}"}
-                ]    
-            return self.tokenizer.apply_chat_template(instr_prompt,  add_generation_prompt=True, tokenize=False)
+                return self.tokenizer.apply_chat_template(instr_prompt,  add_generation_prompt=True, tokenize=False)
+            
+            except TemplateError as e:
+                if "System role not supported" in str(e):
+                    user_prompt_with_values = eval(user_prompt).replace(':\ ', ': ')
+                    instr_prompt = [
+                        {"role": "user", "content": f"{system_prompt}\n{user_prompt_with_values}"}
+                    ]    
+                    return self.tokenizer.apply_chat_template(instr_prompt,  add_generation_prompt=True, tokenize=False)
+                else:
+                    raise e
+

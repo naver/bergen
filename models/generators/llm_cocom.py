@@ -19,6 +19,8 @@ class LLMCocom(Generator):
                  model_max_length: int = 1280,
                  prompt: str = None,
                  compr_rate: float = None,
+                 compr_model_name: str = None,
+                 compr_mode: str = 'last',
                  device_map = 'auto'):
         """
         Class to use cocom with compression
@@ -40,7 +42,8 @@ class LLMCocom(Generator):
                 decoder_model_name=decoder_model_name,
                 max_new_tokens=128,
                 quantization=quantization,
-                compr_model_name=None,
+                compr_model_name=compr_model_name,
+                compr_mode=compr_mode,
                 compr_rate=compr_rate,
                 lora=True,
                 training_form='both_separately',
@@ -125,21 +128,11 @@ class LLMCocom(Generator):
             assert len(ex['doc']) == self.model.generation_top_k, \
                 f"Not all queries of the same number of docs: not supported here: {len(ex['doc'])} vs {self.model.generation_top_k}"
 
-        compressor_tokenizer = self.model.compr.tokenizer if self.model.compr else self.model.decoder_tokenizer
-        assert compressor_tokenizer == self.model.decoder_tokenizer, 'Not supported yet'
-
         #### BULIDING ENCODER INPUTS ####
         docs = sum([example['doc'] for example in examples], []) # flatten all the docs for encoder input
-        inp_enc = [self.model.decoder_tokenizer.enc_token + self.model.decoder_tokenizer.bos_token + doc + self.model.decoder_tokenizer.eos_token for doc in docs]
-        inp_enc = self.model.decoder_tokenizer(inp_enc, return_tensors='pt', padding="longest", max_length=self.context_max_length+3, truncation=True, add_special_tokens=False)
-
-        # Getting the number of memory tokens to use for this batch
-        num_mem_tokens = 128 // self.model.compr_rate # TODO: should not be hard-coded like this.
-
-        enc_input_ids, enc_attention_mask = add_memory_tokens_to_inputs(inp_enc['input_ids'],
-                                                                                      inp_enc['attention_mask'],
-                                                                                      num_mem_tokens,
-                                                                                      self.model.decoder_tokenizer)
+        inp_enc = self.model.prepare_encoder_inputs(docs, max_length=self.context_max_length)
+        enc_input_ids, enc_attention_mask = inp_enc['input_ids'], inp_enc['attention_mask']
+        
         # input_ids are of shape (top_k * batch_size, enc_token_length)
         # We can reshape it to (batch_size, top_k, enc_token_length)
         # for proper batching (important with multi-gpu training)
@@ -151,7 +144,6 @@ class LLMCocom(Generator):
         enc_attention_mask = enc_attention_mask.view(batch_size, self.model.generation_top_k, -1)
 
         #### BUILDING DECODER INPUTS ####
-        assert num_mem_tokens == len(self.model.decoder_tokenizer.mem_tokens)
         mem_tokens_str = ''.join(self.model.decoder_tokenizer.mem_tokens)
         
         if self.model.sep:
@@ -167,6 +159,9 @@ class LLMCocom(Generator):
                                         truncation=True,  max_length=self.model_max_length)
         else:
             label = [e['label'] if isinstance(e['label'], str) else random.choice(e['label']) for e in examples]
+            
+            # Cropping labels if they are too long:
+            label = [self.crop_label_to_max_tokens(e, self.model.decoder_tokenizer) for e in label]
             
             instr, labels_start = zip(*[self.blend_prompt_and_memory_tokens(self.model.decoder_tokenizer, mem_tokens_str, query=q, label=e)
                                         for q, e in zip(query, label)])
@@ -285,6 +280,23 @@ class LLMCocom(Generator):
                 raise e
 
         return prompt, label_start
+    
+    def crop_label_to_max_tokens(self, label: str, tokenizer):
+        if self.max_new_tokens >= 128:
+            return label # to preserve legacy behaviour
+        
+        # Tokenize the text
+        tokens = tokenizer(label, return_tensors="pt", truncation=False)
+
+        # If token length is greater than self.max_new_tokens, truncate the tokens
+        if tokens['input_ids'].shape[1] > self.max_new_tokens:
+            cropped_tokens = tokens['input_ids'][0, :self.max_new_tokens]  # Truncate to 64 tokens
+            # Decode the cropped tokens back to text
+            cropped_label = tokenizer.decode(cropped_tokens, skip_special_tokens=True)
+        else:
+            cropped_label = label  # If already within self.max_new_tokens tokens, use the original text
+
+        return cropped_label
 
 
 class LLMCocomOnlyDecoder(LLM):

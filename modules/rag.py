@@ -142,7 +142,7 @@ class RAG:
         # if 'train' in config:
         #     if 'deepspeed' in config.train:
         #         is_deepspeed = config.train.deepspeed
-        self.generator = instantiate(generator_config.init_args, prompt=prompt, device_map='auto') if generator_config is not None else None
+        self.generator = instantiate(generator_config.init_args, prompt=prompt) if generator_config is not None else None
 
         self.query_generator = GenerateQueries(**query_generator_config) if query_generator_config != None else None
 
@@ -544,6 +544,12 @@ class RAG:
             
             if  self.training_config.get("freeze_compressor", False):
                 kept_adapters = [elt for elt in self.generator.model.adapter_keys if elt != 'encoder_adapter']
+                print('Freezing the compressor, keeping only', kept_adapters)
+                self.generator.model.decoder.set_adapter(kept_adapters)
+                
+            if  self.training_config.get("freeze_decoder", False):
+                assert self.generator.model.lora, 'Adapt code pls to freeze full decoder'
+                kept_adapters = [elt for elt in self.generator.model.adapter_keys if elt != 'decoder_adapter']
                 print('Freezing the compressor, keeping only', kept_adapters)
                 self.generator.model.decoder.set_adapter(kept_adapters)
                 
