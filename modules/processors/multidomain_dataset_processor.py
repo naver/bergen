@@ -8,7 +8,6 @@ import requests
 import pandas as pd
 
 from urllib.parse import unquote
-from bs4 import BeautifulSoup
 
 
 class BIOASQ11B_Ragged(Processor):
@@ -381,7 +380,7 @@ class SyllabusQA_syllabi(Processor):
         This happens when the request fails to retrieve all the txt files (and retrieves none of them) resulting in an empty Dataset
         Just run the function until it works... BUT make sure to remove the directory SyllabusQA_syllabi_train created in datasets/
         """
-
+        from bs4 import BeautifulSoup
         url = "https://github.com/umass-ml4ed/SyllabusQA/tree/main/syllabi/syllabi_redacted/text"
         response = requests.get(url)
         soup = BeautifulSoup(response.text, 'html.parser')

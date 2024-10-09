@@ -15,10 +15,6 @@ import urllib.request
 import json
 import requests  
 from functools import partial
-import pandas as pd
-
-from urllib.parse import unquote
-from bs4 import BeautifulSoup
 
 # Base class that every processor interhits from 
 class Processor(object):
