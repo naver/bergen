@@ -25,7 +25,9 @@ class LLM(Generator):
                 max_length=None,
                 prompt=None,
                 quantization=None,
-                gpu_memory_utilization=0.9
+                gpu_memory_utilization=0.9,
+                beam_search: bool = False,
+                best_of: int = 5
                 ):
         Generator.__init__(self, model_name=model_name, batch_size=batch_size)
 
@@ -34,6 +36,7 @@ class LLM(Generator):
         self.max_doc_len = max_doc_len
         self.max_new_tokens = max_new_tokens
         self.prompt = prompt
+        self.beam_search = beam_search
 
         self.tokenizer = AutoTokenizer.from_pretrained(model_name, padding_side='left')
         self.tokenizer.pad_token = self.tokenizer.bos_token
@@ -42,10 +45,10 @@ class LLM(Generator):
             self.model = vllm(model=self.model_name,tensor_parallel_size=torch.cuda.device_count(),dtype=torch.float16,gpu_memory_utilization=gpu_memory_utilization,max_model_len=self.max_length,enforce_eager=True,kv_cache_dtype="fp8_e5m2")        
         else:
             self.model = vllm(model=self.model_name,tensor_parallel_size=torch.cuda.device_count(),gpu_memory_utilization=gpu_memory_utilization,quantization=self.quantization)
-        self.sampling_params =  SamplingParams(temperature=1,max_tokens=max_new_tokens,best_of=1, top_p=1, top_k=-1)
-
-
-
+        if self.beam_search:
+            self.sampling_params =  SamplingParams(temperature=0, use_beam_search=True, max_tokens=max_new_tokens, best_of=best_of, top_p=1, top_k=-1)
+        else:
+            self.sampling_params =  SamplingParams(temperature=1, max_tokens=max_new_tokens, best_of=1, top_p=1, top_k=-1)
 
     def prediction_step(self, model, model_input, label_ids=None):
         output = model(**model_input, labels=label_ids)

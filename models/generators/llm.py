@@ -175,22 +175,21 @@ class LLM(Generator):
             "input_ids": input_ids_tensor,
             "attention_mask": attention_mask_tensor,
         }
-        data_dict = {}
         # prepare labels only for training 
         if not eval:
-
             response_token_ids = self.get_response_template_ids()
             label_ids = prepare_labels(model_input['input_ids'], response_token_ids[1:], ignore_index=ignore_index)
-            data_dict['label_ids'] =  label_ids
+            model_input['labels'] =  label_ids
+            return model_input
 
-        data_dict.update({
+        data_dict = {
             'model_input': model_input,
             'q_id': q_ids, 
             'query': query, 
             'instruction': instr,
             'label': label, 
             'ranking_label': ranking_label,
-        })
+        }
 
         return data_dict
 

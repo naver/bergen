@@ -74,7 +74,7 @@ ds_config = {
             "contiguous_gradients": True,
             # These options are specific to ZeRO Stage 3
             "stage3_prefetch_bucket_size": 1e7,  # Controls the size of the bucket used to prefetch parameters from CPU to GPU: larger is faster but greedier
-            "stage3_max_live_parameters": 1e9,   # Limit for live parameters in memory to avoid memory overflow
+            "stage3_max_live_parameters": 1e10,   # Limit for live parameters in memory to avoid memory overflow
             "stage3_param_persistence_threshold": 1e6  # Threshold for partitioning parameters, larger ones stay on GPU
         },
         # "zero_optimization": {

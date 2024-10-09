@@ -21,6 +21,7 @@ class LLMCocom(Generator):
                  compr_rate: float = None,
                  compr_model_name: str = None,
                  compr_mode: str = 'last',
+                 compr_mlp_hidden_dim: int = 1024,
                  device_map = 'auto'):
         """
         Class to use cocom with compression
@@ -45,6 +46,7 @@ class LLMCocom(Generator):
                 compr_model_name=compr_model_name,
                 compr_mode=compr_mode,
                 compr_rate=compr_rate,
+                compr_mlp_hidden_dim=compr_mlp_hidden_dim,
                 lora=True,
                 training_form='both_separately',
                 lora_r=16,
