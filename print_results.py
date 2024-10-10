@@ -78,8 +78,8 @@ def main(args):
 
                             #preprocess the generator name,retriever,reranker name
                             generator_basename = os.path.basename(generator)
-                            retriever_basename = os.path.basename(retriever)
-                            reranker_basename = os.path.basename(reranker)
+                            retriever_basename = os.path.basename(retriever) if retriever else 'None'
+                            reranker_basename = os.path.basename(reranker) if reranker else 'None'
                             
                             x['exp_folder']=current_folder.name
                             x['query_dataset']=dataset_query.split('.')[-1]
