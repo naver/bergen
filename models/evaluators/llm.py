@@ -17,9 +17,19 @@ import gc
 class LLMeval():
     """
     - relies on default HF inference 
-    - output score is a floating number corresponding to the logit score output by model.generate for pos_word
+    - if use_logits is set to True (in evaluator config) 
+        - output score is computed as interpolation between prob of label and it's associated value 
+        (defined by options map in config): eg. p(x=yes)*1 + p(x=no)*0 
+    - otherwise: we just check if label is present in the answer (yes/no) and return associated value (1/0)
+
     """
-    def __init__(self, model_config: dict, batch_size: int = 1, config: str = "default_qa" ):
+    def __init__(self, model_config: dict, batch_size: int = None, config: str = "default_qa" ):
+        """
+            model_config: generator config specified as yaml file in cofig/generator directory
+            batch_size: if none, it keeps default llm batch size from config 
+            confg: name of evaluator config specified as yaml file at config/evaluators
+        """
+        
         eval_config = omegaconf.OmegaConf.load(f"config/evaluator/{config}.yaml")
         model_config['init_args']['max_new_tokens']= eval_config['max_new_tokens']
 
@@ -29,7 +39,8 @@ class LLMeval():
         self.rubrik_section = ", ".join(["{"+opt+"}" for opt in self.options])
         self.prompt = eval_config['prompt']
         self.llm.max_new_tokens = eval_config['max_new_tokens']
-        self.llm.batch_size = batch_size
+        if not batch_size == None:
+            self.llm.batch_size = batch_size
         self.system_prompt = eval(self.prompt.system).replace(':\ ', ': ')
         #FIXME: what shall we do if label corrsponds to multiple tokens?
         self.output_ids = [self.llm.tokenizer.encode(opt, add_special_tokens=False) for opt in sorted(self.options)]

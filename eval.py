@@ -11,7 +11,7 @@ import gc
 
 class Evaluate:
     @staticmethod
-    def eval(experiment_folder="experiments/", split="dev", bem=False, llm=None, llm_ollama=None, vllm=None,gpt=None,bem_batch_size=1, lid=None, lid_advanced=None, llm_batch_size=1, llm_prompt="default_qa", ollama_url=None, folder=None, force=False, samples=None):
+    def eval(experiment_folder="experiments/", split="dev", bem=False, llm=None, llm_ollama=None, vllm=None,gpt=None,bem_batch_size=1, lid=None, lid_advanced=None, llm_batch_size=None, llm_prompt="default_qa", ollama_url=None, folder=None, force=False, samples=None):
         def eval_single(experiment_folder, folder, split, model, metric_name, nb_samples=None):
             if folder != None:
                 folders = [folder]
@@ -93,14 +93,15 @@ class Evaluate:
 
             model_config = omegaconf.OmegaConf.load(f"config/generator/{model_config}.yaml")            
             if model_config['init_args']['_target_']=='models.generators.vllm.LLM':
-                from models.evaluators.vllm import LLMeval 
+                from models.evaluators.vllm import VLLMeval 
+                model = VLLMeval(model_config, batch_size=llm_batch_size, config=llm_prompt)
+                
             else:
                 from models.evaluators.llm import LLMeval 
-    
-            model = LLMeval(model_config, batch_size=llm_batch_size, config=llm_prompt)
-            if model.use_logits and model_config['init_args']['_target_']=='models.generators.llm.LLM':
-                short_name = f"{short_name}_logits"
-            
+                model = LLMeval(model_config, batch_size=llm_batch_size, config=llm_prompt)
+                if model.use_logits :
+                    short_name = f"{short_name}_logits"
+                
             eval_single(experiment_folder, folder, split, model, short_name, nb_samples = samples)
             del model
             torch.cuda.empty_cache()
@@ -115,7 +116,9 @@ class Evaluate:
             elif len(llm_ollama)==2:
                 model_config = llm_ollama[0]
                 short_name = llm_ollama[1] 
-                short_name = f"LLMeval_{short_name}"        
+                short_name = f"LLMeval_{short_name}"
+            if llm_batch_size == None:
+                llm_batch_size = 1        
             model = OllamaEval(model_config, batch_size=llm_batch_size, config=llm_prompt, basic_url=ollama_url)
             eval_single(experiment_folder, folder, split, model, short_name, nb_samples = samples)
             
@@ -177,7 +180,7 @@ if __name__ == "__main__":
                 """ )
     parser.add_argument('--gpt', type=str,default=None)
     parser.add_argument('--bem_batch_size', type=int, default=1024)
-    parser.add_argument('--llm_batch_size', type=int, default=1)
+    parser.add_argument('--llm_batch_size', type=int, default=None)
     parser.add_argument('--force', action='store_true')
     parser.add_argument('--llm_prompt', type=str, default="default_qa", help="Provide yaml config file with updated prompt. Default prompt: config/evaluator/default_prompt.yaml")
     parser.add_argument('--ollama_url', type=str, default="http://localhost:11434", help="")
