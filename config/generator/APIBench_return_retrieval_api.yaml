@@ -1,4 +1,0 @@
-init_args:
-  _target_: "models.generators.APIBench_return_retrieval_api.APIBenchReturnRetrievalApi"
-  model_name: "APIBench_return_retrieval_api"
-  batch_size: 1024

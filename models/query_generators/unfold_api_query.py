@@ -4,6 +4,9 @@ from tqdm import tqdm
 from datasets import Dataset
 
 class UnfoldAPIQuery(QueryGenerator):
+    """
+    Useful for APIBench dataset to reformulate the queries for better retrieval
+    """
     def __init__(self, name="unfolded_query", model="generator", prompt=""):
         self.name = name
         self.model = model
