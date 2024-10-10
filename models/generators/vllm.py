@@ -3,7 +3,6 @@ BERGEN
 Copyright (c) 2024-present NAVER Corp.
 CC BY-NC-SA 4.0 license
 '''
-
 from transformers import AutoTokenizer
 import torch
 from models.generators.generator import Generator
@@ -11,46 +10,72 @@ import random
 
 from vllm import LLM as vllm
 from vllm import  SamplingParams
-import gc
 
 random.seed(42)
 
 
-class LLM(Generator):
+class VLLM(Generator):
     def __init__(self,
-                model_name=None, 
-                batch_size=1,
-                max_new_tokens=1, 
-                max_doc_len=100,
-                max_length=None,
-                prompt=None,
-                quantization=None,
-                gpu_memory_utilization=0.9
+                model_name: str = None, 
+                batch_size: int = 1,
+                max_new_tokens: int = 1, 
+                max_doc_len: int = 100,
+                max_length: int = None,
+                prompt: str = None,
+                quantization: str = None,
+                gpu_memory_utilization: float = 0.9,
+                temperature: float = 1.,
+                use_beam_search: bool = False,
+                best_of: int = 1,
+                sampling: bool = False
                 ):
-        Generator.__init__(self, model_name=model_name, batch_size=batch_size)
-
+        Generator.__init__(self,
+                           model_name=model_name,
+                           batch_size=batch_size,
+                           max_new_tokens=max_new_tokens,
+                           max_doc_len=max_doc_len,
+                           max_length=max_length)
+        
         self.quantization = quantization
-        self.max_length = max_length
-        self.max_doc_len = max_doc_len
-        self.max_new_tokens = max_new_tokens
         self.prompt = prompt
 
         self.tokenizer = AutoTokenizer.from_pretrained(model_name, padding_side='left')
         self.tokenizer.pad_token = self.tokenizer.bos_token
 
         if self.quantization is None:
-            self.model = vllm(model=self.model_name,tensor_parallel_size=torch.cuda.device_count(),dtype=torch.float16,gpu_memory_utilization=gpu_memory_utilization,max_model_len=self.max_length,enforce_eager=True,kv_cache_dtype="fp8")        
+            self.model = vllm(model=self.model_name,
+                              tensor_parallel_size=torch.cuda.device_count(),
+                              dtype=torch.float16,
+                              gpu_memory_utilization=gpu_memory_utilization,
+                              max_model_len=self.max_length,
+                              enforce_eager=True,
+                              kv_cache_dtype="fp8_e5m2")        
         else:
-            self.model = vllm(model=self.model_name,tensor_parallel_size=torch.cuda.device_count(),gpu_memory_utilization=gpu_memory_utilization,quantization=self.quantization)
-        self.sampling_params =  SamplingParams(temperature=1,max_tokens=max_new_tokens,best_of=1, top_p=1, top_k=-1)
-
-
-
-
-    def prediction_step(self, model, model_input, label_ids=None):
-        output = model(**model_input, labels=label_ids)
-        return output.logits, output.loss
-
+            self.model = vllm(model=self.model_name,
+                              tensor_parallel_size=torch.cuda.device_count(),
+                              gpu_memory_utilization=gpu_memory_utilization,
+                              quantization=self.quantization)
+            
+        if self.use_beam_search:
+            assert temperature == 0, f'beam search requires temperature = 0, not {temperature}'
+            if best_of == 1:
+                Warning('You are doing beam search with best_of=1: it is greedy decoding. Consider increasing best_of.')
+            self.sampling_params =  SamplingParams(temperature=temperature,
+                                                   use_beam_search=True,
+                                                   max_tokens=max_new_tokens,
+                                                   best_of=best_of,
+                                                   top_p=1,
+                                                   top_k=-1)
+        else:
+            if best_of > 1:
+                Warning('You set best_of > 1 without beam_search: vllm will do best of n sampling.')
+                assert temperature > 0, 'To do best of n sampling, you need temperature > 0'
+            self.sampling_params =  SamplingParams(temperature=0,
+                                                   max_tokens=max_new_tokens,
+                                                   best_of=best_of,
+                                                   top_p=1,
+                                                   top_k=-1)
+            
     def generate(self, instr_tokenized):
         outputs = self.model.generate(instr_tokenized, self.sampling_params)
         decoded = [output.outputs[0].text for output in outputs]
@@ -80,19 +105,3 @@ class LLM(Generator):
         })
 
         return data_dict
-
-    def format_instruction(self, sample):
-        # will be injected into formatted prompt string
-        question = sample['query']
-        # in case we have previously retrieved documents
-        if 'doc' in sample:
-            docs = ''
-            for i, doc in enumerate(sample['doc']):
-                doc = ' '.join(doc.split()[:self.max_doc_len])
-                docs += f"Document {i+1}: {doc}\n"
-            compiled_prompt = self.compile_prompt(self.prompt.system, self.prompt.user, question, docs)
-        else:
-            # without retrieval we don't put documents in the prompt
-            compiled_prompt = self.compile_prompt(self.prompt.system_without_docs, self.prompt.user_without_docs, question)
-
-        return compiled_prompt

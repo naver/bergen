@@ -7,18 +7,31 @@ CC BY-NC-SA 4.0 license
 import datasets
 import random 
 import json
-from collections import defaultdict
 import shutil
 import pytrec_eval
-from datasets.fingerprint import Hasher
 import os 
-from omegaconf import OmegaConf
 import torch
 import time
 import glob
-from tqdm import tqdm
 import warnings
 import numpy as np
+import torch
+
+from collections import defaultdict
+from datasets.fingerprint import Hasher
+from omegaconf import OmegaConf
+from tqdm import tqdm
+
+
+def left_pad(sequence: torch.LongTensor, max_length: int, pad_value: int) -> torch.LongTensor:
+    """
+    Helper function to perform left padding
+    torch.long
+    """
+    pad_size = max_length - len(sequence)
+    padding = torch.full((pad_size,), pad_value, dtype=torch.long)
+    return torch.cat([padding, sequence])
+
 
 # needed because HF dataset does not allow indexing by id (only index)
 # given a set of ids return field in dataset, if no field provided just return indexes
@@ -31,6 +44,7 @@ def get_by_id(dataset, ids, field=None):
         return dataset[idxs][field] if field in dataset[idxs] else []
     else:
         return idxs
+    
     
 def load_embeddings(index_path):
     try:
