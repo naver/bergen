@@ -17,7 +17,7 @@ class Rerank():
         self.init_args = init_args
         self.model = instantiate(self.init_args)
     @torch.no_grad()
-    def eval(self, dataset, return_embeddings=False):
+    def eval(self, dataset):
         # get dataloader
         self.model.model.to('cuda')
         dataloader = DataLoader(dataset, batch_size=self.batch_size, collate_fn=self.model.collate_fn)
@@ -29,10 +29,7 @@ class Rerank():
             outputs = self.model(batch)
             score = outputs['score']
             scores.append(score)
-            if return_embeddings:
-                emb = outputs['embedding']
-                embs_list.append(emb)
- 
+            
         # get flat tensor of scores        
         scores = torch.cat(scores).ravel()
         # sort by scores 
@@ -40,7 +37,6 @@ class Rerank():
         self.model.model.to('cpu')
         torch.cuda.empty_cache()
         return {
-            "emb": embs_list if return_embeddings else None,
             "score": scores_sorted,
             "doc_id": d_ids_sorted,
             "q_id": q_ids_sorted,

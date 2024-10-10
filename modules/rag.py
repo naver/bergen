@@ -248,8 +248,6 @@ class RAG:
             retrieve_top_k,
             self.query_generator.get_clean_model_name()
         )
-        #if return_embeddings:
-                #raise NotImplementedError('For returning Embeddings is not yet fully implemented!')
         doc_embeds_path = get_index_path(self.index_folder, doc_dataset_name, self.retriever.get_clean_model_name(), 'doc')
         query_embeds_path = get_index_path(self.index_folder, query_dataset_name, self.retriever.get_clean_model_name(), 'query', dataset_split=dataset_split, query_generator_name=self.query_generator.get_clean_model_name())
         if not os.path.exists(ranking_file) or self.overwrite_exp or self.overwrite_index:
@@ -292,7 +290,6 @@ class RAG:
                query_ids, 
                doc_ids, 
                rerank_top_k, 
-               return_embeddings=False
                ):
         
         doc_ids = [doc_ids_q[:rerank_top_k] for doc_ids_q in doc_ids]
@@ -317,7 +314,7 @@ class RAG:
                     multi_doc=False,
                     query_field="generated_query"
                 )
-            out_ranking = self.reranker.eval(rerank_dataset, return_embeddings=return_embeddings)
+            out_ranking = self.reranker.eval(rerank_dataset)
             query_ids, doc_ids, scores = out_ranking['q_id'], out_ranking['doc_id'], out_ranking['score']
             write_trec(reranking_file, query_ids, doc_ids, scores)
         else:
