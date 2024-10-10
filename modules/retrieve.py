@@ -2,6 +2,9 @@
 BERGEN
 Copyright (c) 2024-present NAVER Corp.
 CC BY-NC-SA 4.0 license
+
+A retrieval module for ranking models.
+Example: bm25, splade, oracle_provenance. See models/retrievers/ for specific retrievers.
 '''
 
 # Retrieve

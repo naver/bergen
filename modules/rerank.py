@@ -2,6 +2,9 @@
 BERGEN
 Copyright (c) 2024-present NAVER Corp.
 CC BY-NC-SA 4.0 license
+
+A reranking module for ranking models.
+Example: cross-encoders. See models/rerankers/ for specific rerankers.
 '''
 
 from tqdm import tqdm
