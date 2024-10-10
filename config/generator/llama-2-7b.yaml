@@ -5,4 +5,4 @@ init_args:
   max_length: 4096
   quantization: "int4"
   attn_implementation: 'sdpa'
-batch_size: 1
+  batch_size: 1
