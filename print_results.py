@@ -77,7 +77,7 @@ def main(args):
                             dataset_query, dataset_doc, retriever, reranker, generator, prompt, retrieve_top_k, rerank_top_k = get_config(file_in_subfolder, split)
 
                             #preprocess the generator name,retriever,reranker name
-                            generator_basename = os.path.basename(generator)
+                            generator_basename = os.path.basename(generator) if generator else 'None'
                             retriever_basename = os.path.basename(retriever) if retriever else 'None'
                             reranker_basename = os.path.basename(reranker) if reranker else 'None'
                             
