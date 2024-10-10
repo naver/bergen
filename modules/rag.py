@@ -138,11 +138,11 @@ class RAG:
         # Hydra way of instantiating generator object defined in config.
         self.generator = instantiate(generator_config.init_args, prompt=prompt) if generator_config != None else None
 
-        self.query_generator = GenerateQueries(**query_generator_config) if query_generator_config != None else None
+        self.query_generator = GenerateQueries(self.generator, **query_generator_config) if query_generator_config != None else None
 
         self.context_processor = ProcessContext(**context_processor_config) if context_processor_config != None else None
         
-                # print RAG model
+        # print RAG model
         print_rag_model(self, retriever_config, reranker_config, generator_config)
         
     def eval(self, dataset_split):
@@ -215,11 +215,13 @@ class RAG:
                 dataset_split
             )
             if not os.path.exists(gen_query_file) or self.overwrite_exp or self.overwrite_index:
+                print("Generating search queries...")
                 generated_queries = self.query_generator.eval(dataset['query'])
                 os.makedirs(self.generated_query_folder, exist_ok=True)
                 with open(gen_query_file, 'w') as fp: 
                     json.dump({"generated_queries": generated_queries}, fp)
             else:
+                print("Using pre-generated search queries...")
                 with open(gen_query_file, 'r') as fp: 
                     generated_queries = json.load(fp)["generated_queries"]
             dataset['query'] = dataset['query'].add_column("generated_query", generated_queries)
@@ -538,17 +540,25 @@ class RAG:
 
         total_batch_size = self.training_config.trainer.per_device_train_batch_size * torch.cuda.device_count()
         total_steps = len(train_test_datasets['train']) // total_batch_size
-        num_saving_steps = 5
+        num_saving_steps = self.training_config.num_saving_steps
         eval_steps =  max(total_steps// num_saving_steps, 1)
         save_steps = max(total_steps  // num_saving_steps, 1)
-        logging_steps = max(total_steps // 5, 1)
+        logging_steps = max(total_steps // num_saving_steps, 1)
+
+        if self.training_config.trainer.report_to == "wandb":
+            import wandb
+            wandb_api_key = os.environ.get("WANDB_API_KEY")
+            if wandb_api_key is None:
+                raise RuntimeError("please set environment variable WANDB_API_KEY to log into wandb. Otherwise disable wandb by setting training config trainer.report_to: 'none' ")
+            wandb.login(key=wandb_api_key)
+            wandb.init(project=self.training_config.wandb_project_name, name=self.run_name)
 
         args = TrainingArguments(
             run_name=self.run_name,
             output_dir=f'{self.experiment_folder}/train/',
             **self.training_config.trainer,
             evaluation_strategy="steps",
-            eval_steps=eval_steps, 
+            eval_steps=eval_steps,
             save_steps=save_steps,
             logging_steps=logging_steps,
             load_best_model_at_end=True,
@@ -569,3 +579,5 @@ class RAG:
         self.generator.model = trainer.model
         move_finished_experiment(self.experiment_folder)
         self.experiment_folder = get_finished_experiment_name(self.experiment_folder)
+        if self.training_config.trainer.report_to == "wandb":
+            wandb.finish()

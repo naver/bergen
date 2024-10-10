@@ -1,0 +1,8 @@
+init_args: 
+  _target_: models.generators.llm.LLM
+  model_name: "gorilla-llm/gorilla-7b-hf-v1-gguf"
+  gguf_file: "gorilla-7b-hf-v1-q6_K.gguf"
+  max_new_tokens: 128
+  max_length: 2048
+  batch_size: 128
+

@@ -16,7 +16,6 @@ import json
 import requests  
 from functools import partial
 
-
 # Base class that every processor interhits from 
 class Processor(object):
     
@@ -136,8 +135,7 @@ class BIOASQ11B(Processor):
 
     
         return dataset
-    
-    
+
 
 class MMLU(Processor):
 
@@ -408,7 +406,7 @@ class PubMed2023(Processor):
     
     def process(self):
         hf_name ="ncbi/pubmed"
-        dataset = datasets.load_dataset(hf_name, num_proc=self.num_proc)[self.split]
+        dataset = datasets.load_dataset(hf_name, num_proc=self.num_proc, trust_remote_code=True)[self.split]
                 
         def map_fn(example):
             example['content'] = f"{example['MedlineCitation']['Article']['ArticleTitle']}: {example['MedlineCitation']['Article']['Abstract']['AbstractText']}"
@@ -418,6 +416,7 @@ class PubMed2023(Processor):
         dataset = dataset.map(map_fn, num_proc=self.num_proc)
         dataset = dataset.remove_columns(['MedlineCitation', 'PubmedData'])
         return dataset
+
 
 class Wikipedia2023_section(Processor):
 
@@ -500,7 +499,7 @@ class UT1Queries(Processor):
                 label=tok[2].strip()
                 data_d['id'].append(qid)
                 data_d['content'].append(qt)
-                data_d['label'].append(label)
+                data_d['label'].append([label])
         dataset=datasets.Dataset.from_dict(data_d)
         return dataset
 
@@ -568,7 +567,7 @@ class MergedDocDataset(Processor):
             dataset = self.shuffled_labels_as_content(dataset)
         dataset.name = self.dataset_name + debug_str + oracle_provenance_str
         return dataset
-
+    
 
 class ProcessDatasets:
                 
