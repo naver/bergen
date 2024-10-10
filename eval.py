@@ -78,24 +78,8 @@ class Evaluate:
             model = OpenAI(gpt)
             eval_single(experiment_folder, folder, split, model, gpt, nb_samples = samples)
         
-        if vllm is not None:
-            from models.evaluators.vllm import VLLMeval 
-            if len(vllm) == 0:
-                # corresponds to default LLMeval setting, results reported in the paper
-                model_config, short_name = "SOLAR-107B", "VLLMeval"             
-            elif len(vllm)==1:
-                model_config = vllm[0]
-                short_name = f"VLLMeval_{model_config}"
-            elif len(vllm)==2:
-                model_config = vllm[0]
-                short_name = f"VLLMeval_{vllm[1]}"        
-            model = VLLMeval(model_config, batch_size=llm_batch_size, config=llm_prompt)
-            eval_single(experiment_folder, folder, split, model, short_name, nb_samples = samples)
-            del model
-            torch.cuda.empty_cache()
-            gc.collect()
         if llm is not None:
-            from models.evaluators.llm import LLMeval
+            
             if len(llm) == 0:
                 model_config, short_name = "SOLAR-107B", "LLMeval"            
             elif len(llm)==1:
@@ -105,10 +89,18 @@ class Evaluate:
             elif len(llm)==2:
                 model_config = llm[0]
                 short_name = llm[1]
-                short_name = f"LLMeval_{short_name}"                  
+                short_name = f"LLMeval_{short_name}"
+
+            model_config = omegaconf.OmegaConf.load(f"config/generator/{model_config}.yaml")            
+            if model_config['init_args']['_target_']=='models.generators.vllm.LLM':
+                from models.evaluators.vllm import LLMeval 
+            else:
+                from models.evaluators.llm import LLMeval 
+    
             model = LLMeval(model_config, batch_size=llm_batch_size, config=llm_prompt)
-            if model.use_logits:
+            if model.use_logits and model_config['init_args']['_target_']=='models.generators.llm.LLM':
                 short_name = f"{short_name}_logits"
+            
             eval_single(experiment_folder, folder, split, model, short_name, nb_samples = samples)
             del model
             torch.cuda.empty_cache()
@@ -170,19 +162,11 @@ if __name__ == "__main__":
     parser.add_argument('--lid_advanced', action='store_true', default=None)
 
     parser.add_argument('--llm', type=str, nargs='*', default=None, 
-            help="""
-                Uses default HF inference mechanism for LLM evaluation.  Requires up to 2 arguments: 
-                - full model name  and short name (used for naming output files and metrics): eg. -llm \"Upstage/SOLAR-10.7B-Instruct-v1.0\" solar 
+            help=""" 
+                - full model name (corresponding to generator config name) and short name (used for naming output files and metrics): 
+                    eg. -llm SOLAR-107B solar 
                 - if short name is missing: use full name in naming, 
-                - if no arguments specified: falls back to default arguments: uses default values (\"Upstage/SOLAR-10.7B-Instruct-v1.0\" solar). 
-                """)
-    parser.add_argument('--vllm', type=str, nargs='*', default=None, 
-                help="""
-                    Calls vllm to run evalution. Requires 2 arguments: 
-                    Uses default HF inference mechanism for LLM evaluation.  Requires up to 2 arguments: 
-                    - full model name  and short name (used for naming output files and metrics): eg. -vllm \"Upstage/SOLAR-10.7B-Instruct-v1.0\" solar 
-                    - if short name is missing: use full name in naming, 
-                    -  if no arguments specified: falls back to default arguments: uses default values (\"Upstage/SOLAR-10.7B-Instruct-v1.0\" solar). 
+                - if no arguments specified: falls back to default arguments: uses default values (SOLAR-107B LLMeval). 
                 """)
                     
     parser.add_argument('--llm_ollama',  type=str, nargs='*', default=None, 
@@ -207,7 +191,6 @@ if __name__ == "__main__":
         bem=args.bem,
         llm=args.llm, 
         llm_ollama=args.llm_ollama,
-        vllm=args.vllm, 
         gpt=args.gpt,
         lid=args.lid,
         lid_advanced=args.lid_advanced,

@@ -23,9 +23,8 @@ class VLLMeval:
     - relies on vllm for inference, directly loads the model and runs inference (no need to initiate vllm server in advance) 
     - output score for each sample is 1 (when positive word is present in llm output) or 0  (otherwise) 
     """
-    def __init__(self, model_config, batch_size=1, pos_word='Yes', neg_word='No', config="default_qa"):
+    def __init__(self, model_config: dict, batch_size: int = 1, config: str = "default_qa" ):
         eval_config = omegaconf.OmegaConf.load(f"config/evaluator/{config}.yaml")
-        model_config = omegaconf.OmegaConf.load(f"config/generator/vllm_{model_config}.yaml")
         model_config['init_args']['max_new_tokens']= eval_config['max_new_tokens']
         self.llm = instantiate(model_config['init_args'], prompt=eval_config['prompt'])
         self.options = eval_config.output_options

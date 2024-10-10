@@ -19,9 +19,7 @@ class LLMeval():
     - relies on default HF inference 
     - output score is a floating number corresponding to the logit score output by model.generate for pos_word
     """
-    def __init__(self, model_config, batch_size=1, config="default_qa"):
-        #model_config['init_args']['_target_'] = 'models.evaluators.llm.LLMeval'
-        model_config = omegaconf.OmegaConf.load(f"config/generator/{model_config}.yaml")            
+    def __init__(self, model_config: dict, batch_size: int = 1, config: str = "default_qa" ):
         eval_config = omegaconf.OmegaConf.load(f"config/evaluator/{config}.yaml")
         model_config['init_args']['max_new_tokens']= eval_config['max_new_tokens']
 
