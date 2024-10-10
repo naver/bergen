@@ -19,8 +19,11 @@ def main(config):
 
     if 'train' in config:
         rag.train()
-
-    rag.eval(dataset_split='dev')
+    if 'dataset_split' in config:
+        dataset_split = config['dataset_split']
+    else:
+        dataset_split = 'dev'
+    rag.eval(dataset_split=dataset_split)
 
 if __name__ == "__main__":
     # needed for multiprocessing to avoid CUDA forked processes error

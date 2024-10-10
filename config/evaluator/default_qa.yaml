@@ -1,4 +1,4 @@
-max_new_tokens: 1
+max_new_tokens: 10
 use_logits: True
 output_options: 
     'Yes': 1
