@@ -3,5 +3,5 @@ init_args:
   model_name: "mistralai/Mistral-7B-Instruct-v0.2"
   max_new_tokens: 128
   max_length: 32000
-batch_size: 256
+  batch_size: 256
 

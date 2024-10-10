@@ -3,4 +3,4 @@ init_args:
   model_name: "meta-llama/Llama-2-7b-hf"
   max_new_tokens: 128
   max_length: 4096
-batch_size: 256
+  batch_size: 256
