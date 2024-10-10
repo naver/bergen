@@ -38,8 +38,8 @@ class OllamaEval:
        
 
     def create_instruction(self,sample):
-        answer = ", ".join(sample['reference'])
-        question=sample['question']
+        answer = ", ".join(sample['reference']).replace("{", "").replace("}","")
+        question=sample['question'].replace("{", "").replace("}","")
         #need to remove "{}"
         prediction=sample['candidate'].replace("{", "").replace("}","")
         template = ChatPromptTemplate.from_messages([
