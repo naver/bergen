@@ -4,10 +4,15 @@ import torch
 
 class GenerateQueries:
     def __init__(self, 
+                 generator=None,
                  init_args=None,
                  ):
         # instaniate model
         self.model = instantiate(init_args)
+        if "model" in init_args and init_args.model == "generator":
+            if generator is None:
+                raise RuntimeError("No generator specified for getting search queries.")
+            self.model.init_generator(generator)
 
     @torch.no_grad() 
     def eval(self, dataset):

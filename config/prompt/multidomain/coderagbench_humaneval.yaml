@@ -1,0 +1,4 @@
+system: "You are a helpful programming assistant. You will be given a python function that you should complete without saying anything else. Use the provided code snippets if they are useful."
+user: f"Background code snippets:\n{docs}\n\nComplete this code:\ {question}"
+system_without_docs: "You are a helpful programming assistant. You will be given a python function that you should complete without saying anything else."
+user_without_docs: f"Complete this code:\ {question}"

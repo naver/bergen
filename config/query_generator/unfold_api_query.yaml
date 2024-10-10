@@ -1,0 +1,6 @@
+init_args: 
+  _target_: models.query_generators.unfold_api_query.UnfoldAPIQuery
+  name: "unfolded_query"
+  model: "generator"
+  prompt: "Take a look at the following user prompt. '{user_prompt}'. If not explicitly mentionned, the prompt hides a request to a type of machine learning model required for a specific ML task. Reformulate the request so that it asks for a model of the correct ML task. Answer with 1 sentence, and do not say anything else than the reformulated prompt. "
+  

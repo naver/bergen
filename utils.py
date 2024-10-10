@@ -41,7 +41,12 @@ def load_embeddings(index_path):
             emb_chunk = torch.load(emb_file)
             embeds.append(emb_chunk)
         embeds = torch.concat(embeds)
-    except:
+    except RuntimeError:
+        # RuntimeError: torch.cat(): expected a non-empty list of Tensors 
+        # --> embeddings were not found
+        raise RuntimeError("No embeddings found. Check .trec run file name if you are running oracle provenance.")
+    except Exception as e:
+        print("Exception occured: ", e)
         raise IOError(f'Embedding index corrupt. Please delete folder "{index_path}" and run again.')
     return embeds
 
@@ -101,11 +106,13 @@ def prepare_dataset_from_ids(dataset, q_ids, d_ids, multi_doc=False, query_embed
         dataset_dict.update({'label': dataset['query']['label'] } if 'label' in dataset['query'].features else {})
         dataset_dict.update({'ranking_label': dataset['query']['ranking_label']} if 'ranking_label' in dataset['query'].features else {})
     else:
+        assert isinstance(d_ids[0][0], str), f"{d_ids[0]}"
+        assert isinstance(list(dataset['doc'].id2index.keys())[0], str), "Dataset id type is not string, real index retrieval will fail and retrieve nothing. Please convert to string in dataset_processor!"
         dataset_dict = defaultdict(list)
         # get labels
         labels = get_by_id(dataset['query'], q_ids, 'label')
         # get ranking_labels
-        ranking_labels = get_by_id(dataset['query'], q_ids, 'ranking_label') 
+        ranking_labels = get_by_id(dataset['query'], q_ids, 'ranking_label')
         # get queries
         queries = get_by_id(dataset['query'], q_ids, query_field)
         # put together dataset_dict for each query
@@ -419,3 +426,27 @@ def prepare_labels(input_ids, response_token_ids, ignore_index=-100):
             label_ids[i, :response_token_ids_end_idx] = ignore_index
     return label_ids
 
+def print_gpu_memory():
+    if torch.cuda.is_available():
+        print("GPU is available.")
+        gpu_id = torch.cuda.current_device()
+        gpu_name = torch.cuda.get_device_name(gpu_id)
+        print(f"Using GPU: {gpu_name} (ID: {gpu_id})")
+        
+        # Get the total and free memory in bytes
+        total_memory = torch.cuda.get_device_properties(gpu_id).total_memory
+        reserved_memory = torch.cuda.memory_reserved(gpu_id)
+        allocated_memory = torch.cuda.memory_allocated(gpu_id)
+        free_memory = reserved_memory - allocated_memory
+        
+        print(f"Total GPU memory: {total_memory / (1024 ** 3):.2f} GB")
+        print(f"Reserved GPU memory: {reserved_memory / (1024 ** 3):.2f} GB")
+        print(f"Allocated GPU memory: {allocated_memory / (1024 ** 3):.2f} GB")
+        print(f"Reserved - Allocated = Free GPU memory: {free_memory / (1024 ** 3):.2f} GB")
+
+        import subprocess
+        result = subprocess.run(['nvidia-smi'], stdout=subprocess.PIPE)
+        print(result.stdout.decode())
+
+    else:
+        print("GPU is not available.")
