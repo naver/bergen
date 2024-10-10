@@ -1,0 +1,6 @@
+init_args: 
+  _target_: models.generators.llm.LLM
+  model_name: "google/gemma-2-9b-it"
+  max_new_tokens: 128
+  max_length: 4096
+  batch_size: 16
