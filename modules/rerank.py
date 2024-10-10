@@ -59,7 +59,9 @@ class Rerank():
             scores_sorted.append(torch.stack(score_sorted))
             doc_ids_sorted.append(list(d_id_sorted))
             q_ids_sorted.append(q_id)
-        scores_sorted = torch.stack(scores_sorted)
+        # this conversion to tensor is useless and breaks for queries that return less than top_k documents
+        # so keeping them as a list
+        #scores_sorted = torch.stack(scores_sorted)
         return q_ids_sorted, doc_ids_sorted, scores_sorted
 
     def get_clean_model_name(self):
