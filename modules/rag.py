@@ -536,7 +536,7 @@ class RAG:
             # lora config
             lora_config = LoraConfig(
                 **self.training_config.lora,
-                target_modules=['q_proj', 'down_proj', 'gate_proj', 'k_proj', 'v_proj', 'o_proj', 'up_proj'],
+                target_modules='all-linear',
                 )
             # get adapter
             self.generator.model = get_peft_model(self.generator.model, lora_config)

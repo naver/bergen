@@ -69,13 +69,17 @@ class LLM(Generator):
         print(f"Tokenizer used: {tokenizer_name}")
         
         try:
-            self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name, gguf_file=gguf_file)
+            self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name, 
+                                                           gguf_file=gguf_file, 
+                                                           clean_up_tokenization_spaces=True)
         except:
             config_dict = os.path.join(tokenizer_name, 'config.json')
             with open(config_dict, 'r') as f:
                 config = json.load(f)
             tokenizer_name = config['_name_or_path']
-            self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name, gguf_file=gguf_file)
+            self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name, 
+                                                           gguf_file=gguf_file, 
+                                                           clean_up_tokenization_spaces=True)
 
         self.tokenizer.padding_side = "left"
         self.tokenizer.pad_token = self.tokenizer.bos_token
@@ -177,18 +181,16 @@ class LLM(Generator):
                 # In the label there is only tokens after position padding_count + label_start_idnex:
                 label_ids[i, :examples[i]['label_start_index']+left_padding_count + 1] = ignore_index
                 
-                # Here we can assert that the label_ids, when decoded, is included in one of the original labels
+                # Here we assert that the label_ids, when decoded, is one of the original labels
+                # We may deactivate this when we gain trust in that bit of code !
                 original_labels = label[i]
-                recovered_label = self.tokenizer.decode(label_ids[label_ids != ignore_index], skip_special_tokens=True).strip()
-                # print('######YO check this out:', original_labels, 'VS', recovered_label, '###END OF YO')
-                
+                recovered_label = self.tokenizer.decode(label_ids[label_ids != ignore_index], skip_special_tokens=True).strip()                
                 label_found = False
                 for original_label in original_labels:
-                    if recovered_label in original_label:
+                    if recovered_label == original_label.strip():
                         label_found = True
-                if not label_found:
-                    assert False, f"###### <{recovered_label}> NOT INCLUDED IN <{original_labels}>"
-                 
+                assert label_found, f"###### <{recovered_label}> NOT INCLUDED IN <{original_labels}>"
+
             model_input['labels'] =  label_ids
             return model_input
 
