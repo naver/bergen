@@ -1,5 +1,5 @@
 generate_test_samples: 5
-test_size_ratio: 64
+test_size: 64
 num_saving_steps: 10
 wandb_project_name: null # used if trainer.report_to == "wandb"
 trainer:

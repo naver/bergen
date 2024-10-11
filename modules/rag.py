@@ -451,7 +451,6 @@ class RAG:
         from transformers import TrainingArguments, Trainer
         from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
         from modules.dataset import Tokenized_Sorted_Dataset
-        from modules.wandb_callback import WandbPredictionProgressCallback
         
 
         dataset_split = 'train'
@@ -511,10 +510,10 @@ class RAG:
                                                dataset_split)
         
         # split train into train and test
-        if isinstance(self.training_config.test_size_ratio, int):
-            self.training_config.test_size_ratio = min(len(gen_dataset)//2, self.training_config.test_size_ratio)
+        if isinstance(self.training_config.test_size, int):
+            self.training_config.test_size = min(len(gen_dataset)//2, self.training_config.test_size)
             
-        train_test_datasets = gen_dataset.train_test_split(self.training_config.test_size_ratio, seed=42)
+        train_test_datasets = gen_dataset.train_test_split(self.training_config.test_size, seed=42)
 
         print("Preprocessing data...")
         train_test_datasets['train'] = Tokenized_Sorted_Dataset(train_test_datasets['train'], self.generator, training=True)
@@ -571,13 +570,14 @@ class RAG:
         )
 
         callbacks = []
-        # if self.training_config.trainer.report_to != 'none':
-        #     callbacks.append(
-        #         WandbPredictionProgressCallback(
-        #             tokenizer=self.generator.tokenizer,
-        #             generation_step=self.generator.generate,
-        #             dataloader=call_back_data_select,
-        #     ))
+        if self.training_config.trainer.report_to != 'none':
+            from modules.wandb_callback import WandbPredictionProgressCallback
+            callbacks.append(
+                WandbPredictionProgressCallback(
+                    tokenizer=self.generator.tokenizer,
+                    generation_step=self.generator.generate,
+                    dataloader=call_back_data_select,
+            ))
 
         trainer = Trainer(
             model=self.generator.model,
