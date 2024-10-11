@@ -451,7 +451,7 @@ class RAG:
         from transformers import TrainingArguments, Trainer
         from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
         from modules.dataset import Tokenized_Sorted_Dataset
-        from modules.trainer import WandbPredictionProgressCallback
+        from modules.wandb_callback import WandbPredictionProgressCallback
         
 
         dataset_split = 'train'
@@ -521,11 +521,11 @@ class RAG:
         train_test_datasets['test'] = Tokenized_Sorted_Dataset(train_test_datasets['test'], self.generator, training=True) # set training=True to have labels (if False, eval loss will be None)
 
         # We keep some data to log in wandb, from the test set:
-        # call_back_data = Tokenized_Sorted_Dataset(train_test_datasets['test'], self.generator, training=False)
-        # n_in_call_back_select = min(len(train_test_datasets['test']), self.training_config.generate_test_samples)
-        # call_back_data_select = DataLoader(call_back_data.select(range(n_in_call_back_select)), 
-        #                                    batch_size=self.training_config.trainer.per_device_eval_batch_size, 
-        #                                    collate_fn=partial(self.generator.collate_fn, eval=True))
+        call_back_data = Tokenized_Sorted_Dataset(train_test_datasets['test'], self.generator, training=False)
+        n_in_call_back_select = min(len(train_test_datasets['test']), self.training_config.generate_test_samples)
+        call_back_data_select = DataLoader(call_back_data.select(range(n_in_call_back_select)), 
+                                           batch_size=self.training_config.trainer.per_device_eval_batch_size, 
+                                           collate_fn=partial(self.generator.collate_fn, eval=True))
 
         print("Data preprocessed")
 
@@ -571,13 +571,13 @@ class RAG:
         )
 
         callbacks = []
-        # if self.training_config.trainer.report_to != 'none':
-        #     callbacks.append(
-        #         WandbPredictionProgressCallback(
-        #             tokenizer=self.generator.tokenizer,
-        #             generation_step=self.generator.generate,
-        #             dataloader=call_back_data_select,
-        #     ))
+        if self.training_config.trainer.report_to != 'none':
+            callbacks.append(
+                WandbPredictionProgressCallback(
+                    tokenizer=self.generator.tokenizer,
+                    generation_step=self.generator.generate,
+                    dataloader=call_back_data_select,
+            ))
 
         trainer = Trainer(
             model=self.generator.model,

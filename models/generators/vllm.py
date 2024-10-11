@@ -56,7 +56,7 @@ class VLLM(Generator):
                               gpu_memory_utilization=gpu_memory_utilization,
                               quantization=self.quantization)
             
-        if self.use_beam_search:
+        if use_beam_search:
             assert temperature == 0, f'beam search requires temperature = 0, not {temperature}'
             if best_of == 1:
                 Warning('You are doing beam search with best_of=1: it is greedy decoding. Consider increasing best_of.')
