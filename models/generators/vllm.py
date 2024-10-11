@@ -93,7 +93,7 @@ class VLLM(Generator):
         data_dict = {}
 
         # for inference just format and tokenize instruction 
-        model_input = [self.format_instruction(e) for e in examples]
+        model_input = [self.format_instruction(e, eval=True)[0] for e in examples]
         
         data_dict.update({
             'model_input': model_input,

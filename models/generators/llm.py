@@ -184,7 +184,7 @@ class LLM(Generator):
                 # Here we assert that the label_ids, when decoded, is one of the original labels
                 # We may deactivate this when we gain trust in that bit of code !
                 original_labels = label[i]
-                recovered_label = self.tokenizer.decode(label_ids[label_ids != ignore_index], skip_special_tokens=True).strip()                
+                recovered_label = self.tokenizer.decode(label_ids[i][label_ids[i] != ignore_index], skip_special_tokens=True).strip()                
                 label_found = False
                 for original_label in original_labels:
                     if recovered_label == original_label.strip():

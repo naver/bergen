@@ -518,10 +518,10 @@ class RAG:
 
         print("Preprocessing data...")
         train_test_datasets['train'] = Tokenized_Sorted_Dataset(train_test_datasets['train'], self.generator, training=True)
-        train_test_datasets['test'] = Tokenized_Sorted_Dataset(train_test_datasets['test'], self.generator, training=True) # set training=True to have labels (if False, eval loss will be None)
+        call_back_data = Tokenized_Sorted_Dataset(train_test_datasets['test'], self.generator, training=False)
+        train_test_datasets['test'] = Tokenized_Sorted_Dataset(train_test_datasets['test'], self.generator, training=True)
 
         # We keep some data to log in wandb, from the test set:
-        call_back_data = Tokenized_Sorted_Dataset(train_test_datasets['test'], self.generator, training=False)
         n_in_call_back_select = min(len(train_test_datasets['test']), self.training_config.generate_test_samples)
         call_back_data_select = DataLoader(call_back_data.select(range(n_in_call_back_select)), 
                                            batch_size=self.training_config.trainer.per_device_eval_batch_size, 
@@ -571,13 +571,13 @@ class RAG:
         )
 
         callbacks = []
-        if self.training_config.trainer.report_to != 'none':
-            callbacks.append(
-                WandbPredictionProgressCallback(
-                    tokenizer=self.generator.tokenizer,
-                    generation_step=self.generator.generate,
-                    dataloader=call_back_data_select,
-            ))
+        # if self.training_config.trainer.report_to != 'none':
+        #     callbacks.append(
+        #         WandbPredictionProgressCallback(
+        #             tokenizer=self.generator.tokenizer,
+        #             generation_step=self.generator.generate,
+        #             dataloader=call_back_data_select,
+        #     ))
 
         trainer = Trainer(
             model=self.generator.model,

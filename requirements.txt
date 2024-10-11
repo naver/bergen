@@ -26,3 +26,4 @@ langid
 fasttext
 fasttext-langdetect
 langdetect
+langcodes

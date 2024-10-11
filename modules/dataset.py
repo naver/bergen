@@ -32,7 +32,7 @@ class Tokenized_Sorted_Dataset(Dataset):
             item['label_start_index'] = label_start_index
             tokenized_input = self.tokenizer(formatted_instr, truncation=True, return_tensors="pt")
             length = tokenized_input['input_ids'].size(1)  # Length of tokenized input
-            processed_data.append((length, item, tokenized_input, label_start_index))
+            processed_data.append((length, item, tokenized_input))
         
             # Sort by tokenized input length
         self.sorted_data = sorted(processed_data, key=lambda x: x[0])
@@ -41,7 +41,7 @@ class Tokenized_Sorted_Dataset(Dataset):
         return len(self.sorted_data)
 
     def __getitem__(self, idx):
-        _, item, tokenized_input, label_start_index = self.sorted_data[idx]
+        _, item, tokenized_input = self.sorted_data[idx]
         # Update the item with tokenized input for consistency
         item['tokenized_input'] = tokenized_input
         return item

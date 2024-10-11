@@ -110,13 +110,15 @@ class Generator(ABC):
                     prompt = self.tokenizer.apply_chat_template(messages,  add_generation_prompt=False, tokenize=False)
                 else:
                     raise e
-                
+        
+        if label is not None:
+            assert label_start_index is not None
         return prompt, label_start_index
 
-    def format_instruction(self, sample: dict, eval: bool = True):
+    def format_instruction(self, sample: dict, eval: bool = True) -> (str, int):
         """
-        Make the actual prompt from the prompt template and the model chat template
-        Also return start index of the label in that prompt, if eval=True and a label is provided
+        Makes the actual prompt from the prompt template and the model chat template
+        Also return start index of the label in that prompt, if eval=True and a label is provided, None otherwise.
         If eval=True, then no label is added to the prompt.
         If eval=False, then the label is added to the prompt, for training (teacher forcing)
         """
@@ -124,6 +126,7 @@ class Generator(ABC):
         label = None
         if not eval:
             label = (sample['label'] if isinstance(sample['label'], str) else random.choice(sample['label']))
+            assert label is not None
         if 'doc' in sample:
             # We have retrieved documents:
             docs = ''
