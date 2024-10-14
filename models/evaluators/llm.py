@@ -130,7 +130,7 @@ class LLMeval():
                 pos_prob = torch.softmax(model_scores, 1).detach().cpu()
                 #final score is computed as interpolation between prob of label and it's associated value (defined by options map in config): eg. p(x=yes)*1 + p(x=no)*0 
                 for i, score in enumerate(pos_prob):
-                    scores.append(torch.dot(score,self.output_values))
+                    scores.append(torch.dot(score,self.output_values).item())
             else:
                 # discrete model output            
                 # get real answer generation
@@ -145,8 +145,7 @@ class LLMeval():
                 weird.extend(batch_weird)
                 # if string value specified in options is present in the generated output: assign corresponding score,
                 # if multiple values are present: take maximum value
-                scores.extend(batch_scores)
-                breakpoint()
+                scores.extend(batch_scores)                
             tq.set_description(f" score: {get_mean_without_unknown(scores)* 100:4.1f}%, weird :{float(len(weird))/len(scores)*100:4.1f}%")
         
         torch.cuda.empty_cache()
