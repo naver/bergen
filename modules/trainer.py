@@ -2,6 +2,8 @@
 BERGEN
 Copyright (c) 2024-present NAVER Corp.
 CC BY-NC-SA 4.0 license
+
+A trainer module for fine-tuning with RAG.
 '''
 
 from transformers import Trainer

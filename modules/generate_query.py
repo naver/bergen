@@ -1,3 +1,9 @@
+'''
+A class to generate queries for a given dataset. 
+You may use the same generator as for evaluation.
+Example: query translation, query reformulation (see models/query_generator/ for specific query generators)
+'''
+
 from tqdm import tqdm
 from hydra.utils import instantiate
 import torch

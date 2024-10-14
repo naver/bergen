@@ -2,6 +2,8 @@
 BERGEN
 Copyright (c) 2024-present NAVER Corp.
 CC BY-NC-SA 4.0 license
+
+Tokenized_Sorted_Dataset class to format instruction, tokenize, sort data.
 '''
 
 from torch.utils.data import Dataset
@@ -10,6 +12,10 @@ import random
 
 
 class Tokenized_Sorted_Dataset(Dataset):
+    """
+    A dataset class to format instruction, tokenize, and sort data.
+    """
+
     def __init__(self, data, model, training=False):
 
         self.model = model
