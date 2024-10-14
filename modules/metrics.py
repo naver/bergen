@@ -13,6 +13,7 @@ rouge = Rouge()
 
 
 def simple_accuracy(preds, labels):
+    sample_acc = (preds == labels)
     return float((preds == labels).mean())
 
 
@@ -48,7 +49,7 @@ def normalize(s: str) -> str:
 
     return white_space_fix(remove_articles(remove_punc(lower(s))))
 
-def f1_single(prediction, ground_truth, tokenfun=lambda x: x.split()):
+def f1_single(prediction: str, ground_truth: str, tokenfun=lambda x: x.split()):
     prediction_tokens = tokenfun(normalize(prediction))
     ground_truth_tokens = tokenfun(normalize(ground_truth))
     common = Counter(prediction_tokens) & Counter(ground_truth_tokens)
@@ -60,7 +61,7 @@ def f1_single(prediction, ground_truth, tokenfun=lambda x: x.split()):
     f1 = (2 * precision * recall) / (precision + recall)
     return f1, precision, recall
 
-def ngrams(s, n=3):
+def ngrams(s: str, n: int=3):
     exclude = set(string.punctuation)
     s = ''.join(ch if ch not in exclude else " " for ch in s.lower())
     tokens = []
@@ -73,7 +74,7 @@ def ngrams(s, n=3):
                 tokens.append(w[i:i+n])
     return tokens
 
-def rouge_wrapper(prediction, ground_truth):
+def rouge_wrapper(prediction: str, ground_truth: str):
     try:
         result = rouge.get_scores(prediction, ground_truth, avg=True)
         return result["rouge-1"]["f"], result["rouge-2"]["f"], result["rouge-l"]["f"]
@@ -81,7 +82,7 @@ def rouge_wrapper(prediction, ground_truth):
         return 0.0, 0.0, 0.0
 
 
-def rouge_score_single(prediction, ground_truths):
+def rouge_score_single(prediction: str, ground_truths: list[str]):
     ground_truths = [x for x in ground_truths if len(x) > 0]
     if len(prediction) == 0 or len(ground_truths) == 0:  
         # check if empty prediction or if there is no hypothesis with len > 0
@@ -92,58 +93,58 @@ def rouge_score_single(prediction, ground_truths):
     rougel = max(s[2] for s in scores)
     return rouge1, rouge2, rougel
 
-def rouge_score(predictions, references):
+def rouge_score(predictions: list[str], references: list[list[str]]):
     rouge1, rouge2, rougel = list(), list(), list()
     for ground_truths, predicition in zip(references, predictions):
         rouge1_, rouge2_, rougel_ = rouge_score_single(predicition, ground_truths) 
         rouge1.append(rouge1_)
         rouge2.append(rouge2_)
         rougel.append(rougel_)
-    return np.mean(rouge1), np.mean(rouge2), np.mean(rougel)
+    return {"rouge1": rouge1, "rouge2": rouge2, "rougel": rougel}
 
 
-def f1_score(predictions, references, tokenfun=lambda x: x.split()):
+def f1_score(predictions: list[str], references: list[list[str]], tokenfun=lambda x: x.split()):
     f1, precision, recall = list(), list(), list()
     for ground_truths, prediction in zip(references, predictions):
         f1_, precision_, recall_ = [max(values) for values in zip(*[f1_single(prediction, gt, tokenfun) for gt in ground_truths])]
         f1.append(f1_)
         precision.append(precision_)
         recall.append(recall_)
-    return np.mean(f1), np.mean(precision), np.mean(recall)
+    return {"f1": f1, "precision": precision, "recall": recall}
 
-def em_single(prediction, ground_truth):
+def em_single(prediction: str, ground_truth: str):
     return float(normalize(prediction) == normalize(ground_truth))
 
 
-def exact_match_score(predictions, references):
-    return np.mean([max([em_single(prediction, gt) for gt in ground_truths]) for ground_truths, prediction in zip(references, predictions)])
+def exact_match_score(predictions: list[str], references: list[list[str]]):
+    match_samples = [max([em_single(prediction, gt) for gt in ground_truths]) for ground_truths, prediction in zip(references, predictions)] 
+    return match_samples
 
-def match_single(prediction, ground_truth):
+def match_single(prediction: str, ground_truth: str):
     return float(normalize(ground_truth) in normalize(prediction))
 
 
 def match_score(predictions, references):
     assert isinstance(references[0], list), f"during metrics computation: Labels are type {type(references[0])}, but are expected to be a list of strings (even if only one label). Metrics computation may run but produce false results."
-    return np.mean([max([match_single(prediction, gt) for gt in ground_truths]) for ground_truths, prediction in zip(references, predictions)])
+    match_samples = [max([match_single(prediction, gt) for gt in ground_truths]) for ground_truths, prediction in zip(references, predictions)]
+    return match_samples
 
 
 
 class RAGMetrics:
     @staticmethod
     def compute(predictions, references, questions=None):
-
-        rouge1, rouge2, rougel = rouge_score(predictions, references)
-        f1, precision, recall = f1_score(predictions, references)
-        f1_char3gram, precision_char3gram, recall_char3gram = f1_score(predictions, references, ngrams)
+        rouge = rouge_score(predictions, references)
+        f1_scores = f1_score(predictions, references)
+        recall_char3gram = f1_score(predictions, references, ngrams)["recall"]
         return {    "M": match_score(predictions, references),
                     "EM": exact_match_score(predictions, references),
-                    #"BEM": self.bem(predictions, references, questions),
-                    "F1": f1,
-                    "Precision": precision, 
-                    "Recall": recall,
+                    "F1": f1_scores["f1"],
+                    "Precision": f1_scores["precision"], 
+                    "Recall": f1_scores["recall"],
                     "Recall_char3gram": recall_char3gram,
-                    "Rouge-1": rouge1,
-                    "Rouge-2": rouge2,
-                    "Rouge-L": rougel,
+                    "Rouge-1": rouge["rouge1"],
+                    "Rouge-2": rouge["rouge2"],
+                    "Rouge-L": rouge["rougel"],
                 }
 
