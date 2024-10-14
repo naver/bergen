@@ -16,6 +16,8 @@ import os
 from tqdm import tqdm
 import json
 from hydra.utils import instantiate
+import pandas as pd
+import numpy as np
 from utils import (
     eval_retrieval_kilt, init_experiment, move_finished_experiment,
     write_trec, prepare_dataset_from_ids, load_trec,
@@ -437,13 +439,21 @@ class RAG:
     def eval_metrics(self, dataset_split, questions, predictions, references):
         if predictions == references == questions == None:
             return
+        out_file = f"{self.experiment_folder}/eval_{dataset_split}_out.json"
+        with open(out_file) as fd:
+            generated = json.load(fd)
+        generated = pd.DataFrame(generated)
         metrics_out = self.metrics[dataset_split].compute(
         predictions=predictions, 
         references=references, 
         questions=questions
         )
-        write_dict(self.experiment_folder, f"eval_{dataset_split}_metrics.json", metrics_out)
-    
+        for m in metrics_out:
+            generated[m] = metrics_out[m]
+        avg_metrics = {v: np.mean(metrics_out[v]) for v in metrics_out}
+        write_dict(self.experiment_folder, f"eval_{dataset_split}_metrics.json", avg_metrics)        
+        generated.to_json(out_file, orient='records')
+        
 
     def train(self):
         from transformers import TrainingArguments
