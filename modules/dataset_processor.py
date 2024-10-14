@@ -587,7 +587,10 @@ class ProcessDatasets:
                 
 
         processed_datasets = defaultdict(dict)
+        #train dev test
         for split in datasets:
+            # query doc field
+            # if doc check is processing is already
             for query_or_doc in datasets[split]:
                 if datasets[split][query_or_doc] != None:
                     processor_init_args = datasets[split][query_or_doc]['init_args']
@@ -603,6 +606,10 @@ class ProcessDatasets:
                     dataset = processor.get_dataset()
                     if query_or_doc == 'query':
                         sanity_checks(dataset)
+                    elif query_or_doc =='doc':
+                        # once here it means that we have processed the document collection once
+                        # assuming that train and dev share the same collections, then we could skip the second ovewrite
+                        overwrite=False
                     processed_datasets[split][query_or_doc] = dataset
                 else:
                     processed_datasets[split][query_or_doc] = None
@@ -623,7 +630,11 @@ class ProcessDatasets:
                         debug= debug if query_or_doc == 'query' else False, 
                         oracle_provenance=  False, 
                         shuffle_labels= False
-                        )          
+                        )
+                
+                if query_or_doc=='doc':
+                    overwrite=True
+                              
         return True
 
 
