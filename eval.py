@@ -12,7 +12,7 @@ pd.set_option("display.precision", 4)
 
 class Evaluate:
     @staticmethod
-    def eval(experiment_folder="experiments/", split="dev", bem=False, llm=None, llm_ollama=None, vllm=None,gpt=None,bem_batch_size=1, lid=None, lid_advanced=None, llm_batch_size=None, llm_prompt="default_qa", ollama_url=None, folder=None, force=False, samples=None):
+    def eval(experiment_folder="experiments/", split="dev", bem: bool=False, llm: list[str]=None, llm_ollama: list[str]=None, vllm: list[str]=None, gpt: bool=None, bem_batch_size: int=1, lid: bool=None, lid_advanced: bool=None, llm_batch_size: int=None, llm_prompt: str = "default_qa", ollama_url: str=None, folder: str=None, force: bool=False, samples: int=-1):
         def eval_single(experiment_folder, folder, split: str, model, metric_name: str, nb_samples: int =-1):
             if folder != None:
                 folders = [folder]
