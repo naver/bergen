@@ -25,14 +25,6 @@ def acc_and_f1(preds, labels):
         "f1": f1,
     }
 
-def pearson_and_spearman(preds, labels):
-    pearson_corr = float(pearsonr(preds, labels)[0])
-    spearman_corr = float(spearmanr(preds, labels)[0])
-    return {
-        "pearson": pearson_corr,
-        "spearmanr": spearman_corr,
-    }
-
 def normalize(s: str) -> str:
     def remove_articles(text):
         return regex.sub(r"\b(a|an|the)\b", " ", text)
