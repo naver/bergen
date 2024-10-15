@@ -49,7 +49,7 @@ class VLLM(Generator):
                               gpu_memory_utilization=gpu_memory_utilization,
                               max_model_len=self.max_length,
                               enforce_eager=True,
-                              kv_cache_dtype="fp8_e5m2")        
+                              kv_cache_dtype="auto")        
         else:
             self.model = vllm(model=self.model_name,
                               tensor_parallel_size=torch.cuda.device_count(),
