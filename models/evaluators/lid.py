@@ -17,7 +17,7 @@ class LID:
     def __call__(self, predictions, _, __):
         def correct_lang(response):
             response = response.replace("\n", " ")
-            return Language.get(self.model.predict(response)[0][0].removeprefix('__label__')).language == self.target_lang
+            return int(Language.get(self.model.predict(response)[0][0].removeprefix('__label__')).language == self.target_lang)
         scores = []
         correct = 0
         denom = 0
