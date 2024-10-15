@@ -27,10 +27,10 @@ class Evaluate:
                 
                 input_file = f'{experiment_folder}/eval_{split}_out.json'
                 if os.path.exists(input_file):
-                    if nb_samples >0:
+                    data = load_data(input_file)
+                    if nb_samples >0 and nb_samples < len(data):
                         data = load_data(input_file)[:nb_samples]
-                    else:
-                        data = load_data(input_file)
+                                            
                     metrics_file = f'{experiment_folder}/eval_{split}_metrics.json'
                     try:
                        metrics_dict = json.load(open(metrics_file))

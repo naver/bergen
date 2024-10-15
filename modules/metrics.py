@@ -13,7 +13,6 @@ rouge = Rouge()
 
 
 def simple_accuracy(preds, labels):
-    sample_acc = (preds == labels)
     return float((preds == labels).mean())
 
 
