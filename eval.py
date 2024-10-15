@@ -29,7 +29,7 @@ class Evaluate:
                 if os.path.exists(input_file):
                     data = load_data(input_file)
                     if nb_samples >0 and nb_samples < len(data):
-                        data = load_data(input_file)[:nb_samples]
+                        data = data[:nb_samples]
                                             
                     metrics_file = f'{experiment_folder}/eval_{split}_metrics.json'
                     try:
