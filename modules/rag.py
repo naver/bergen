@@ -3,7 +3,6 @@ BERGEN
 Copyright (c) 2024-present NAVER Corp.
 CC BY-NC-SA 4.0 license
 '''
-from functools import partial
 import time 
 import shutil
 import os 
@@ -11,6 +10,8 @@ import json
 from tqdm import tqdm
 from hydra.utils import instantiate
 
+import pandas as pd
+import numpy as np
 from utils import (
     eval_retrieval_kilt, init_experiment, move_finished_experiment,
     write_trec, prepare_dataset_from_ids, load_trec,
@@ -25,6 +26,7 @@ from modules.generate_query import GenerateQueries
 from modules.process_context import ProcessContext
 from modules.dataset_processor import ProcessDatasets
 from modules.metrics import RAGMetrics
+
 
 class RAG:
     def __init__(self, 
@@ -123,7 +125,6 @@ class RAG:
             "dev": RAGMetrics, 
             "test": None,
         }
-
         # init retriever
         self.retriever = Retrieve(
                     **retriever_config,
@@ -437,17 +438,24 @@ class RAG:
     def eval_metrics(self, dataset_split, questions, predictions, references):
         if predictions is None and references is None and questions is None:
             return
+        out_file = f"{self.experiment_folder}/eval_{dataset_split}_out.json"
+        with open(out_file) as fd:
+            generated = json.load(fd)
+        generated = pd.DataFrame(generated)
         metrics_out = self.metrics[dataset_split].compute(
         predictions=predictions, 
         references=references, 
         questions=questions
         )
-        write_dict(self.experiment_folder, f"eval_{dataset_split}_metrics.json", metrics_out)
-    
+        for m in metrics_out:
+            generated[m] = metrics_out[m]
+        avg_metrics = {v: np.mean(metrics_out[v]) for v in metrics_out}
+        write_dict(self.experiment_folder, f"eval_{dataset_split}_metrics.json", avg_metrics)        
+        generated.to_json(out_file, orient='records')
+        
 
     def train(self):
         import torch
-        from torch.utils.data import DataLoader
         from transformers import TrainingArguments, Trainer
         from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
         from modules.dataset import Tokenized_Sorted_Dataset
@@ -517,17 +525,9 @@ class RAG:
 
         print("Preprocessing data...")
         train_test_datasets['train'] = Tokenized_Sorted_Dataset(train_test_datasets['train'], self.generator, training=True)
-        call_back_data = Tokenized_Sorted_Dataset(train_test_datasets['test'], self.generator, training=False)
         train_test_datasets['test'] = Tokenized_Sorted_Dataset(train_test_datasets['test'], self.generator, training=True)
 
-        # We keep some data to log in wandb, from the test set:
-        n_in_call_back_select = min(len(train_test_datasets['test']), self.training_config.generate_test_samples)
-        call_back_data_select = DataLoader(call_back_data.select(range(n_in_call_back_select)), 
-                                           batch_size=self.training_config.trainer.per_device_eval_batch_size, 
-                                           collate_fn=partial(self.generator.collate_fn, eval=True))
-
         print("Data preprocessed")
-
         # if lora in train config
         if 'lora' in self.training_config:
             self.generator.model = prepare_model_for_kbit_training(self.generator.model)
@@ -548,15 +548,6 @@ class RAG:
         save_steps = max(total_steps  // num_saving_steps, 1)
         logging_steps = max(total_steps // num_saving_steps, 1)
 
-        if self.training_config.trainer.report_to == "wandb":
-            import wandb
-            wandb_api_key = os.environ.get("WANDB_API_KEY")
-            if wandb_api_key is None:
-                raise RuntimeError("please set environment variable WANDB_API_KEY to log into wandb. \
-                    Otherwise disable wandb by setting training config trainer.report_to: 'none' ")
-            wandb.login(key=wandb_api_key)
-            wandb.init(project=self.training_config.wandb_project_name, name=self.run_name)
-
         args = TrainingArguments(
             run_name=self.run_name,
             output_dir=f'{self.experiment_folder}/train/',
@@ -569,28 +560,15 @@ class RAG:
             remove_unused_columns=False,
         )
 
-        callbacks = []
-        if self.training_config.trainer.report_to != 'none':
-            from modules.wandb_callback import WandbPredictionProgressCallback
-            callbacks.append(
-                WandbPredictionProgressCallback(
-                    tokenizer=self.generator.tokenizer,
-                    generation_step=self.generator.generate,
-                    dataloader=call_back_data_select,
-            ))
-
         trainer = Trainer(
             model=self.generator.model,
             args=args,
             data_collator=self.generator.collate_fn,
             train_dataset=train_test_datasets['train'],
-            eval_dataset=train_test_datasets['test'],
-            callbacks=callbacks
+            eval_dataset=train_test_datasets['test']
         )
-        
+                
         trainer.train()
         self.generator.model = trainer.model
         move_finished_experiment(self.experiment_folder)
         self.experiment_folder = get_finished_experiment_name(self.experiment_folder)
-        if self.training_config.trainer.report_to == "wandb":
-            wandb.finish()
