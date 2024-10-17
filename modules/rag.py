@@ -574,5 +574,9 @@ class RAG:
         
         trainer.train()
         self.generator.model = trainer.model
+        
+        # Restoring eval mode now that training is done
+        self.generator.model.eval()
+
         move_finished_experiment(self.experiment_folder)
         self.experiment_folder = get_finished_experiment_name(self.experiment_folder)
