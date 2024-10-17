@@ -1,5 +1,5 @@
 init_args: 
-  _target_: models.generators.vllm.LLM
+  _target_: models.generators.vllm.VLLM
   model_name: "mistralai/Mistral-7B-Instruct-v0.2"
   max_new_tokens: 128
   max_length: 32000

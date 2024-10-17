@@ -1,5 +1,5 @@
 init_args: 
-  _target_: models.generators.vllm.LLM
+  _target_: models.generators.vllm.VLLM
   model_name: "Upstage/SOLAR-10.7B-Instruct-v1.0"
   max_new_tokens: 128
   max_length: 4096

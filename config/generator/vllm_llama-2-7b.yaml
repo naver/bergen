@@ -1,5 +1,5 @@
 init_args: 
-  _target_: models.generators.vllm.LLM
+  _target_: models.generators.vllm.VLLM
   model_name: "meta-llama/Llama-2-7b-hf"
   max_new_tokens: 128
   max_length: 4096

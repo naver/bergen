@@ -13,6 +13,7 @@ from models.generators.xrag import XMistralForCausalLM, SFR, XMixtralForCausalLM
 import transformers
 from typing import List
 
+
 class MultiTokenEOSCriteria(transformers.StoppingCriteria):
     """Criteria to stop on the specified multi-token sequence."""
 

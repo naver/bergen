@@ -93,7 +93,7 @@ class Evaluate:
                 short_name = f"LLMeval_{short_name}"
 
             model_config = omegaconf.OmegaConf.load(f"config/generator/{model_config}.yaml")            
-            if model_config['init_args']['_target_']=='models.generators.vllm.LLM':
+            if model_config['init_args']['_target_']=='models.generators.vllm.VLLM':
                 from models.evaluators.vllm import VLLMeval 
                 model = VLLMeval(model_config, batch_size=llm_batch_size, config=llm_prompt)
                 

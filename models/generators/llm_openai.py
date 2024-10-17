@@ -18,16 +18,17 @@ class OpenAI(Generator):
                 max_length=None,
                 prompt=None
                  ):
-        Generator.__init__(self, model_name=model_name, batch_size=batch_size)
+        Generator.__init__(self,
+                           model_name=model_name,
+                           batch_size=batch_size,
+                           max_new_tokens=max_new_tokens,
+                           max_doc_len=max_doc_len,
+                           max_length=max_length)
         self.client = openai.OpenAI(api_key = os.environ.get("OPENAI_API_KEY"),)
-        self.max_new_tokens = max_new_tokens
         self.prompt = prompt
-        self.chat_template = True
         self.total_cost = 0
         self.prompt_cost = 0
         self.completion_cost = 0
-        self.max_doc_len = max_doc_len
-        self.max_length = max_length
         self.tokenizer=None
 
     def generate(self, messages):
@@ -115,40 +116,12 @@ class OpenAI(Generator):
 
         return data_dict
 
-    def format_instruction(self, sample):
-        # will be injected into formatted prompt string
-        question = sample['query']
-        # in case we have previously retrieved documents
-        if 'doc' in sample:
-            docs = ''
-            for i, doc in enumerate(sample['doc']):
-                doc = ' '.join(doc.split()[:self.max_doc_len])
-                docs += f"Document {i+1}: {doc}\n"
-            compiled_prompt = self.compile_prompt(self.prompt.system, self.prompt.user, question, docs)
-        else:
-            # without retrieval we don't put documents in the prompt
-            compiled_prompt = self.compile_prompt(self.prompt.system_without_docs, self.prompt.user_without_docs,question)
-        return compiled_prompt        
-
-
-
     def compile_prompt(self, system_prompt, user_prompt, question, docs=None):
-        # check if chat template allows for system prompts
-
-        # if has chat_template e.g. gamma does not use it
-        if self.chat_template == None:
-            user_prompt_with_values = eval(user_prompt).replace(':\ ', ': ')
-            return f"{system_prompt}\n{user_prompt_with_values}"
-        else:
-            if True: #'system' in self.tokenizer.chat_template:
-                instr_prompt = [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": eval(user_prompt).replace(':\ ', ': ')}
-                ]
-            # if no system prompts are allowed just append system prompt to user prompt
-            else:
-                user_prompt_with_values = eval(user_prompt).replace(':\ ', ': ')
-                instr_prompt = [
-                    {"role": "user", "content": f"{system_prompt}\n{user_prompt_with_values}"}
-                ]    
-            return instr_prompt #self.tokenizer.apply_chat_template(instr_prompt, tokenize=False)
+        """
+        openai chat template
+        """
+        instr_prompt = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": eval(user_prompt).replace(':\ ', ': ')}
+        ]
+        return instr_prompt

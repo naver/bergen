@@ -7,6 +7,9 @@ from models.generators.generator import Generator
 
 
 class OracleProvenance(Generator):
+    """
+    Generator whose generation is the set of documents
+    """
     def __init__(self, 
                  model_name=None, 
                  batch_size=1,
