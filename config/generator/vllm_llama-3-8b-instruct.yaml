@@ -4,4 +4,5 @@ init_args:
   max_new_tokens: 128
   max_length: 2048
   batch_size: 256
+  temperature: 0
 

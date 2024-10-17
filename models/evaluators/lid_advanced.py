@@ -15,7 +15,7 @@ class LID_advanced:
         model_path = hf_hub_download(repo_id="facebook/fasttext-language-identification", filename="model.bin")
         self.target_lang = target_lang 
     
-    def __call__(self, predictions, references, questions):
+    def __call__(self, predictions, references, questions, instructions=None):
         def correct_lang(response, gold, question, lang):
             response = response.replace("\n", " ")
             #compute response of fasttext lid

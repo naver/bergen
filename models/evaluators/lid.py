@@ -14,7 +14,7 @@ class LID:
         self.target_lang = target_lang # Flores lang codes: 
         # https://github.com/facebookresearch/flores/blob/main/flores200/README.md
     
-    def __call__(self, predictions, _, __):
+    def __call__(self, predictions, _, __, instructions=None):
         def correct_lang(response):
             response = response.replace("\n", " ")
             return int(Language.get(self.model.predict(response)[0][0].removeprefix('__label__')).language == self.target_lang)

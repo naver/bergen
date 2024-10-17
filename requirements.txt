@@ -24,3 +24,5 @@ pytest
 langid
 fasttext
 fasttext-langdetect
+langchain_community
+ollama

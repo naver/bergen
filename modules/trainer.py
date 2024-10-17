@@ -28,7 +28,6 @@ class RAGTrainer(Trainer):
             )
             # Add the callback to the trainer
             self.add_callback(progress_callback)
-
     def compute_loss(self, model, inputs):
         model_input, label_ids = inputs['model_input'], inputs['label_ids']
         _, loss = self.model_prediction_step(model, model_input, label_ids=label_ids)

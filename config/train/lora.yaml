@@ -3,15 +3,16 @@ test_size_ratio: 0.01
 num_saving_steps: 10
 wandb_project_name: null # used if trainer.report_to == "wandb"
 trainer:
+  prediction_loss_only: True
   dataloader_num_workers: 4
-  eval_accumulation_steps: 4
+  eval_accumulation_steps: 1
   gradient_accumulation_steps: 1
   num_train_epochs: 2
   weight_decay: 0.1
   warmup_ratio: 0.05
   learning_rate: 5e-5
-  per_device_train_batch_size: 16
-  per_device_eval_batch_size: 8
+  per_device_train_batch_size: 8
+  per_device_eval_batch_size: 2
   bf16: True
   report_to: "none"
 lora: 

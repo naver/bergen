@@ -32,7 +32,6 @@ class Tokenized_Sorted_Dataset(Dataset):
                 tokenized_input = self.tokenizer(formatted_instr, truncation=True, return_tensors="pt")
                 length = tokenized_input['input_ids'].size(1)
                 processed_data.append((length, item, tokenized_input))
-
             # Sort by tokenized input length
         self.sorted_data = sorted(processed_data, key=lambda x: x[0])
 

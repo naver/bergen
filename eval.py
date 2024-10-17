@@ -37,6 +37,7 @@ class Evaluate:
                     except: continue
 
                     if metric_name in metrics_dict and not force:
+                        #TODO: will not work for att metrics, how can we check if att has already been computed?
                         print (f"{experiment_folder}\t{metric_name}\talready done")
                         continue
                     
@@ -51,25 +52,35 @@ class Evaluate:
                         with open(costs_out_file, 'w') as fout: fout.write(json.dumps(cost))
                     else:                    
                         model_score, scores = model(predictions, references, questions)
-                    data[metric_name] = scores
+                    if metric_name =="att":
+                        # metrics_score is a dict of different att metrics in this case
+                        if nb_samples > 0:
+                            metrics_dict.update(model_score)      
+                        else:
+                            metrics_dict.update({f'{k}_{nb_samples}':model_score[k] for k in model_score})      
+
+                        for k in scores:
+                            data[k] = scores[k]
+                        pass
+                    else:
+                        data[metric_name] = scores                        
+                        if nb_samples >0:
+                            metric_name = f"{metric_name}_{nb_samples}"           
+                        metrics_dict.update({metric_name: model_score})
+                        
+                    
                     metrics_out_file = f'{experiment_folder}/eval_{split}_out.json'
                     if nb_samples >0:
                         metrics_out_file = f'{experiment_folder}/eval_{split}_out_{nb_samples}.json'
+
+                    print(metric_name,model_score)
                         
                     # temporary print eval_out results with updated metric  (to avoid loosing eval_dev_out.json if smth goes wrong)                   
                     data.to_json(metrics_out_file+"_", orient='records') 
                     #move temprorary result into final name                       
                     shutil.move(metrics_out_file + '_', metrics_out_file)
-                    if nb_samples >0:
-                        metric_name = f"{metric_name}_{nb_samples}"           
-                    metrics_dict.update({metric_name: model_score})
-                    print(metric_name,model_score)
-                    # save to _ tmp file
-                    with open(metrics_file + '_', 'w') as fp:
-                        json.dump(metrics_dict, fp, indent=2)
-                    # when writing successful remove tmp file
-                    shutil.move(metrics_file + '_', metrics_file)
-    
+                    
+                   
         if bem:
             from models.evaluators.bem import BEM
             model = BEM(batch_size=bem_batch_size)
@@ -122,7 +133,65 @@ class Evaluate:
                 llm_batch_size = 1        
             model = OllamaEval(model_config, batch_size=llm_batch_size, config=llm_prompt, basic_url=ollama_url)
             eval_single(experiment_folder, folder, split, model, short_name, nb_samples = samples)
-            
+        
+        if llm_att is not None :
+            from models.evaluators.llm_att import LLM_att
+            if folder == None:
+                folders = [ f.path for f in os.scandir(experiment_folder) if f.is_dir() and 'tmp_' not in f.path]
+            else:
+                folders = [folder]
+            model_name = ''
+            for folder in folders:
+                #get model name from  config
+                config = yaml.safe_load(open(f"{folder}/config.yaml"))
+                generator = config['generator']
+                prompt = config['prompt']
+                if not config['generator']['init_args']['model_name'] == model_name :
+                    try:
+                        generator['init_args']['_target_'] = generator['init_args']['_target_'].replace('vllm', 'llm')
+                        
+                        model = LLM_att(generator, prompt)   
+
+                        model_name = config['generator']['init_args']['model_name']
+
+                    except:
+                        print("Skip", folder, model_name )
+                        continue
+                else:
+                    #if other folder used the same generator, do not load it again, but update prompt
+                    model.llm.model.prompt = prompt
+                short_name = "att"
+                eval_single(experiment_folder, folder, split, model, short_name)
+        
+        if llm_ll is not None :
+            from models.evaluators.llm_ll import LLM_LL
+            if folder == None:
+                folders = [ f.path for f in os.scandir(experiment_folder) if f.is_dir() and 'tmp_' not in f.path]
+            else:
+                folders = [folder]
+            model_name = ''
+            for folder in folders:
+                #get model name from  config
+                config = yaml.safe_load(open(f"{folder}/config.yaml"))
+                generator = config['generator']
+                prompt = config['prompt']
+                if not config['generator']['init_args']['model_name'] == model_name :
+                    try:
+                        generator['init_args']['_target_'] = generator['init_args']['_target_'].replace('vllm', 'llm')
+                        
+                        model = LLM_LL(generator, prompt)   
+
+                        model_name = config['generator']['init_args']['model_name']
+
+                    except:
+                        print("Skip", folder, model_name )
+                        continue
+                else:
+                    #if other folder used the same generator, do not load it again, but update prompt
+                    model.llm.model.prompt = prompt
+                short_name = "LL"
+                eval_single(experiment_folder, folder, split, model, short_name)
+        
         if lid is not None or lid_advanced is not None:
             from models.evaluators.lid import LID
             from models.evaluators.lid_advanced import LID_advanced
@@ -160,6 +229,9 @@ if __name__ == "__main__":
     parser.add_argument('--bem', action='store_true')
     parser.add_argument('--lid', action='store_true', default=None)
     parser.add_argument('--lid_advanced', action='store_true', default=None)
+    parser.add_argument('--llm_att', action='store_true', default=None, help="Compute attention-based metrics")
+    parser.add_argument('--llm_ll', action='store_true', default=None, help="Compute ll metrics")
+
 
     parser.add_argument('--llm', type=str, nargs='*', default=None, 
             help=""" 
@@ -190,6 +262,8 @@ if __name__ == "__main__":
         split=args.split, 
         bem=args.bem,
         llm=args.llm, 
+        llm_att = args.llm_att,        
+        llm_ll = args.llm_ll,
         llm_ollama=args.llm_ollama,
         gpt=args.gpt,
         lid=args.lid,

@@ -51,7 +51,7 @@ class OllamaEval:
    
 
     @torch.no_grad()
-    def __call__(self, predictions, references, questions):
+    def __call__(self, predictions, references, questions, instructions=None):
         # Loading the TensorFlow Hub model
         assert len(predictions) == len(references) == len(questions)
         examples = [{'question': questions[i], 'reference': references[i], 'candidate': predictions[i]}  for i in range(len(predictions))]

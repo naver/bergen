@@ -107,7 +107,7 @@ class LLMeval():
         weird = list()
         # Perform batch inference
         full_inputs, full_instrs = self.collate_fn(examples)
-        for i in (tq:=tqdm(range(0, len(examples), self.llm.batch_size), desc=f'LLM evaluation with {self.llm.model_name}...')):
+        for i in (tq:= tqdm(range(0, len(examples), self.llm.batch_size), desc=f'LLM evaluation with {self.llm.model_name}...')):
             # Extract batch
             batch_examples = examples[i:i+self.llm.batch_size]
             inputs, instrs = self.collate_fn(batch_examples)
