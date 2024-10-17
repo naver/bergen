@@ -459,7 +459,6 @@ class RAG:
         from transformers import TrainingArguments, Trainer
         from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
         from modules.dataset import Tokenized_Sorted_Dataset
-        
 
         dataset_split = 'train'
         dataset = self.datasets[dataset_split] 
@@ -526,6 +525,9 @@ class RAG:
         print("Preprocessing data...")
         train_test_datasets['train'] = Tokenized_Sorted_Dataset(train_test_datasets['train'], self.generator, training=True)
         train_test_datasets['test'] = Tokenized_Sorted_Dataset(train_test_datasets['test'], self.generator, training=True)
+        
+        # Switch back the model to 'train' mode:
+        self.generator.model.train()
 
         print("Data preprocessed")
         # if lora in train config
@@ -567,7 +569,9 @@ class RAG:
             train_dataset=train_test_datasets['train'],
             eval_dataset=train_test_datasets['test']
         )
-                
+        
+        trainer.evaluate()
+        
         trainer.train()
         self.generator.model = trainer.model
         move_finished_experiment(self.experiment_folder)

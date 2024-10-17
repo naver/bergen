@@ -3,6 +3,8 @@ BERGEN
 Copyright (c) 2024-present NAVER Corp.
 CC BY-NC-SA 4.0 license
 '''
+import torch
+import gc
 from abc import ABC, abstractmethod
 from modules.dataset import Tokenized_Sorted_Dataset
 from torch.utils.data import DataLoader
@@ -34,25 +36,30 @@ class Generator(ABC):
         pass
 
     def eval(self, dataset):
-        if self.tokenizer:
-            tokenized_and_sorted_dataset = Tokenized_Sorted_Dataset(dataset, self, training=False)
-            dataloader = DataLoader(tokenized_and_sorted_dataset, batch_size=self.batch_size, collate_fn=partial(self.collate_fn, eval=True), num_workers=4)
-        else:
-            dataloader = DataLoader(dataset, batch_size=self.batch_size, collate_fn=partial(self.collate_fn, eval=True), num_workers=4)
-        
-        responses, instructions, query_ids, queries, labels, ranking_labels = list(), list(), list(), list(), list(), list()
-        for data_dict in tqdm(dataloader, desc='Generating'):
-            id_ = data_dict['q_id']
-            instruction = data_dict['instruction']
-            query_ids += id_
-            label = data_dict['label']
-            labels += label
-            queries += data_dict['query']
-            ranking_labels += data_dict['ranking_label']
-            instructions += instruction
-            generated_response = self.generate(data_dict['model_input'])
-            responses += generated_response
-        return query_ids, queries, instructions, responses, labels, ranking_labels
+        with torch.no_grad():
+            if self.tokenizer:
+                tokenized_and_sorted_dataset = Tokenized_Sorted_Dataset(dataset, self, training=False)
+                dataloader = DataLoader(tokenized_and_sorted_dataset, batch_size=self.batch_size, collate_fn=partial(self.collate_fn, eval=True), num_workers=4)
+            else:
+                dataloader = DataLoader(dataset, batch_size=self.batch_size, collate_fn=partial(self.collate_fn, eval=True), num_workers=4)
+            
+            responses, instructions, query_ids, queries, labels, ranking_labels = list(), list(), list(), list(), list(), list()
+            for data_dict in tqdm(dataloader, desc='Generating'):
+                id_ = data_dict['q_id']
+                instruction = data_dict['instruction']
+                query_ids += id_
+                label = data_dict['label']
+                labels += label
+                queries += data_dict['query']
+                ranking_labels += data_dict['ranking_label']
+                instructions += instruction
+                generated_response = self.generate(data_dict['model_input'])
+                responses += generated_response
+                
+                torch.cuda.empty_cache()
+                gc.collect()
+                
+            return query_ids, queries, instructions, responses, labels, ranking_labels
 
     def get_response(self):
         """

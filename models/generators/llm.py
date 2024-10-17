@@ -144,6 +144,27 @@ class LLM(Generator):
         gc.collect()
         torch.cuda.empty_cache()
 
+    def assert_label_masking_is_correct(self, original_labels: list[str], label: torch.LongTensor):
+        """
+        Check that the non-masked area of 'label' corresponds to one of the original_labels.
+        (Only used during training for loss computation)
+        NB: this assert involves multiple tokenization/detokenization but on CPU and it's worth it
+        """
+        # Tokenize and detokenize all original labels to handle tokenization inconsistencies (like extra spaces).
+        sanitized_original_labels = [
+            self.tokenizer.decode(self.tokenizer(elt)['input_ids'], skip_special_tokens=True).strip() 
+            for elt in original_labels
+        ]
+
+        # Build the recovered label from the provided label tensor.
+        recovered_label = self.tokenizer.decode(label, skip_special_tokens=True).strip()
+
+        # Check if the recovered label matches any of the sanitized original labels.
+        is_valid_label = any(recovered_label == sanitized_label for sanitized_label in sanitized_original_labels)
+
+        # Assert if the recovered label was found in the original labels.
+        assert is_valid_label, f"###### <{recovered_label}> NOT INCLUDED IN <{original_labels}>"
+
     def collate_fn(self, examples: list[dict], eval: bool = False, **kwargs):
         ignore_index = -100
         q_ids = [e['q_id'] for e in examples]
@@ -182,14 +203,7 @@ class LLM(Generator):
                 label_ids[i, :examples[i]['label_start_index']+left_padding_count + 1] = ignore_index
                 
                 # Here we assert that the label_ids, when decoded, is one of the original labels
-                # We may deactivate this when we gain trust in that bit of code !
-                original_labels = label[i]
-                recovered_label = self.tokenizer.decode(label_ids[i][label_ids[i] != ignore_index], skip_special_tokens=True).strip()                
-                label_found = False
-                for original_label in original_labels:
-                    if recovered_label == original_label.strip():
-                        label_found = True
-                assert label_found, f"###### <{recovered_label}> NOT INCLUDED IN <{original_labels}>"
+                self.assert_label_masking_is_correct(label[i], label_ids[i][label_ids[i] != ignore_index])
 
             model_input['labels'] =  label_ids
             return model_input
