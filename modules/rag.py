@@ -16,6 +16,8 @@ import os
 from tqdm import tqdm
 import json
 from hydra.utils import instantiate
+import pandas as pd
+import numpy as np
 from utils import (
     eval_retrieval_kilt, init_experiment, move_finished_experiment,
     write_trec, prepare_dataset_from_ids, load_trec,
@@ -124,7 +126,6 @@ class RAG:
             "dev": RAGMetrics, 
             "test": None,
         }
-
         # init retriever
         self.retriever = Retrieve(
                     **retriever_config,
@@ -438,13 +439,21 @@ class RAG:
     def eval_metrics(self, dataset_split, questions, predictions, references):
         if predictions == references == questions == None:
             return
+        out_file = f"{self.experiment_folder}/eval_{dataset_split}_out.json"
+        with open(out_file) as fd:
+            generated = json.load(fd)
+        generated = pd.DataFrame(generated)
         metrics_out = self.metrics[dataset_split].compute(
         predictions=predictions, 
         references=references, 
         questions=questions
         )
-        write_dict(self.experiment_folder, f"eval_{dataset_split}_metrics.json", metrics_out)
-    
+        for m in metrics_out:
+            generated[m] = metrics_out[m]
+        avg_metrics = {v: np.mean(metrics_out[v]) for v in metrics_out}
+        write_dict(self.experiment_folder, f"eval_{dataset_split}_metrics.json", avg_metrics)        
+        generated.to_json(out_file, orient='records')
+        
 
     def train(self):
         from transformers import TrainingArguments
@@ -514,10 +523,9 @@ class RAG:
         
         # split train into train and test
         train_test_datasets = gen_dataset.train_test_split(self.training_config.test_size_ratio, seed=42)
-
         print("Preprocessing data...")
         train_test_datasets['train'] = Tokenized_Sorted_Dataset(train_test_datasets['train'], self.generator, training=True)
-        train_test_datasets['test'] = Tokenized_Sorted_Dataset(train_test_datasets['test'], self.generator, training=True) # set training=True to have labels (if False, eval loss will be None)
+        train_test_datasets['test'] = Tokenized_Sorted_Dataset(train_test_datasets['test'], self.generator, training=True)
 
         # We keep some data to log in wandb, from the test set:
         call_back_data = Tokenized_Sorted_Dataset(train_test_datasets['test'], self.generator, training=False)
@@ -527,7 +535,6 @@ class RAG:
                                            collate_fn=lambda l: self.generator.model.collate_fn(l, eval=True))
 
         print("Data preprocessed")
-
         # if lora in train config
         if 'lora' in self.training_config:
             self.generator.model = prepare_model_for_kbit_training(self.generator.model)
@@ -567,7 +574,6 @@ class RAG:
             load_best_model_at_end=True,
             remove_unused_columns=False,
         )
-
         trainer = RAGTrainer(
             model=self.generator.model,
             model_prediction_step=self.generator.prediction_step,
@@ -578,6 +584,7 @@ class RAG:
             eval_dataset=train_test_datasets['test'],
             call_back_data=call_back_data_select
         )
+        #FIXME TODO: check if checkpoint_last.pt is present in the current folder, than resume_from_checkpoint=True
         trainer.train()
         self.generator.model = trainer.model
         move_finished_experiment(self.experiment_folder)

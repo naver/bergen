@@ -18,7 +18,6 @@ index_folder: null
 runs_folder: null
 experiments_folder: null
 processing_num_proc: 40
-overwrite_run: true
 hydra:
     job:
         chdir: False

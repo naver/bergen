@@ -8,7 +8,6 @@ index_folder: tests/index/test_tinyonly/
 runs_folder: tests/run/test_tinyonly/
 experiments_folder: tests/exp/test_tinyonly
 processing_num_proc: 40
-overwrite_run: true
 generator:
   init_args:
     _target_: models.generators.llm.LLM

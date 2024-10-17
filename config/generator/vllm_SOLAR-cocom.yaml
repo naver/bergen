@@ -1,6 +1,0 @@
-init_args: 
-  _target_: models.generators.vllm.LLM
-  model_name: "/beegfs/scratch/user/hdejean/calmar/dec_from_emb/experiments_compress_real/4331287/last_model/"
-  max_new_tokens: 128
-  max_length: 4096
-batch_size: 256

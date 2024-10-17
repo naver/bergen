@@ -237,3 +237,11 @@ For running the generation with e.g. `llama-2-7b-chat` simply select `orcale_pro
 python3 main.py dataset='kilt_nq' retriever='oracle_provenance' generator='llama-2-7b-chat'
 ```
 
+## Testing
+If you want to develop new functionalities, or want to test basic BERGEN configurations:
+
+Run all tests:
+
+```bash
+pytest tests/
+```

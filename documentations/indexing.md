@@ -18,15 +18,11 @@ cd indexes
 wget https://download.europe.naverlabs.com/bergen/kilt-100w_doc_Shitao_RetroMAE_MSMARCO_distill.tar 
 tar -xvf kilt-100w_doc_Shitao_RetroMAE_MSMARCO_distill.tar
 ```
-
-To rerun the retrieval for an experiment, one need to add
-```
-overwrite_run: true
-```
-to the config files. Additionally, the number of retrieved document and the reranking depth can be adjusted as well:
+ 
+ Additionally, the number of retrieved document and the reranking depth can be adjusted as well:
 
 ```
-overwrite_run: true
+
 retrieve_top_k: 100
 rerank_top_k: 100
 generation_top_k: 5
