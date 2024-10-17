@@ -12,7 +12,7 @@ pd.set_option("display.precision", 4)
 
 class Evaluate:
     @staticmethod
-    def eval(experiment_folder="experiments/", split="dev", bem: bool=False, llm: list[str]=None, llm_ollama: list[str]=None, vllm: list[str]=None, gpt: bool=None, bem_batch_size: int=1, lid: bool=None, lid_advanced: bool=None, llm_batch_size: int=None, llm_prompt: str = "default_qa", ollama_url: str=None, folder: str=None, force: bool=False, samples: int=-1):
+    def eval(experiment_folder="experiments/", split="dev", bem: bool=False, llm: list[str]=None, llm_ollama: list[str]=None, vllm: list[str]=None, gpt: bool=None, bem_batch_size: int=1, lid: bool=None, lid_advanced: bool=None, llm_att: bool=False, llm_ll: bool=False, llm_batch_size: int=None, llm_prompt: str = "default_qa", ollama_url: str=None, folder: str=None, force: bool=False, samples: int=-1):
         def eval_single(experiment_folder, folder, split: str, model, metric_name: str, nb_samples: int =-1):
             if folder != None:
                 folders = [folder]
@@ -50,8 +50,11 @@ class Evaluate:
                         model_score, scores, cost = model(predictions, references, questions)
                         costs_out_file = f'{experiment_folder}/eval_{split}_cost_{metric_name}_out.json'
                         with open(costs_out_file, 'w') as fout: fout.write(json.dumps(cost))
-                    else:                    
-                        model_score, scores = model(predictions, references, questions)
+                    else:
+                        if metric_name == "att":
+                            model_score, scores = model(predictions, references, questions, data['instruction'].values)
+                        else:
+                            model_score, scores = model(predictions, references, questions)
                     if metric_name =="att":
                         # metrics_score is a dict of different att metrics in this case
                         if nb_samples > 0:

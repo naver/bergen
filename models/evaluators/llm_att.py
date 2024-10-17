@@ -84,7 +84,8 @@ class LLM_att():
             higher values --> attention is more concentrated, lower values --> attention is more distributede
             https://aclanthology.org/I17-1004.pdf
             """     
-            entr_per_token = torch.mean(- attention*torch.log(attention), axis=1)
+            gen_len, prefix_len = attention.shape
+            entr_per_token = torch.sum(- attention*torch.log(attention), axis=1)
             return torch.mean(entr_per_token)
 
         def get_att_confidence(attention):  
