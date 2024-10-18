@@ -200,6 +200,11 @@ class LLM(Generator):
                 # Count the number of padding tokens on the left
                 left_padding_count = (attention_mask_tensor[i] == 0).sum().item()
                 # todo: handle case where left padding count is too large or we cropped the label no ?
+                
+                if examples[i]['label_start_index']+left_padding_count + 1 > label_ids.size(1):
+                    warnings.warn("Docs + query is too long: label will be ignored. If it happens too often consider\
+                        increasing the `max_seq_length`.")
+                
                 # In the label there is only tokens after position padding_count + label_start_idnex:
                 label_ids[i, :examples[i]['label_start_index']+left_padding_count + 1] = ignore_index
                 

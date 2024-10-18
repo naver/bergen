@@ -528,7 +528,21 @@ class RAG:
         
         # Switch back the model to 'train' mode:
         self.generator.model.train()
-
+        gradient_ckpt_enabled = False
+        if getattr(self.training_config, 'gradient_checkpointing', None):            
+            print('Enabling checkpointing')
+            try:
+                # Attempt to enable gradient checkpointing
+                self.generator.model.gradient_checkpointing_enable()
+                gradient_ckpt_enabled = True
+                print("Gradient checkpointing enabled.")
+            except AttributeError:
+                # If gradient checkpointing is not supported, catch the AttributeError
+                print("Warning: Model does not support gradient checkpointing. Continuing without it.")
+            except Exception as e:
+                # Catch any other unexpected exceptions and print the error
+                print(f"Warning: An error occurred while enabling gradient checkpointing: {e}")
+                
         print("Data preprocessed")
         # if lora in train config
         if 'lora' in self.training_config:
@@ -577,6 +591,9 @@ class RAG:
         
         trainer.train()
         self.generator.model = trainer.model
+        
+        if gradient_ckpt_enabled:
+            self.generator.model.gradient_checkpointing_disable()
         
         # Restoring eval mode now that training is done
         self.generator.model.eval()
