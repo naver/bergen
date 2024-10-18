@@ -10,6 +10,3 @@ tests/exp/
 tests/run/
 outputs/
 wandb/
-raw_datasets/
-tests/dataset_processors/
-runs/
