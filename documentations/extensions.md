@@ -139,7 +139,7 @@ python3 main.py generator='new_generator'
 ## Add Dataset
 A dataset config contains two entries: `doc` for the collection and `query` for the queries.
 
-A query dataset **must** contain the fields **`id`**, `wikipedia_id` (optional), **`content`** after the processing. 
+A query dataset **must** contain the fields **`id`**, `wikipedia_id` (optional), **`content`**, **`label`** after the processing. 
 
 A document dataset **must** contain the fields **`id`**, and **`content`** after the processing.
 

@@ -6,6 +6,13 @@ CC BY-NC-SA 4.0 license
 Defines the base class for dataset processors and specific processors for general-domain datasets.
 The processors are used to load and preprocess datasets for training and evaluation.
 When called, the processors are called for every split.
+
+The process() method returns a datasets.Dataset object with the following features:
+
+- id: str, unique identifier for the example
+- content: str, for example questions for QA datasets
+- label: List[str] (optional, for query datasets)
+    List of acceptable answers for the given question. Note that elements of the list are assumed to be synonyms / acceptable answers for the same question.
 '''
 
 import datasets
