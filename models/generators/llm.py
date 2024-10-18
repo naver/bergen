@@ -151,13 +151,14 @@ class LLM(Generator):
         NB: this assert involves multiple tokenization/detokenization but on CPU and it's worth it
         """
         # Tokenize and detokenize all original labels to handle tokenization inconsistencies (like extra spaces).
+        # We eliminate the spaces because they cause assert problems due to how tokenization handles spaces
         sanitized_original_labels = [
-            self.tokenizer.decode(self.tokenizer(elt)['input_ids'], skip_special_tokens=True).strip() 
+            self.tokenizer.decode(self.tokenizer(elt)['input_ids'], skip_special_tokens=True).strip().replace(" ", "") 
             for elt in original_labels
         ]
 
         # Build the recovered label from the provided label tensor.
-        recovered_label = self.tokenizer.decode(label, skip_special_tokens=True).strip()
+        recovered_label = self.tokenizer.decode(label, skip_special_tokens=True).strip().replace(" ", "")
 
         # Check if the recovered label matches any of the sanitized original labels.
         is_valid_label = any(recovered_label == sanitized_label for sanitized_label in sanitized_original_labels)
