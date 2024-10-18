@@ -1,0 +1,27 @@
+train:
+    doc: 
+        init_args:
+            _target_: modules.processors.multidomain_dataset_processor.SearchQA_corpus
+            split: all
+    query: 
+        init_args:
+            _target_: modules.processors.multidomain_dataset_processor.SearchQA
+            split: train
+dev:
+    doc: 
+        init_args:
+            _target_: modules.processors.multidomain_dataset_processor.SearchQA_corpus
+            split: all
+    query: 
+        init_args:
+            _target_: modules.processors.multidomain_dataset_processor.SearchQA
+            split: validation
+test:
+    doc: 
+        init_args:
+            _target_: modules.processors.multidomain_dataset_processor.SearchQA_corpus
+            split: all
+    query: 
+        init_args:
+            _target_: modules.processors.multidomain_dataset_processor.SearchQA
+            split: test

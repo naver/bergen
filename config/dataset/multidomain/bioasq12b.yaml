@@ -1,0 +1,25 @@
+train:
+    doc: 
+        init_args:
+            _target_: modules.processors.multidomain_dataset_processor.PubMed2023_Ragged
+            split: "train"
+    query: 
+        init_args:
+            _target_: modules.processors.multidomain_dataset_processor.BIOASQ12B
+            train_path: "raw_datasets/BioASQ-training12b.zip"
+            dev_path: "raw_datasets/Task12BGoldenEnriched.zip"
+            split: "train"
+dev:
+    doc: 
+        init_args:
+            _target_: modules.processors.multidomain_dataset_processor.PubMed2023_Ragged
+            split: "train"
+    query: 
+        init_args:
+            _target_: modules.processors.multidomain_dataset_processor.BIOASQ12B
+            train_path: "raw_datasets/BioASQ-training12b.zip"
+            dev_path: "raw_datasets/Task12BGoldenEnriched.zip"
+            split: "dev"
+test:
+    doc: null
+    query: null

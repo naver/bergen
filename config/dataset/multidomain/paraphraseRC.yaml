@@ -1,0 +1,27 @@
+train:
+    doc: 
+        init_args:
+            _target_: modules.processors.multidomain_dataset_processor.ParaphraseRC_docs
+            split: all
+    query: 
+        init_args:
+            _target_: modules.processors.multidomain_dataset_processor.ParaphraseRC
+            split: train
+dev:
+    doc: 
+        init_args:
+            _target_: modules.processors.multidomain_dataset_processor.ParaphraseRC_docs
+            split: all
+    query: 
+        init_args:
+            _target_: modules.processors.multidomain_dataset_processor.ParaphraseRC
+            split: validation
+test:
+    doc: 
+        init_args:
+            _target_: modules.processors.multidomain_dataset_processor.ParaphraseRC_docs
+            split: all
+    query: 
+        init_args:
+            _target_: modules.processors.multidomain_dataset_processor.ParaphraseRC
+            split: test

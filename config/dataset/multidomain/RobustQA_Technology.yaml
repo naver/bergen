@@ -1,0 +1,20 @@
+train:
+    doc:
+        null
+    query:
+        null
+dev:
+    doc: 
+        init_args:
+            _target_: modules.processors.multidomain_dataset_processor.LoTTE
+            path: "/home/amisrahi/bergen/raw_datasets/lotte.tar.gz"
+            split: all
+    query: 
+        init_args:
+            _target_: modules.processors.multidomain_dataset_processor.RobustQA_Technology
+            split: dev
+test:
+    doc:
+        null
+    query:
+        null

@@ -1,0 +1,23 @@
+train:
+    doc: 
+        init_args:
+            _target_: modules.processors.multidomain_dataset_processor.FiQA_corpus
+            split: beir
+    query: 
+        init_args:
+            _target_: modules.processors.multidomain_dataset_processor.FiQA
+            split: train
+dev:
+    doc: 
+        init_args:
+            _target_: modules.processors.multidomain_dataset_processor.FiQA_corpus
+            split: beir
+    query: 
+        init_args:
+            _target_: modules.processors.multidomain_dataset_processor.FiQA
+            split: test
+test:
+    doc:
+        null
+    query:
+        null
