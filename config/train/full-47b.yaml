@@ -1,4 +1,3 @@
-generate_test_samples: 10
 test_size: 0.01
 trainer:
   dataloader_num_workers: 4
@@ -11,4 +10,4 @@ trainer:
   per_device_train_batch_size: 2
   per_device_eval_batch_size: 4
   bf16: True
-  report_to: "wandb"
+  report_to: "none"

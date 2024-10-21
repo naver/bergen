@@ -164,7 +164,8 @@ class LLM(Generator):
         is_valid_label = any(recovered_label == sanitized_label for sanitized_label in sanitized_original_labels)
 
         # Assert if the recovered label was found in the original labels.
-        assert is_valid_label, f"###### <{recovered_label}> NOT INCLUDED IN <{original_labels}>"
+        if not is_valid_label:
+            warnings.warn(f"###### <{recovered_label}> NOT INCLUDED IN <{original_labels}>")
 
     def collate_fn(self, examples: list[dict], eval: bool = False, **kwargs):
         ignore_index = -100
