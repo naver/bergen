@@ -85,7 +85,9 @@ class LLM_att():
             https://aclanthology.org/I17-1004.pdf
             """     
             gen_len, prefix_len = attention.shape
-            entr_per_token = torch.sum(- attention*torch.log(attention), axis=1)
+            #need to normalize att over prefix to make it proper distribution
+            attn_norm = attention/torch.sum(attention, axis=1, keepdim=True)
+            entr_per_token = torch.sum(- attn_norm*torch.log(attn_norm), axis=1)
             return torch.mean(entr_per_token)
 
         def get_att_confidence(attention):  
@@ -100,7 +102,7 @@ class LLM_att():
 
         def get_att_coverage_conf(attention):  
             """
-            maximum attention on the previx token summed across all generated tokens 
+            maximum attention on the prefix token summed across all generated tokens 
             (should not penalize longer generations)
             """
             gen_len, prefix_len = attention.shape
