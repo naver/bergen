@@ -18,81 +18,90 @@ class BIOASQ12B(Processor):
     BIOASQ Benchmark from bioasq challenge source, year 2024 task B (12B)
     To get a larger training set we merge the official train and validation sets and fix the validation size to 1200 and train size to the rest (= 4189 rows)
     We then discard all 'summary' question types from the validation set yielding a final val set with 940 rows
+
+    - To re-process the official challenge raw data zip files, please provide the train_zip_path and dev_zip_path
+    - To load an already processed version, provide the hf_path
     """
 
-    def __init__(self, train_path, dev_path, *args, **kwargs):
+    def __init__(self, hf_path=None, train_zip_path=None, dev_zip_path=None, *args, **kwargs):
+        assert (hf_path is not None and (train_zip_path is None and dev_zip_path is None)) or (hf_path is None and (train_zip_path is not None and dev_zip_path is not None)), "Please either either provide raw file paths ```train_zip_path``` and ```dev_zip_path``` or a processed dataset HuggingFace path ```hf_path```. To download the raw files, see http://participants-area.bioasq.org/datasets/"
         self.dataset_name = 'BIOASQ12B'
-        self.train_path = train_path
-        self.dev_path = dev_path
+        self.hf_path = hf_path
+        self.train_zip_path = train_zip_path
+        self.dev_zip_path = dev_zip_path
         super().__init__(*args, **kwargs, dataset_name=self.dataset_name)
 
     def process(self):
-        seed = 42
-        if self.split not in ["train", "dev"]:
-            raise ValueError("split should be 'train' or 'dev'")
-        all_data = []
-        with zipfile.ZipFile(self.train_path, 'r') as z:
-            with z.open('BioASQ-training12b/training12b_new.json') as json_file:
-                all_data.extend(json.load(json_file)['questions'])
-        with zipfile.ZipFile(self.dev_path, 'r') as z:
-            for file_name in z.namelist():
-                print(f"Loading file {file_name}")
-                if file_name.endswith('.json'):
-                    with z.open(file_name) as json_file:
-                        all_data.extend(json.load(json_file)['questions'])
-        random.seed(seed)
-        random.shuffle(all_data)
-        dev_data = all_data[:1200]
-        train_data = all_data[1200:]
-        if self.split == "train":
-            data = train_data
-        elif self.split == "dev":
-            data = dev_data
-        
-        import itertools
-        dataset = {"id": [], "content": [], "label": [], "type": []}
-        for row in data:
-
-            # parse labels
-            if row['type'] == 'summary':
-                if self.split == 'train':
-                    if isinstance(row["ideal_answer"], list) and isinstance(row["ideal_answer"][0], str):
-                        dataset['label'].append(row["ideal_answer"])
-                    else:
-                        raise ValueError(f"Unknown label structure for label {row['ideal_answer']}")
-                elif self.split == 'dev': # discard summary questions for dev set
-                    continue
-            elif row['type'] == 'list':
-                assert isinstance(row['exact_answer'], list) and isinstance(row['exact_answer'][0], list), f"unexpected parsing label for {row['id']}: {row['exact_answer']}"
-                # put all combinations of needed answers x synonyms
-                labels = [', '.join(combination) for combination in list(itertools.product(*row['exact_answer']))]
-                if len(labels) > 1000:
-                    print(f"WARNING: id={row['id']} is list-type label and has {len(labels)} combinations. Truncating to 10 synonyms max.")
-                    labels = [', '.join(combination) for combination in list(itertools.product(*([e[:10] for e in row['exact_answer']])))]
-                    if len(labels) > 1000:
-                        print(f"    WARNING: After 10-truncation -> {len(labels)} labels. Truncating to 2 synonyms and 10 elements.")
-                        labels = [', '.join(combination) for combination in list(itertools.product(*([e[:2] for e in row['exact_answer']][:10])))]
-                        print(f"    WARNING: After final truncation -> {len(labels)} labels.")
-                dataset["label"].append(labels)
-            elif row['type'] == 'yesno':
-                dataset['label'].append([row['exact_answer']])
-            elif row['type'] == 'factoid':
-                if isinstance(row['exact_answer'], list) and isinstance(row['exact_answer'][0], list) and len(row['exact_answer']) == 1:
-                    dataset['label'].append(row['exact_answer'][0])
-                elif isinstance(row['exact_answer'], list) and isinstance(row['exact_answer'][0], str):
-                    dataset['label'].append(row['exact_answer'])
-                else:
-                    raise ValueError(f"unexpected parsing label for {row['id']}: {row['exact_answer']}")
-            else:
-                raise ValueError(f"Unexpected question type {row['type']}")
+        if self.train_zip_path is not None and self.dev_zip_path is not None:
+            seed = 42
+            if self.split not in ["train", "dev"]:
+                raise ValueError("split should be 'train' or 'dev'")
+            all_data = []
+            with zipfile.ZipFile(self.train_zip_path, 'r') as z:
+                with z.open('BioASQ-training12b/training12b_new.json') as json_file:
+                    all_data.extend(json.load(json_file)['questions'])
+            with zipfile.ZipFile(self.dev_zip_path, 'r') as z:
+                for file_name in z.namelist():
+                    print(f"Loading file {file_name}")
+                    if file_name.endswith('.json'):
+                        with z.open(file_name) as json_file:
+                            all_data.extend(json.load(json_file)['questions'])
+            random.seed(seed)
+            random.shuffle(all_data)
+            dev_data = all_data[:1200]
+            train_data = all_data[1200:]
+            if self.split == "train":
+                data = train_data
+            elif self.split == "dev":
+                data = dev_data
             
-            dataset["id"].append(row["id"])
-            dataset["content"].append(row["body"])
-            dataset["type"].append(row["type"])
+            import itertools
+            dataset = {"id": [], "content": [], "label": [], "type": []}
+            for row in data:
 
+                # parse labels
+                if row['type'] == 'summary':
+                    if self.split == 'train':
+                        if isinstance(row["ideal_answer"], list) and isinstance(row["ideal_answer"][0], str):
+                            dataset['label'].append(row["ideal_answer"])
+                        else:
+                            raise ValueError(f"Unknown label structure for label {row['ideal_answer']}")
+                    elif self.split == 'dev': # discard summary questions for dev set
+                        continue
+                elif row['type'] == 'list':
+                    assert isinstance(row['exact_answer'], list) and isinstance(row['exact_answer'][0], list), f"unexpected parsing label for {row['id']}: {row['exact_answer']}"
+                    # put all combinations of needed answers x synonyms
+                    labels = [', '.join(combination) for combination in list(itertools.product(*row['exact_answer']))]
+                    if len(labels) > 1000:
+                        print(f"WARNING: id={row['id']} is list-type label and has {len(labels)} combinations. Truncating to 10 synonyms max.")
+                        labels = [', '.join(combination) for combination in list(itertools.product(*([e[:10] for e in row['exact_answer']])))]
+                        if len(labels) > 1000:
+                            print(f"    WARNING: After 10-truncation -> {len(labels)} labels. Truncating to 2 synonyms and 10 elements.")
+                            labels = [', '.join(combination) for combination in list(itertools.product(*([e[:2] for e in row['exact_answer']][:10])))]
+                            print(f"    WARNING: After final truncation -> {len(labels)} labels.")
+                    dataset["label"].append(labels)
+                elif row['type'] == 'yesno':
+                    dataset['label'].append([row['exact_answer']])
+                elif row['type'] == 'factoid':
+                    if isinstance(row['exact_answer'], list) and isinstance(row['exact_answer'][0], list) and len(row['exact_answer']) == 1:
+                        dataset['label'].append(row['exact_answer'][0])
+                    elif isinstance(row['exact_answer'], list) and isinstance(row['exact_answer'][0], str):
+                        dataset['label'].append(row['exact_answer'])
+                    else:
+                        raise ValueError(f"unexpected parsing label for {row['id']}: {row['exact_answer']}")
+                else:
+                    raise ValueError(f"Unexpected question type {row['type']}")
+                
+                dataset["id"].append(row["id"])
+                dataset["content"].append(row["body"])
+                dataset["type"].append(row["type"])
 
-        assert len(dataset["id"]) == len(dataset["content"]) == len(dataset["label"]), "id content and labels lengths are not the same"
-        dataset = datasets.Dataset.from_dict(dataset)
+            assert len(dataset["id"]) == len(dataset["content"]) == len(dataset["label"]), "id content and labels lengths are not the same"
+            dataset = datasets.Dataset.from_dict(dataset)
+
+        elif self.hf_path is not None:
+            dataset = datasets.load_dataset(self.hf_path)[self.split] # split = 'train' or 'dev'
+
         return dataset
     
 
@@ -741,21 +750,36 @@ class LoTTE(Processor):
     Source: https://downloads.cs.stanford.edu/nlp/data/colbert/colbertv2/lotte.tar.gz
     Other possible source: https://huggingface.co/colbertv2
     """
-    def __init__(self, path, *args, **kwargs):
+    def __init__(self, url, tmp_download_dir='raw_datasets', *args, **kwargs):
         dataset_name = 'LoTTE'
-        self.path = path
+        self.url = url
+        self.tmp_download_dir = tmp_download_dir
+        assert self.url.endswith('.tar.gz'), "Expected URL to point to a .tar.gz file."
         super().__init__(*args, **kwargs, dataset_name=dataset_name)
 
     def process(self):
         import tarfile
-        # download https://downloads.cs.stanford.edu/nlp/data/colbert/colbertv2/lotte.tar.gz in some directory
-        parent_dir = os.path.dirname(self.path)
-        with tarfile.open(self.path, 'r:gz') as tar:
-            if not os.path.exists(os.path.join(parent_dir, 'lotte/')):
-                tar.extractall()
-                assert os.path.exists(os.path.join(parent_dir, 'lotte/pooled/dev/collection.tsv')), "The extracted directory does not contain the expected files."
-        dev_df = pd.read_csv(os.path.join(parent_dir, 'lotte/pooled/dev/collection.tsv'), sep='\t', header=None)
-        test_df = pd.read_csv(os.path.join(parent_dir, 'lotte/pooled/test/collection.tsv'), sep='\t', header=None)        
+        # make a directory to download files (kept by default because the files are big)
+        os.makedirs(self.tmp_download_dir, exist_ok=True)
+        if not os.path.exists(os.path.join(self.tmp_download_dir, "lotte.tar.gz")):
+            response = requests.get(self.url, stream=True)
+            with open(os.path.join(self.tmp_download_dir, "lotte.tar.gz"), 'wb') as file:
+                for chunk in response.iter_content(chunk_size=1024):
+                    if chunk:
+                        file.write(chunk)
+            print(f"Downloaded lotte.tar.gz to {self.tmp_download_dir}.")
+        else:
+            print(f"lotte.tar.gz already exists in {self.tmp_download_dir}.")
+
+        # extract the tar.gz file
+        with tarfile.open(os.path.join(self.tmp_download_dir, "lotte.tar.gz"), 'r:gz') as tar:
+            if not os.path.exists(os.path.join(self.tmp_download_dir, 'lotte/')):
+                tar.extractall(path=self.tmp_download_dir)
+                assert os.path.exists(os.path.join(self.tmp_download_dir, 'lotte/pooled/dev/collection.tsv')), "The extracted directory does not contain the expected files."
+        
+        # process
+        dev_df = pd.read_csv(os.path.join(self.tmp_download_dir, 'lotte/pooled/dev/collection.tsv'), sep='\t', header=None)
+        test_df = pd.read_csv(os.path.join(self.tmp_download_dir, 'lotte/pooled/test/collection.tsv'), sep='\t', header=None)        
         dev_df['id'] = dev_df[0].apply(lambda x: f"dev_{x}")
         dev_df['content'] = dev_df[1]
         dev_df = dev_df.drop(columns=[0, 1])

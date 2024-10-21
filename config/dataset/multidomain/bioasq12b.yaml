@@ -6,8 +6,9 @@ train:
     query: 
         init_args:
             _target_: modules.processors.multidomain_dataset_processor.BIOASQ12B
-            train_path: "raw_datasets/BioASQ-training12b.zip"
-            dev_path: "raw_datasets/Task12BGoldenEnriched.zip"
+            hf_path: "naver/bergen_bioasq12b"
+            train_zip_path: null # default, provide paths if need to re-process raw data
+            dev_zip_path: null   # default, provide paths if need to re-process raw data
             split: "train"
 dev:
     doc: 
@@ -17,8 +18,9 @@ dev:
     query: 
         init_args:
             _target_: modules.processors.multidomain_dataset_processor.BIOASQ12B
-            train_path: "raw_datasets/BioASQ-training12b.zip"
-            dev_path: "raw_datasets/Task12BGoldenEnriched.zip"
+            hf_path: "naver/bergen_bioasq12b"
+            train_zip_path: null
+            dev_zip_path: null
             split: "dev"
 test:
     doc: null

@@ -7,7 +7,8 @@ dev:
     doc: 
         init_args:
             _target_: modules.processors.multidomain_dataset_processor.LoTTE
-            path: "/home/amisrahi/bergen/raw_datasets/lotte.tar.gz"
+            url: "https://downloads.cs.stanford.edu/nlp/data/colbert/colbertv2/lotte.tar.gz"
+            tmp_download_dir: 'raw_datasets' # default
             split: all
     query: 
         init_args:
