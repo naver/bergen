@@ -193,7 +193,6 @@ class TestBergenMain:
         self.set_folders(cfg, test_name)
         main(cfg)
         
-
     @pytest.mark.skip(reason="Helper function, not a test")
     def helper_single(self, cfg, test_name):
         self.set_folders(cfg, test_name)

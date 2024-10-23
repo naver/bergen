@@ -15,6 +15,7 @@ scikit_learn
 scipy
 tensorflow==2.8.0
 protobuf==3.20.*
+sentencepiece
 tqdm
 transformers
 trl
@@ -24,3 +25,5 @@ pytest
 langid
 fasttext
 fasttext-langdetect
+langdetect
+langcodes
