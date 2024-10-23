@@ -73,54 +73,59 @@ class Generator(ABC):
         return self.tokenizer.encode(response_template, add_special_tokens=False)
     
     def compile_prompt(self, system_prompt: str, user_prompt: str, question: str, docs: str = None, label: str = None):
-        """
-        Applying the chat template if it exists:
-        NB: seemingly unused args are used in the 'eval' call.
-        NB: if the label is not None, we assume training=True and then the answer of the model is added to the full prompt
-        This method returns a tuple consisting of:
-        - the final prompt
-        - if a label is provided, the position of the first label index within the tokenized sequence (for masking in training)
-        """
-        label_start_index = None
-        if self.tokenizer.chat_template is None:
-            user_prompt_with_values = eval(user_prompt).replace(':\ ', ': ')
-            # we add the 'reponse incitation' to non chat template
-            prompt = f"{system_prompt}\n{user_prompt_with_values}" + self.get_response()
-            if label is not None:
-                # Compute prompt size in tokens without labels.
-                label_start_index = len(self.tokenizer(prompt, add_special_tokens=False)['input_ids'])
-                prompt += label + self.tokenizer.eos_token
-
-        else:        
-            messages = [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": eval(user_prompt).replace(':\ ', ': ')}
-            ]
-            try:
-                # Handle the label
+            """
+            Applying the chat template if it exists:
+            NB: seemingly unused args are used in the 'eval' call.
+            NB: if the label is not None, we assume training=True and then the answer of the model is added to the full prompt
+            This method returns a tuple consisting of:
+            - the final prompt
+            - if a label is provided, the position of the first label index within the tokenized sequence (for masking in training)
+            """
+            # the prompt should finish with a generation prompt if we are in 'eval' mode i.e. when there is no label
+            # NB: the generation prompt is empty (automatically included in the template rather) for llama/mistral/solar at least
+            add_generation_prompt = (label is None) 
+            
+            label_start_index = None
+            if self.tokenizer.chat_template is None:
+                user_prompt_with_values = eval(user_prompt).replace(':\ ', ': ')
+                # we add the 'reponse incitation' to non chat template
+                prompt = f"{system_prompt}\n{user_prompt_with_values}" + self.get_response()
                 if label is not None:
-                    # Compute the prompt without label, to know its length and hence where to mask in training
-                    label_start_index = len(self.tokenizer.apply_chat_template(messages, tokenize=True, add_generation_prompt=True, add_special_tokens=False))
-                    messages.append({"role": "assistant", "content": label})
-                
-                prompt = self.tokenizer.apply_chat_template(messages, add_generation_prompt=False, tokenize=False) # TODO: should we add eos here ?
+                    # Compute prompt size in tokens without labels.
+                    label_start_index = len(self.tokenizer(prompt, add_special_tokens=False)['input_ids'])
+                    prompt += label + self.tokenizer.eos_token
 
-            except TemplateError as e:
-                if "System role not supported" in str(e):
-                    messages = [{"role": "user", "content": messages[0]['content'] + '\n' + messages[1]['content']}]
-
+            else:        
+                messages = [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": eval(user_prompt).replace(':\ ', ': ')}
+                ]
+                try:
+                    # Handle the label
                     if label is not None:
                         # Compute the prompt without label, to know its length and hence where to mask in training
                         label_start_index = len(self.tokenizer.apply_chat_template(messages, tokenize=True, add_generation_prompt=True, add_special_tokens=False))
                         messages.append({"role": "assistant", "content": label})
+                    
+                    prompt = self.tokenizer.apply_chat_template(messages, add_generation_prompt=add_generation_prompt, tokenize=False)
 
-                    prompt = self.tokenizer.apply_chat_template(messages,  add_generation_prompt=False, tokenize=False)
-                else:
-                    raise e
-        
-        if label is not None:
-            assert label_start_index is not None
-        return prompt, label_start_index
+                except TemplateError as e:
+                    if "System role not supported" in str(e):
+                        messages = [{"role": "user", "content": messages[0]['content'] + '\n' + messages[1]['content']}]
+
+                        if label is not None:
+                            # Compute the prompt without label, to know its length and hence where to mask in training  
+                            label_start_index = len(self.tokenizer.apply_chat_template(messages, tokenize=True, add_generation_prompt=True, add_special_tokens=False))
+                            messages.append({"role": "assistant", "content": label})
+
+                        prompt = self.tokenizer.apply_chat_template(messages,  add_generation_prompt=add_generation_prompt, tokenize=False)
+                    else:
+                        raise e
+            
+            if label is not None:
+                assert label_start_index is not None
+                
+            return prompt, label_start_index
 
     def format_instruction(self, sample: dict, eval: bool = True) -> (str, int):
         """
