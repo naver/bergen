@@ -123,7 +123,9 @@ class Generator(ABC):
                         raise e
             
             if label is not None:
-                assert label_start_index is not None
+                assert label_start_index is not None # check we did find the prompt length
+                if not prompt.endswith(self.tokenizer.eos_token):
+                    prompt += self.tokenizer.eos_token # most models have this already, but not gemma-2b !
                 
             return prompt, label_start_index
 
