@@ -23,7 +23,7 @@ class Generator(ABC):
                  max_length: int = None):
         self.model_name = model_name
         self.batch_size = batch_size
-        self.max_new_tokens = max_length
+        self.max_new_tokens = max_new_tokens
         self.max_doc_len = max_doc_len
         self.max_length = max_length
 
