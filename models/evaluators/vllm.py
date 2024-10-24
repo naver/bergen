@@ -23,17 +23,21 @@ class VLLMeval:
     - relies on vllm for inference, directly loads the model and runs inference (no need to initiate vllm server in advance) 
     - output score for each sample is 1 (when positive word is present in llm output) or 0  (otherwise) 
     """
-    def __init__(self, model_config, batch_size=1, pos_word='Yes', neg_word='No', config="default_qa"):
+    def __init__(self, model_config: dict, batch_size: int = None, config: str = "default_qa" ):
+        """
+            model_config: generator config specified as yaml file in cofig/generator directory
+            batch_size: if none, it keeps default llm batch size from config 
+            confg: name of evaluator config specified as yaml file at config/evaluators
+        """
         eval_config = omegaconf.OmegaConf.load(f"config/evaluator/{config}.yaml")
-        model_config = omegaconf.OmegaConf.load(f"config/generator/vllm_{model_config}.yaml")
         model_config['init_args']['max_new_tokens']= eval_config['max_new_tokens']
         self.llm = instantiate(model_config['init_args'], prompt=eval_config['prompt'])
         self.options = eval_config.output_options
         self.rubrik_section = ", ".join(["{"+opt+"}" for opt in self.options])
-
         self.prompt = eval_config['prompt']
         self.llm.sampling_params.max_new_token = eval_config['max_new_tokens']
-        self.llm.batch_size = batch_size
+        if not batch_size == None:
+            self.llm.batch_size = batch_size
         self.llm.max_new_tokens = eval_config['max_new_tokens']
         self.system_prompt = eval(self.prompt.system).replace(':\ ', ': ')
         self.output_ids = [self.llm.tokenizer.encode(opt, add_special_tokens=False)[-1] for opt in sorted(self.options)]
@@ -57,8 +61,8 @@ class VLLMeval:
             )
         
         else:
-            prefix = ([{'role': 'user_without_system',
-                'content': eval(self.prompt.user).replace(':\ ', ': ')}]
+            prefix = ([{'role': 'user',
+                'content': eval(self.prompt.user_without_system).replace(':\ ', ': ')}]
             )
         if 'assistant' in self.prompt:
             prefix.extend([{'role': 'assistant',
@@ -89,8 +93,6 @@ class VLLMeval:
             batch_scores, batch_weird  = process_llm_outputs_assess_scores(decoded, self.options)
             scores.extend(batch_scores)
             weird.extend(batch_weird)
-            #scores.extend([ 1 if self.pos_word.lower() in rep.lower() else 0 for rep in decoded ])
-            #weird.extend([ 1 if (self.neg_word.lower() not in rep.lower() and self.pos_word not in rep.lower()) else 0 for rep in decoded ])
             tq.set_description(f" score: {get_mean_without_unknown(scores)* 100:4.1f}%, weird :{float(len(weird))/len(scores)*100:4.1f}%")
         logger.info(weird)
         print("Weird", len(weird))

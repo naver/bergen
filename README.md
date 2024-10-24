@@ -62,7 +62,7 @@ To fully configure BERGEN, please read our [configuration guide](documentations/
 Run the evaluation script to calculate LLMEval  metrics and print the results:
 
 ```bash
-python3 eval.py --experiments_folder experiments/ --llm_batch_size 16 --split 'dev' --vllm SOLAR-107B
+python3 eval.py --experiments_folder experiments/ --llm_batch_size 16 --split 'dev' --llm vllm_SOLAR-107B
 
 #parse all the experiments files into a panda dataframe
 python print_results.py --folder experiments/ --format=tiny

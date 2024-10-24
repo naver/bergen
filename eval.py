@@ -6,13 +6,14 @@ import os
 from hydra.utils import instantiate
 import omegaconf
 import yaml
-from torch.profiler import profile, record_function, ProfilerActivity
 import gc
+import pandas as pd
+pd.set_option("display.precision", 4)
 
 class Evaluate:
     @staticmethod
-    def eval(experiment_folder="experiments/", split="dev", bem=False, llm=None, llm_ollama=None, vllm=None,gpt=None,bem_batch_size=1, lid=None, lid_advanced=None, llm_batch_size=1, llm_prompt="default_qa", ollama_url=None, folder=None, force=False, samples=None):
-        def eval_single(experiment_folder, folder, split, model, metric_name, nb_samples=None):
+    def eval(experiment_folder="experiments/", split="dev", bem: bool=False, llm: list[str]=None, llm_ollama: list[str]=None, vllm: list[str]=None, gpt: bool=None, bem_batch_size: int=1, lid: bool=None, lid_advanced: bool=None, llm_batch_size: int=None, llm_prompt: str = "default_qa", ollama_url: str=None, folder: str=None, force: bool=False, samples: int=-1):
+        def eval_single(experiment_folder, folder, split: str, model, metric_name: str, nb_samples: int =-1):
             if folder != None:
                 folders = [folder]
             else:
@@ -22,11 +23,14 @@ class Evaluate:
                 print('evaluating', experiment_folder)
                 def load_data(input_file):
                     result_dict = json.load(open(input_file))
-                    return result_dict
+                    return pd.DataFrame(result_dict)
                 
                 input_file = f'{experiment_folder}/eval_{split}_out.json'
                 if os.path.exists(input_file):
                     data = load_data(input_file)
+                    if nb_samples >0 and nb_samples < len(data):
+                        data = data[:nb_samples]
+                                            
                     metrics_file = f'{experiment_folder}/eval_{split}_metrics.json'
                     try:
                        metrics_dict = json.load(open(metrics_file))
@@ -36,15 +40,10 @@ class Evaluate:
                         print (f"{experiment_folder}\t{metric_name}\talready done")
                         continue
                     
-                    predictions, references, questions = list(), list(), list()
-
-                    for sample in data:
-                        predictions.append(sample['response'])
-                        references.append(sample['label'])
-                        questions.append(sample['question'])
-                        if nb_samples is not None and len(predictions)==nb_samples:
-                            break
-
+                    predictions = data['response'].values
+                    references = data['label'].values
+                    questions = data['question'].values    
+                
                     if gpt is not None:
                         # openai costs
                         model_score, scores, cost = model(predictions, references, questions)
@@ -52,14 +51,18 @@ class Evaluate:
                         with open(costs_out_file, 'w') as fout: fout.write(json.dumps(cost))
                     else:                    
                         model_score, scores = model(predictions, references, questions)
-                    metrics_out_file = f'{experiment_folder}/eval_{split}_metrics_{metric_name}_out.json'
-                    with open(metrics_out_file, 'w') as fout:
-
-                        for score, sample in zip(scores, data):
-                            jsonl = {'question' : sample['question'], 'response': sample['response'], 'label': sample['label'], 'score': float(score)}
-                            fout.write(json.dumps(jsonl)+'\n')
-                            
-                    metrics_dict.update({metric_name: str(model_score)})
+                    data[metric_name] = scores
+                    metrics_out_file = f'{experiment_folder}/eval_{split}_out.json'
+                    if nb_samples >0:
+                        metrics_out_file = f'{experiment_folder}/eval_{split}_out_{nb_samples}.json'
+                        
+                    # temporary print eval_out results with updated metric  (to avoid loosing eval_dev_out.json if smth goes wrong)                   
+                    data.to_json(metrics_out_file+"_", orient='records') 
+                    #move temprorary result into final name                       
+                    shutil.move(metrics_out_file + '_', metrics_out_file)
+                    if nb_samples >0:
+                        metric_name = f"{metric_name}_{nb_samples}"           
+                    metrics_dict.update({metric_name: model_score})
                     print(metric_name,model_score)
                     # save to _ tmp file
                     with open(metrics_file + '_', 'w') as fp:
@@ -67,8 +70,6 @@ class Evaluate:
                     # when writing successful remove tmp file
                     shutil.move(metrics_file + '_', metrics_file)
     
-        #with profile(activities=[ProfilerActivity.CUDA, ProfilerActivity.CPU],
-        #            profile_memory=True, record_shapes=True) as prof:
         if bem:
             from models.evaluators.bem import BEM
             model = BEM(batch_size=bem_batch_size)
@@ -78,24 +79,8 @@ class Evaluate:
             model = OpenAI(gpt)
             eval_single(experiment_folder, folder, split, model, gpt, nb_samples = samples)
         
-        if vllm is not None:
-            from models.evaluators.vllm import VLLMeval 
-            if len(vllm) == 0:
-                # corresponds to default LLMeval setting, results reported in the paper
-                model_config, short_name = "SOLAR-107B", "VLLMeval"             
-            elif len(vllm)==1:
-                model_config = vllm[0]
-                short_name = f"VLLMeval_{model_config}"
-            elif len(vllm)==2:
-                model_config = vllm[0]
-                short_name = f"VLLMeval_{vllm[1]}"        
-            model = VLLMeval(model_config, batch_size=llm_batch_size, config=llm_prompt)
-            eval_single(experiment_folder, folder, split, model, short_name, nb_samples = samples)
-            del model
-            torch.cuda.empty_cache()
-            gc.collect()
         if llm is not None:
-            from models.evaluators.llm import LLMeval
+            
             if len(llm) == 0:
                 model_config, short_name = "SOLAR-107B", "LLMeval"            
             elif len(llm)==1:
@@ -105,10 +90,19 @@ class Evaluate:
             elif len(llm)==2:
                 model_config = llm[0]
                 short_name = llm[1]
-                short_name = f"LLMeval_{short_name}"                  
-            model = LLMeval(model_config, batch_size=llm_batch_size, config=llm_prompt)
-            if model.use_logits:
-                short_name = f"{short_name}_logits"
+                short_name = f"LLMeval_{short_name}"
+
+            model_config = omegaconf.OmegaConf.load(f"config/generator/{model_config}.yaml")            
+            if model_config['init_args']['_target_']=='models.generators.vllm.VLLM':
+                from models.evaluators.vllm import VLLMeval 
+                model = VLLMeval(model_config, batch_size=llm_batch_size, config=llm_prompt)
+                
+            else:
+                from models.evaluators.llm import LLMeval 
+                model = LLMeval(model_config, batch_size=llm_batch_size, config=llm_prompt)
+                if model.use_logits :
+                    short_name = f"{short_name}_logits"
+                
             eval_single(experiment_folder, folder, split, model, short_name, nb_samples = samples)
             del model
             torch.cuda.empty_cache()
@@ -123,7 +117,9 @@ class Evaluate:
             elif len(llm_ollama)==2:
                 model_config = llm_ollama[0]
                 short_name = llm_ollama[1] 
-                short_name = f"LLMeval_{short_name}"        
+                short_name = f"LLMeval_{short_name}"
+            if llm_batch_size == None:
+                llm_batch_size = 1        
             model = OllamaEval(model_config, batch_size=llm_batch_size, config=llm_prompt, basic_url=ollama_url)
             eval_single(experiment_folder, folder, split, model, short_name, nb_samples = samples)
             
@@ -134,11 +130,8 @@ class Evaluate:
                 folders = [ f.path for f in os.scandir(experiment_folder) if f.is_dir() and 'tmp_' not in f.path]
             else:
                 folders = [folder]
-                tgt_lng_lid = lid
-                tgt_lng_lid1 = lid_advanced
             for folder in folders:
                 # we need to get language from each folder config separately
-                print(folder)
                 config = yaml.safe_load(open(f"{folder}/config.yaml")) 
                 if 'lng' in config['dataset'][split]['query']['init_args']:
                     tgt_lng = config['dataset'][split]['query']['init_args']['lng']
@@ -150,12 +143,11 @@ class Evaluate:
                     print(f"{folder}: didn't find lng in the config.yaml, set it to English by default")
                 if lid is not None:
                     model=LID(tgt_lng)  
-                    eval_single(experiment_folder, folder, split, model, "lid_debug")
+                    eval_single(experiment_folder, folder, split, model, "lid", nb_samples = samples)
                 if lid_advanced is not None:
                     model = LID_advanced(tgt_lng)
-                    eval_single(experiment_folder, folder, split, model, "lid_advanced")
-        #print(prof.key_averages().table(sort_by="self_cpu_memory_usage", row_limit=10))
-    
+                    eval_single(experiment_folder, folder, split, model, "lid_advanced", nb_samples = samples)
+        
 
 if __name__ == "__main__":
     import argparse
@@ -164,25 +156,17 @@ if __name__ == "__main__":
     parser.add_argument('--experiments_folder', type=str, default="experiments/")
     parser.add_argument('--folder', type=str, default=None)
     parser.add_argument('--split', type=str, default='dev')
-    parser.add_argument('--sample', type=int, default=None, help="Use only subsample of the experiment folder for evaluation, useful for debug purposes")    
+    parser.add_argument('--sample', type=int, default=-1, help="Use only subsample of the experiment folder for evaluation, useful for debug purposes (default -1: use full dataset)")    
     parser.add_argument('--bem', action='store_true')
     parser.add_argument('--lid', action='store_true', default=None)
     parser.add_argument('--lid_advanced', action='store_true', default=None)
 
     parser.add_argument('--llm', type=str, nargs='*', default=None, 
-            help="""
-                Uses default HF inference mechanism for LLM evaluation.  Requires up to 2 arguments: 
-                - full model name  and short name (used for naming output files and metrics): eg. -llm \"Upstage/SOLAR-10.7B-Instruct-v1.0\" solar 
+            help=""" 
+                - full model name (corresponding to generator config name) and short name (used for naming output files and metrics): 
+                    eg. -llm SOLAR-107B solar 
                 - if short name is missing: use full name in naming, 
-                - if no arguments specified: falls back to default arguments: uses default values (\"Upstage/SOLAR-10.7B-Instruct-v1.0\" solar). 
-                """)
-    parser.add_argument('--vllm', type=str, nargs='*', default=None, 
-                help="""
-                    Calls vllm to run evalution. Requires 2 arguments: 
-                    Uses default HF inference mechanism for LLM evaluation.  Requires up to 2 arguments: 
-                    - full model name  and short name (used for naming output files and metrics): eg. -vllm \"Upstage/SOLAR-10.7B-Instruct-v1.0\" solar 
-                    - if short name is missing: use full name in naming, 
-                    -  if no arguments specified: falls back to default arguments: uses default values (\"Upstage/SOLAR-10.7B-Instruct-v1.0\" solar). 
+                - if no arguments specified: falls back to default arguments: uses default values (SOLAR-107B LLMeval). 
                 """)
                     
     parser.add_argument('--llm_ollama',  type=str, nargs='*', default=None, 
@@ -193,7 +177,7 @@ if __name__ == "__main__":
                 """ )
     parser.add_argument('--gpt', type=str,default=None)
     parser.add_argument('--bem_batch_size', type=int, default=1024)
-    parser.add_argument('--llm_batch_size', type=int, default=1)
+    parser.add_argument('--llm_batch_size', type=int, default=None)
     parser.add_argument('--force', action='store_true')
     parser.add_argument('--llm_prompt', type=str, default="default_qa", help="Provide yaml config file with updated prompt. Default prompt: config/evaluator/default_prompt.yaml")
     parser.add_argument('--ollama_url', type=str, default="http://localhost:11434", help="")
@@ -207,7 +191,6 @@ if __name__ == "__main__":
         bem=args.bem,
         llm=args.llm, 
         llm_ollama=args.llm_ollama,
-        vllm=args.vllm, 
         gpt=args.gpt,
         lid=args.lid,
         lid_advanced=args.lid_advanced,

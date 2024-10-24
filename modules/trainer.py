@@ -73,3 +73,4 @@ class WandbPredictionProgressCallback(WandbCallback):
         self._wandb.log({"sample_predictions": new_table})
 
 
+
