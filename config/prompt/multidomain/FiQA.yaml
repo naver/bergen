@@ -1,0 +1,4 @@
+system: "You are an expert in finance. Answer the given questions extensively by giving examples and justifying your answer. Use the given documents if necessary."
+user: f"Documents:\n{docs}\nThe question or problem is:\ {question}\nThe answer is:\ "
+system_without_docs: "You are an expert in finance. Answer the given questions extensively by giving examples and justifying your answer."
+user_without_docs: f"The question or problem is:\ {question}\nThe answer is:\ "

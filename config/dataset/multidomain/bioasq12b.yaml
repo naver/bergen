@@ -1,0 +1,27 @@
+train:
+    doc: 
+        init_args:
+            _target_: modules.processors.multidomain_dataset_processor.PubMed2023_Ragged
+            split: "train"
+    query: 
+        init_args:
+            _target_: modules.processors.multidomain_dataset_processor.BIOASQ12B
+            hf_path: "naver/bergen_bioasq12b"
+            train_zip_path: null # default, provide paths if need to re-process raw data
+            dev_zip_path: null   # default, provide paths if need to re-process raw data
+            split: "train"
+dev:
+    doc: 
+        init_args:
+            _target_: modules.processors.multidomain_dataset_processor.PubMed2023_Ragged
+            split: "train"
+    query: 
+        init_args:
+            _target_: modules.processors.multidomain_dataset_processor.BIOASQ12B
+            hf_path: "naver/bergen_bioasq12b"
+            train_zip_path: null
+            dev_zip_path: null
+            split: "dev"
+test:
+    doc: null
+    query: null

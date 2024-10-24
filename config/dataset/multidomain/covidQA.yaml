@@ -1,0 +1,19 @@
+train:
+    doc:
+        null
+    query:
+        null
+dev:
+    doc: 
+        init_args:
+            _target_: modules.processors.multidomain_dataset_processor.CORD19
+            split: all
+    query: 
+        init_args:
+            _target_: modules.processors.multidomain_dataset_processor.CovidQA
+            split: train
+test:
+    doc:
+        null
+    query:
+        null

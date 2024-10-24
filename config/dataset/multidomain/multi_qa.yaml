@@ -1,0 +1,22 @@
+train:
+    doc: 
+        init_args:
+            _target_: modules.dataset_processor.MergedDocDataset
+            in_dataset_names: ["ms-marco", "kilt-100w"]
+            in_dataset_splits: ["full", "full"]
+            out_dataset_name: "multi_qa_merged_docs"
+            split: "_ms-marco__kilt-100w"
+    query: 
+        init_args:
+            _target_: modules.processors.multidomain_dataset_processor.MultiQA
+            split: "train"
+dev:
+    doc: 
+        null
+    query: 
+        null
+test:
+    doc: 
+        null
+    query: 
+        null
