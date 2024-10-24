@@ -23,7 +23,7 @@ class BIOASQ12B(Processor):
     - To load an already processed version, provide the hf_path
     """
 
-    def __init__(self, hf_path=None, train_zip_path=None, dev_zip_path=None, *args, **kwargs):
+    def __init__(self, hf_path: str = None, train_zip_path: str = None, dev_zip_path: str = None, *args, **kwargs):
         assert (hf_path is not None and (train_zip_path is None and dev_zip_path is None)) or (hf_path is None and (train_zip_path is not None and dev_zip_path is not None)), "Please either either provide raw file paths ```train_zip_path``` and ```dev_zip_path``` or a processed dataset HuggingFace path ```hf_path```. To download the raw files, see http://participants-area.bioasq.org/datasets/"
         self.dataset_name = 'BIOASQ12B'
         self.hf_path = hf_path
@@ -201,9 +201,6 @@ def process_APIBench_gorilla(apibench_file):
                 return None
         
     tmp_df['content'] = tmp_df['code'].apply(get_instruction)
-    def listify_label(row):
-        row['label'] = [row['label']]
-        return row
     tmp_df['label'] = tmp_df['api_call']
     tmp_df = tmp_df.drop(['code', 'provider', 'api_data'], axis=1).dropna()
     api_bench_dataset = datasets.Dataset.from_pandas(tmp_df)
@@ -328,7 +325,6 @@ class API_gorilla_TH(Processor):
         """
         self.split should be one of ['huggingface', 'torchhub', 'tensorflowhub']
         """
-
         api_file = 'https://raw.githubusercontent.com/ShishirPatil/gorilla/main/data/api/torchhub_api.jsonl'
         api_dataset = process_API_gorilla(api_file)
         return api_dataset
@@ -345,9 +341,6 @@ class CodeRAGBench_HumanEval(Processor):
         hf_name = "code-rag-bench/humaneval"
         dataset = datasets.load_dataset(hf_name, num_proc=self.num_proc)[self.split]
         dataset = dataset.rename_column("task_id", "id").rename_column("prompt", "content").rename_column("canonical_solution", "label")
-        def listify_label(row):
-            row['label'] = [row['label']]
-            return row
         dataset = dataset.map(listify_label)
         return dataset
 
@@ -364,9 +357,6 @@ class CodeRAGBench_MBPP(Processor):
         dataset = datasets.load_dataset(hf_name, num_proc=self.num_proc)[self.split]
         dataset = dataset.rename_column("task_id", "id").rename_column("text", "content").rename_column("code", "label")
         dataset = dataset.remove_columns([column for column in dataset.column_names if column not in ['id', 'content', 'label']])
-        def listify_label(row):
-            row['label'] = [row['label']]
-            return row
         dataset = dataset.map(listify_label)
         return dataset
     
@@ -383,7 +373,7 @@ class CodeRAGBench_programming_solutions(Processor):
         self.dataset_name = 'CodeRAGBench_programming_solutions'
         super().__init__(*args, **kwargs, dataset_name=self.dataset_name)
     def process(self):
-        dataset = datasets.load_dataset("code-rag-bench/programming-solutions", num_proc=self.num_proc)[self.split].select(range(100)).map(CRB_cat_title_content, fn_kwargs={"content_colname":"text"}).select_columns(['content'])
+        dataset = datasets.load_dataset("code-rag-bench/programming-solutions", num_proc=self.num_proc)[self.split].map(CRB_cat_title_content, fn_kwargs={"content_colname":"text"}).select_columns(['content'])
         dataset = dataset.map(lambda _, idx: {"id": str(idx)}, with_indices=True)
         return dataset
     
@@ -392,7 +382,7 @@ class CodeRAGBench_online_tutorials(Processor):
         self.dataset_name = 'CodeRAGBench_online_tutorials'
         super().__init__(*args, **kwargs, dataset_name=self.dataset_name)
     def process(self):
-        dataset = datasets.load_dataset("code-rag-bench/online-tutorials", num_proc=self.num_proc)[self.split].select(range(100)).map(CRB_cat_title_content, fn_kwargs={"content_colname":"text"}).select_columns(['content'])
+        dataset = datasets.load_dataset("code-rag-bench/online-tutorials", num_proc=self.num_proc)[self.split].map(CRB_cat_title_content, fn_kwargs={"content_colname":"text"}).select_columns(['content'])
         dataset = dataset.map(lambda _, idx: {"id": str(idx)}, with_indices=True)
         return dataset
     
@@ -401,7 +391,7 @@ class CodeRAGBench_library_documentation(Processor):
         self.dataset_name = 'CodeRAGBench_library_documentation'
         super().__init__(*args, **kwargs, dataset_name=self.dataset_name)
     def process(self):
-        dataset = datasets.load_dataset("code-rag-bench/library-documentation", num_proc=self.num_proc)[self.split].select(range(100)).map(CRB_cat_title_content, fn_kwargs={"content_colname":"doc_content", "title_colname":"doc_id"}).select_columns(['content'])
+        dataset = datasets.load_dataset("code-rag-bench/library-documentation", num_proc=self.num_proc)[self.split].map(CRB_cat_title_content, fn_kwargs={"content_colname":"doc_content", "title_colname":"doc_id"}).select_columns(['content'])
         dataset = dataset.map(lambda _, idx: {"id": str(idx)}, with_indices=True)
         return dataset
     
@@ -410,7 +400,7 @@ class CodeRAGBench_stackoverflow(Processor):
         self.dataset_name = 'CodeRAGBench_stackoverflow'
         super().__init__(*args, **kwargs, dataset_name=self.dataset_name)
     def process(self):
-        dataset = datasets.load_dataset("code-rag-bench/stackoverflow-posts", num_proc=self.num_proc)[self.split].select(range(100)).map(CRB_cat_title_content, fn_kwargs={"content_colname":"text", "title_colname":None}).select_columns(['content'])
+        dataset = datasets.load_dataset("code-rag-bench/stackoverflow-posts", num_proc=self.num_proc)[self.split].map(CRB_cat_title_content, fn_kwargs={"content_colname":"text", "title_colname":None}).select_columns(['content'])
         dataset = dataset.map(lambda _, idx: {"id": str(idx)}, with_indices=True)
         return dataset
 
@@ -419,7 +409,7 @@ class CodeRAGBench_gitrepospython(Processor):
         self.dataset_name = 'CodeRAGBench_gitrepospython'
         super().__init__(*args, **kwargs, dataset_name=self.dataset_name)
     def process(self):
-        dataset = datasets.load_dataset("code-rag-bench/github-repos-python", num_proc=self.num_proc)[self.split].select(range(100)).map(CRB_cat_title_content, fn_kwargs={"content_colname":"text", "title_colname":None}).select_columns(['content'])
+        dataset = datasets.load_dataset("code-rag-bench/github-repos-python", num_proc=self.num_proc)[self.split].map(CRB_cat_title_content, fn_kwargs={"content_colname":"text", "title_colname":None}).select_columns(['content'])
         dataset = dataset.map(lambda _, idx: {"id": str(idx)}, with_indices=True)
         return dataset
     
@@ -428,7 +418,7 @@ class CodeRAGBench_gitrepos(Processor):
         self.dataset_name = 'CodeRAGBench_gitrepos'
         super().__init__(*args, **kwargs, dataset_name=self.dataset_name)
     def process(self):
-        dataset = datasets.load_dataset("code-rag-bench/github-repos", num_proc=self.num_proc)[self.split].select(range(100)).map(CRB_cat_title_content, fn_kwargs={"content_colname":"text", "title_colname":None}).select_columns(['content'])
+        dataset = datasets.load_dataset("code-rag-bench/github-repos", num_proc=self.num_proc)[self.split].map(CRB_cat_title_content, fn_kwargs={"content_colname":"text", "title_colname":None}).select_columns(['content'])
         dataset = dataset.map(lambda _, idx: {"id": str(idx)}, with_indices=True)
         return dataset
 
@@ -502,37 +492,11 @@ class SyllabusQA_syllabi(Processor):
             print(f"Downloaded {file_name}.")
         print("Done.")
 
-        def chunk_text(text, title, max_size=1000, overlap=200):
-            """
-            Chunks the given text into parts with a maximum size and overlap, prepending the title to each chunk.
-            
-            Args:
-            - text: The text to chunk.
-            - title: The title of the syllabus to prepend to each chunk.
-            - max_size: Maximum size of each chunk (default is 1000 characters, same as in https://arxiv.org/pdf/2403.14666).
-            - overlap: Overlap between adjacent chunks (default is 200 characters, same as in https://arxiv.org/pdf/2403.14666).
-            
-            Returns:
-            - A list of dictionaries with chunk 'id' and 'content' keys.
-            """
-            chunks = []
-            start = 0
-            chunk_id = 0
-            while start < len(text):
-                end = start + max_size
-                chunk = text[start:end]
-                chunk = title + ": " + chunk  # Prepend the title
-                chunks.append({'id': f"{title}_{chunk_id}", 'content': chunk})
-                start = end - overlap
-                chunk_id += 1
-
-            return chunks
-
         # chunk
         all_chunks = []
         for file in syllabi:
             title, text = unquote(file['file_name'].split('/')[-1].strip('.txt')), file['content']
-            chunks = chunk_text(text, title)
+            chunks = chunk_text(text, id=title, title=title, words_or_chars='chars')
             all_chunks.extend(chunks)
         dataset = datasets.Dataset.from_pandas(pd.DataFrame(all_chunks))
         return dataset
@@ -593,41 +557,13 @@ class TechQA_docs(Processor):
     def process(self):
         ds = datasets.load_dataset("rojagtap/tech-qa")
         dataset = datasets.concatenate_datasets([ds["train"], ds["validation"], ds["test"]])
-
-        def chunk_text(text, title, id, max_size=1000, overlap=200):
-            """
-            Chunks the given text into parts with a maximum size and overlap, prepending the title to each chunk.
-            
-            Args:
-            - text: The document to chunk
-            - title: document title to pre-pend to each chunk
-            - id: The id of the document
-            - max_size: Maximum size of each chunk
-            - overlap: Overlap between adjacent chunks
-            
-            Returns:
-            - A list of dictionaries with chunk 'id' and 'content' keys.
-            """
-            chunks = []
-            start = 0
-            chunk_id = 0
-            while start < len(text):
-                end = start + max_size
-                chunk = text[start:end]
-                chunk = title + ": " + chunk  # Prepend the title
-                chunks.append({'id': f"{id}_{chunk_id}", 'content': chunk})
-                start = end - overlap
-                chunk_id += 1
-
-            return chunks
-
         all_chunks = []
         for i in range(len(dataset)):
             id = dataset[i]["id"]
             doc = dataset[i]["document"]
             assert len(doc.split(' - ')) >= 2
             title, text = doc.split(' - ')[0], ' - '.join(doc.split(' - ')[1:])
-            chunks = chunk_text(text, title, id)
+            chunks = chunk_text(text, id, title, words_or_chars='chars')
             all_chunks.extend(chunks)
         dataset = datasets.Dataset.from_pandas(pd.DataFrame(all_chunks).drop_duplicates(subset='content')).remove_columns(["__index_level_0__"])
         return dataset
@@ -647,7 +583,11 @@ class ParaphraseRC(Processor):
         def map_fn(row):
             row["content"] = f"{row['title']}: {row['content']}"
             return row
-        dataset = datasets.load_dataset("ibm/duorc", "ParaphraseRC")[self.split].filter(lambda x: not x["no_answer"]).rename_columns({"question_id":"id", "question":"content", "answers":"label"}).map(map_fn, num_proc=self.num_proc).remove_columns(["plot_id", "plot", "title", "no_answer"])
+        dataset = datasets.load_dataset("ibm/duorc", "ParaphraseRC")[self.split]
+        dataset = dataset.filter(lambda x: not x["no_answer"])
+        dataset = dataset.rename_columns({"question_id":"id", "question":"content", "answers":"label"})
+        dataset = dataset.map(map_fn, num_proc=self.num_proc)
+        dataset = dataset.remove_columns(["plot_id", "plot", "title", "no_answer"])
         return dataset
 
 class ParaphraseRC_docs(Processor):
@@ -661,36 +601,6 @@ class ParaphraseRC_docs(Processor):
             dataset = datasets.concatenate_datasets([dataset["train"], dataset["validation"], dataset["test"]])
         else:
             dataset = dataset[self.split]
-
-        def chunk_text(text, title, id, max_size=1000, overlap=200):
-            """
-            Chunks the given text into parts with a maximum size and overlap, prepending the title to each chunk.
-            
-            Args:
-            - text: The document to chunk
-            - title: document title to pre-pend to each chunk
-            - id: The id of the document
-            - max_size: Maximum size of each chunk
-            - overlap: Overlap between adjacent chunks
-            
-            Returns:
-            - A list of dictionaries with chunk 'id' and 'content' keys.
-            """
-            chunks = []
-            start = 0
-            chunk_id = 0
-            while start < len(text):
-                end = start + max_size
-                if start + overlap > len(text):
-                    break
-                chunk = text[start:end]
-                chunk = title + ": " + chunk  # Prepend the title
-                chunks.append({'id': f"{id}_{chunk_id}", 'content': chunk})
-                start = end - overlap
-                chunk_id += 1
-
-            return chunks
-        
         plot_ids = set(dataset["plot_id"])
         plots = {plot_id:None for plot_id in plot_ids}
         all_chunks = []
@@ -699,7 +609,7 @@ class ParaphraseRC_docs(Processor):
                 id = dataset[i]["plot_id"]
                 doc = dataset[i]["plot"]
                 title = dataset[i]["title"]
-                chunks = chunk_text(doc, title, id)
+                chunks = chunk_text(doc, id, title, max_size=100, overlap=20, words_or_chars='words')
                 all_chunks.extend(chunks)
                 plots[dataset[i]["plot_id"]] = True
         dataset = datasets.Dataset.from_pandas(pd.DataFrame(all_chunks))
@@ -721,7 +631,11 @@ class CovidQA(Processor):
         def map_fn(row):
             row["label"] = row["answers"]["text"]
             return row
-        dataset = datasets.load_dataset("deepset/covid_qa_deepset")[self.split].rename_column("question","content").map(map_fn, num_proc=self.num_proc).remove_columns(["document_id", "context", "is_impossible", "answers"]).cast_column('id', datasets.Value('string'))
+        dataset = datasets.load_dataset("deepset/covid_qa_deepset")[self.split]
+        dataset = dataset.rename_column("question","content")
+        dataset = dataset.map(map_fn, num_proc=self.num_proc)
+        dataset = dataset.remove_columns(["document_id", "context", "is_impossible", "answers"])
+        dataset = dataset.cast_column('id', datasets.Value('string'))
         return dataset
     
 class CORD19(Processor):
@@ -750,49 +664,49 @@ class LoTTE(Processor):
     Source: https://downloads.cs.stanford.edu/nlp/data/colbert/colbertv2/lotte.tar.gz
     Other possible source: https://huggingface.co/colbertv2
     """
-    def __init__(self, url, tmp_download_dir='raw_datasets', *args, **kwargs):
+    def __init__(self, url: str, *args, **kwargs):
         dataset_name = 'LoTTE'
         self.url = url
-        self.tmp_download_dir = tmp_download_dir
         assert self.url.endswith('.tar.gz'), "Expected URL to point to a .tar.gz file."
         super().__init__(*args, **kwargs, dataset_name=dataset_name)
 
     def process(self):
         import tarfile
-        # make a directory to download files (kept by default because the files are big)
-        os.makedirs(self.tmp_download_dir, exist_ok=True)
-        if not os.path.exists(os.path.join(self.tmp_download_dir, "lotte.tar.gz")):
+        import tempfile
+
+        # download the tar.gz file
+        with tempfile.TemporaryDirectory() as tmp_download_dir:
+            print(f"Temporary directory created at {tmp_download_dir}. Downloading {self.url}...")
             response = requests.get(self.url, stream=True)
-            with open(os.path.join(self.tmp_download_dir, "lotte.tar.gz"), 'wb') as file:
+            response.raise_for_status()
+            with open(os.path.join(tmp_download_dir, "lotte.tar.gz"), 'wb') as file:
                 for chunk in response.iter_content(chunk_size=1024):
                     if chunk:
                         file.write(chunk)
-            print(f"Downloaded lotte.tar.gz to {self.tmp_download_dir}.")
-        else:
-            print(f"lotte.tar.gz already exists in {self.tmp_download_dir}.")
+            print(f"Downloaded {self.url} successfully.")
 
-        # extract the tar.gz file
-        with tarfile.open(os.path.join(self.tmp_download_dir, "lotte.tar.gz"), 'r:gz') as tar:
-            if not os.path.exists(os.path.join(self.tmp_download_dir, 'lotte/')):
-                tar.extractall(path=self.tmp_download_dir)
-                assert os.path.exists(os.path.join(self.tmp_download_dir, 'lotte/pooled/dev/collection.tsv')), "The extracted directory does not contain the expected files."
-        
-        # process
-        dev_df = pd.read_csv(os.path.join(self.tmp_download_dir, 'lotte/pooled/dev/collection.tsv'), sep='\t', header=None)
-        test_df = pd.read_csv(os.path.join(self.tmp_download_dir, 'lotte/pooled/test/collection.tsv'), sep='\t', header=None)        
-        dev_df['id'] = dev_df[0].apply(lambda x: f"dev_{x}")
-        dev_df['content'] = dev_df[1]
-        dev_df = dev_df.drop(columns=[0, 1])
-        test_df['id'] = test_df[0].apply(lambda x: f"test_{x}")
-        test_df['content'] = test_df[1]
-        test_df = test_df.drop(columns=[0, 1])
-        df = pd.concat([dev_df, test_df])
-        all_chunks = []
-        for i in range(len(df)):
-            chunks = chunk_text(df.iloc[i]['content'], df.iloc[i]['id'], max_size=100, overlap=20, words_or_chars='words')
-            all_chunks.extend(chunks)
-        dataset = datasets.Dataset.from_pandas(pd.DataFrame(all_chunks))
-        return dataset
+            # extract the tar.gz file
+            with tarfile.open(os.path.join(tmp_download_dir, "lotte.tar.gz"), 'r:gz') as tar:
+                tar.extractall(path=tmp_download_dir)
+                assert os.path.exists(os.path.join(tmp_download_dir, 'lotte/pooled/dev/collection.tsv')), "The extracted directory does not contain the expected files."
+            
+            # process
+            dev_df = pd.read_csv(os.path.join(tmp_download_dir, 'lotte/pooled/dev/collection.tsv'), sep='\t', header=None)
+            test_df = pd.read_csv(os.path.join(tmp_download_dir, 'lotte/pooled/test/collection.tsv'), sep='\t', header=None)        
+            dev_df['id'] = dev_df[0].apply(lambda x: f"dev_{x}")
+            dev_df['content'] = dev_df[1]
+            dev_df = dev_df.drop(columns=[0, 1])
+            test_df['id'] = test_df[0].apply(lambda x: f"test_{x}")
+            test_df['content'] = test_df[1]
+            test_df = test_df.drop(columns=[0, 1])
+            df = pd.concat([dev_df, test_df])
+            all_chunks = []
+            for i in range(len(df)):
+                chunks = chunk_text(df.iloc[i]['content'], df.iloc[i]['id'], max_size=100, overlap=20, words_or_chars='words')
+                all_chunks.extend(chunks)
+            dataset = datasets.Dataset.from_pandas(pd.DataFrame(all_chunks))
+            print("Dataset processed successfully. Will delete temporary directory.")
+            return dataset
 
 def process_LoTTE_benchmarks(url: str) -> datasets.Dataset:
     print(f"Downloading {url}...")

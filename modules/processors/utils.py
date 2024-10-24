@@ -2,7 +2,9 @@
 Utility functions for dataset processors
 '''
 
-def chunk_text(text, id, title=None, max_size=1000, overlap=200, words_or_chars='chars'):
+from typing import List, Dict
+
+def chunk_text(text: str, id: str, title: str = None, max_size: int = 1000, overlap: int = 200, words_or_chars: str = 'chars') -> List[Dict[str, str]]:
     """
     Chunk the given text into parts with a maximum size and overlap, prepending the title to each chunk.
     
@@ -17,8 +19,7 @@ def chunk_text(text, id, title=None, max_size=1000, overlap=200, words_or_chars=
     Returns:
         List[Dict[str, str]]: list of chunks and ids.
     """
-    if title is None:
-        title = ""
+    title = title or ""
     if words_or_chars == 'words':
         text = text.split()
     chunks = []
@@ -36,7 +37,7 @@ def chunk_text(text, id, title=None, max_size=1000, overlap=200, words_or_chars=
 
     return chunks
 
-def listify_label(row: str):
+def listify_label(row: Dict) -> Dict:
     """
     Format the label of a dataset correctly for metrics computation.
     Example: '1+1=2' -> ['1+1=2']
