@@ -23,7 +23,7 @@ class Generator(ABC):
                  max_length: int = None):
         self.model_name = model_name
         self.batch_size = batch_size
-        self.max_new_tokens = max_length
+        self.max_new_tokens = max_new_tokens
         self.max_doc_len = max_doc_len
         self.max_length = max_length
 
@@ -123,7 +123,9 @@ class Generator(ABC):
                         raise e
             
             if label is not None:
-                assert label_start_index is not None
+                assert label_start_index is not None # check we did find the prompt length
+                if not prompt.endswith(self.tokenizer.eos_token):
+                    prompt += self.tokenizer.eos_token # most models have this already, but not gemma-2b !
                 
             return prompt, label_start_index
 
