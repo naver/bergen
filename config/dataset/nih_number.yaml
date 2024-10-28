@@ -1,0 +1,21 @@
+train:
+    doc: null
+    query: null
+dev:
+    doc: 
+        init_args:
+            _target_: modules.processors.nih_dataset_processor.NIHJsonDataset
+            filepath: datasets/json_data/nih_dataset_v1_nih_number_dataset.json
+            index: 1
+            split: "full"
+    
+    query: 
+        init_args:
+            _target_: modules.processors.nih_dataset_processor.NIHJsonDataset
+            filepath: datasets/json_data/nih_dataset_v1_nih_number_dataset.json
+            index: 0
+            split: "full"
+
+test:
+    doc: null
+    query: null
