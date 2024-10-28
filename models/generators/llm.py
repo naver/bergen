@@ -82,7 +82,12 @@ class LLM(Generator):
                                                            clean_up_tokenization_spaces=True)
 
         self.tokenizer.padding_side = "left"
-        self.tokenizer.pad_token = self.tokenizer.bos_token
+        if self.tokenizer.bos_token is not None:
+            self.tokenizer.pad_token = self.tokenizer.bos_token
+        elif self.tokenizer.pad_token is not None:
+            self.tokenizer.pad_token = self.tokenizer.pad_token
+        else:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
 
         if quantization == "int8":
             quant_config = BitsAndBytesConfig(
@@ -143,29 +148,56 @@ class LLM(Generator):
     def __del__(self):
         gc.collect()
         torch.cuda.empty_cache()
-
-    def assert_label_masking_is_correct(self, original_labels: list[str], label: torch.LongTensor):
+            
+    def get_no_loss_start_index(self, 
+                                ids: torch.LongTensor, 
+                                original_labels: list[str],
+                                label_start_index: int,
+                                left_padding_count: int) -> int:
         """
-        Check that the non-masked area of 'label' corresponds to one of the original_labels.
-        (Only used during training for loss computation)
-        NB: this assert involves multiple tokenization/detokenization but on CPU and it's worth it
+        There is no standard for label completion delimitation, this is our recipe.
+        (see https://huggingface.co/docs/trl/sft_trainer#train-on-completions-only)
+        :label_start_index: is the length of the tokenized instructino WITHOUT the label but with generation_prompt.
+        Unfortunately, label_start_index is not always the start of the label because tokenizers have different behaviours
+        e.g. for Qwen it's exactly the start
+        for Mistral it's the start - 1 because chat_template_no_label + generation_prompt + label != chat_template_with_label
+        (Mistral adds a new line, which is factored into the token of [INS])
+        So in this method we:
+        - Test cropping at label_start_index - 1. If we recover the label entirely we stop there.
+        - Test cropping at label_start_index. If we recover the label entirely: we stop here.
+        - Otherwise, we return label_start and we issue a warning
         """
-        # Tokenize and detokenize all original labels to handle tokenization inconsistencies (like extra spaces).
-        # We eliminate the spaces because they cause assert problems due to how tokenization handles spaces
         sanitized_original_labels = [
             self.tokenizer.decode(self.tokenizer(elt)['input_ids'], skip_special_tokens=True).strip().replace(" ", "") 
             for elt in original_labels
         ]
-
-        # Build the recovered label from the provided label tensor.
-        recovered_label = self.tokenizer.decode(label, skip_special_tokens=True).strip().replace(" ", "")
-
-        # Check if the recovered label matches any of the sanitized original labels.
+        
+        # Decoding from label_start_index + left_padding_count:
+        recovered_label = self.tokenizer.decode(ids[label_start_index + left_padding_count + 1:],
+                                                skip_special_tokens=True).strip().replace(" ", "")
+        # Checking this label corrresponds to a possible label for that item
         is_valid_label = any(recovered_label == sanitized_label for sanitized_label in sanitized_original_labels)
-
-        # Assert if the recovered label was found in the original labels.
-        if not is_valid_label:
-            warnings.warn(f"###### <{recovered_label}> NOT INCLUDED IN <{original_labels}>")
+        # It does: we stop there a return that position
+        # It's usually the case for mistral/llama/solar/gemma
+        if is_valid_label:
+            return label_start_index + left_padding_count + 1
+        
+        # Decoding from label_start_index + left_padding_count:
+        recovered_label = self.tokenizer.decode(ids[label_start_index + left_padding_count:],
+                                                skip_special_tokens=True).strip().replace(" ", "")
+        # Checking this label corrresponds to a possible label for that item
+        is_valid_label = any(recovered_label == sanitized_label for sanitized_label in sanitized_original_labels)
+        
+        # It does: we stop there a return that position
+        # It's usually the case for Qwen
+        if is_valid_label:
+            return label_start_index + left_padding_count
+        
+        # We failed: warning and return label_start_index + left_padding_count
+        # It's ok if it happens from time to time.
+        warnings.warn(f"###### <{recovered_label}> NOT INCLUDED IN <{original_labels}>")
+        return label_start_index + left_padding_count + 1 
+        
 
     def collate_fn(self, examples: list[dict], eval: bool = False, **kwargs):
         ignore_index = -100
@@ -200,17 +232,20 @@ class LLM(Generator):
                 assert examples[i]['label_start_index'] is not None
                 # Count the number of padding tokens on the left
                 left_padding_count = (attention_mask_tensor[i] == 0).sum().item()
-                # todo: handle case where left padding count is too large or we cropped the label no ?
                 
                 if examples[i]['label_start_index']+left_padding_count + 1 > label_ids.size(1):
                     warnings.warn("Docs + query is too long: label will be ignored. If it happens too often consider\
                         increasing the `max_seq_length`.")
+                    
+                # We now identify the position of the starting index of the label in the tokenized seq
+                # It is to delimiate where the loss should be computed.
+                no_loss_start_index = self.get_no_loss_start_index(ids=label_ids[i], 
+                                                                   original_labels=label[i],
+                                                                   label_start_index=examples[i]['label_start_index'],
+                                                                   left_padding_count=left_padding_count)
                 
-                # In the label there is only tokens after position padding_count + label_start_idnex:
-                label_ids[i, :examples[i]['label_start_index']+left_padding_count + 1] = ignore_index
-                
-                # Here we assert that the label_ids, when decoded, is one of the original labels
-                self.assert_label_masking_is_correct(label[i], label_ids[i][label_ids[i] != ignore_index])
+                # In the label there is only tokens after position padding_count + label_start_index:
+                label_ids[i, :no_loss_start_index] = ignore_index
 
             model_input['labels'] =  label_ids
             return model_input
@@ -225,3 +260,4 @@ class LLM(Generator):
         })
 
         return data_dict
+    
