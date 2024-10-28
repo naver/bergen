@@ -81,7 +81,8 @@ class LLM(Generator):
                 prompt=None,
                 quantization=None,
                 attn_implementation="flash_attention_2",
-                generation_top_k=None
+                generation_top_k=None,
+                batch_size=1,
                  ):
 
         # device_index = Accelerator().process_index
@@ -91,6 +92,7 @@ class LLM(Generator):
         self.model_name = model_name
         self.max_doc_len = max_doc_len
         self.quantization = quantization
+        self.batch_size=batch_size
 
 
         if 'moe' in model_name:
@@ -161,7 +163,7 @@ class LLM(Generator):
 
     def collate_fn(self, examples, eval=False, **kwargs):
         q_ids = [e['q_id'] for e in examples]
-        instr = [self.format_instruction(e) for e in examples]
+        instr = [self.format_instruction(e,eval=True) for e in examples]
 
         docs = [ e['doc'][0] for e in examples]
         label = [e['label'] if isinstance(e['label'], str) else e['label'] for e in examples]
@@ -182,7 +184,7 @@ class LLM(Generator):
 
         return data_dict
 
-    def format_instruction(self, sample):
+    def format_instruction(self, sample,eval=None):
         question = sample['query']
         rag_template = """[INST] Refer to the background document and answer the questions:
 
@@ -190,4 +192,4 @@ class LLM(Generator):
 
         Question: {question} [/INST] The answer is:"""
 
-        return rag_template.format_map(dict(question=question, document=self.XRAG_TOKEN))
+        return rag_template.format_map(dict(question=question, document=self.XRAG_TOKEN)),None
