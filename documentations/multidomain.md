@@ -1,0 +1,196 @@
+# Multidomain RAG in BERGEN
+
+[BERGEN](https://github.com/naver/bergen) is a library to benchmark retrieval-augmented generation (RAG) systems.
+BERGEN supports a range of multi-domain query datasets along with each specific datastores from the literature, that we present below.
+
+## Quick start
+
+Example of launching evaluation on the bioasq12b dataset with retrieval from pubmed abstracts.
+
+```bash
+python3 bergen.py reranker='debertav3' retriever='splade-v3' generator='qwen-25-3b-instruct' dataset='multidomain/bioasq12b' prompt='multidomain/bioasq'
+```
+
+You can add `++experiments_folder=$exp_folder` to specify a custom folder to save results and `+run_name=$label"` to specify a custom experiment name.
+
+For more details on installing BEGREN and running experiments, please refer to the [main readme](https://github.com/naver/bergen/tree/main). 
+
+## Datasets
+
+| Dataset | Paper | Source Used | Datastore | Datastore Source | Train Set | Prompt in bergen | Preferred Metric(s) | Notes |
+|-|-|-|-|-|-|-|-|-|
+| Bioasq12b | [Link (2023)](https://arxiv.org/abs/2307.05131) | Task B, 2024 [Link](http://participants-area.bioasq.org/datasets/) | Pubmed abstracts | [Link](https://huggingface.co/datasets/jenhsia/ragged) | Yes | ```multidomain/bioasq``` | Recall, LLMeval | Modified train-test split to increase test size|
+| CovidQA | [Link](https://aclanthology.org/2020.nlpcovid19-acl.18/) | [Link](https://huggingface.co/datasets/deepset/covid_qa_deepset) | CORD-19 | [Link](https://aclanthology.org/2020.nlpcovid19-acl.1.pdf) | No | ```multidomain/covidQA``` | LLMeval | Some queries are not "RAG-friendly" and depend on a fixed context which introduces *unanswerable* queries |
+| FiQA | Task 2 of [this challenge](https://sites.google.com/view/fiqa/) | [Link](https://huggingface.co/datasets/LLukas22/fiqa) | StackExchange posts, *Investment* topic (2009-2017) | Corpus from [Link](https://huggingface.co/datasets/BeIR/fiqa) | No | ```multidomain/FiQA``` | LLMeval | - |
+| ParaphraseRC | [Link](https://arxiv.org/pdf/1804.07927) | [Link](https://huggingface.co/datasets/ibm/duorc/viewer/ParaphraseRC) | Movie plots, given with queries | [Link](https://huggingface.co/datasets/ibm/duorc/viewer/ParaphraseRC) | Yes | ```multidomain/paraphraseRC``` | Recall, LLMeval | We take ParaphraseRC only and not SelfRC as it is reportedly a more challenging task |
+| RobustQA-Lifestyle | [Link](https://aclanthology.org/2023.findings-acl.263/) | [Link](https://github.com/awslabs/rag-qa-arena/tree/main/data) | LoTTE | [Link](https://downloads.cs.stanford.edu/nlp/data/colbert/colbertv2/lotte.tar.gz) | No | ```multidomain/RobustQA_Lifestyle``` | LLMeval | - |
+| RobustQA-Recreation | [Link](https://aclanthology.org/2023.findings-acl.263/) | [Link](https://github.com/awslabs/rag-qa-arena/tree/main/data) | LoTTE | [Link](https://downloads.cs.stanford.edu/nlp/data/colbert/colbertv2/lotte.tar.gz) | No | ```multidomain/RobustQA_Recreation``` | LLMeval | - |
+| RobustQA-Science | [Link](https://aclanthology.org/2023.findings-acl.263/) | [Link](https://github.com/awslabs/rag-qa-arena/tree/main/data) | LoTTE | [Link](https://downloads.cs.stanford.edu/nlp/data/colbert/colbertv2/lotte.tar.gz) | No | ```multidomain/RobustQA_Science``` | LLMeval | - |
+| RobustQA-Technology | [Link](https://aclanthology.org/2023.findings-acl.263/) | [Link](https://github.com/awslabs/rag-qa-arena/tree/main/data) | LoTTE | [Link](https://downloads.cs.stanford.edu/nlp/data/colbert/colbertv2/lotte.tar.gz) | No | ```multidomain/RobustQA_Technology``` | LLMeval | - |
+| RobustQA-Writing | [Link](https://aclanthology.org/2023.findings-acl.263/) | [Link](https://github.com/awslabs/rag-qa-arena/tree/main/data) | LoTTE | [Link](https://downloads.cs.stanford.edu/nlp/data/colbert/colbertv2/lotte.tar.gz) | No | ```multidomain/RobustQA_Writing``` | LLMeval | - |
+| SearchQA | [Link](https://arxiv.org/abs/1704.05179) | [Link](https://huggingface.co/datasets/kyunghyuncho/search_qa) | Search Engine Results | [Link](https://huggingface.co/datasets/kyunghyuncho/search_qa) | No | ```multidomain/SearchQA``` | Recall, LLMeval | - |
+| SyllabusQA | [Link](https://arxiv.org/abs/2403.14666) | [Link](https://github.com/umass-ml4ed/SyllabusQA/tree/main/data/dataset_split) | Courses syllabi | [Link](https://github.com/umass-ml4ed/SyllabusQA/tree/main/syllabi/syllabi_redacted/text) | Yes | ```multidomain/syllabusqa``` | Recall, LLMeval | - |
+| TechQA | [Link](https://aclanthology.org/2020.acl-main.117.pdf) | [Link](https://huggingface.co/datasets/rojagtap/tech-qa) | given with queries | [Link](https://huggingface.co/datasets/rojagtap/tech-qa) | No | ```multidomain/techQA``` | LLMeval | We concatenate the train/validation/test sets to get one bigger evaluation set |
+
+When datastore is given with queries, we use the same dataset source for queries and documents, which usually contains 1 query associated to 1 document. But in BERGEN, the documents are treated as one large database of documents (e.g., in ```SearchQA``` although there are ~50 snippets per query, we concatenate snippets from all queries as one big datastore). Therefore, for some datasets where we deem it necessary, we concatenate the query title to the document which usually works well with retrieval + reranking. Namely: ```ParaphraseRC``` movie plots prepended with movie title, ```SyllabusQA``` course syllabi prepended with course title.
+
+## Benchmarks
+
+We consistently use simple domain-specific system prompts as our experiments show increased metrics most of the time. It is always something simple, e.g. for bioasq: ```You are a biomedical expert. Your task is to answer questions using the given documents.```. We set the temperature to $0$ for reproducibility. When RAG is used we retrieve with ```splade-v3``` and rerank with ```debertav3```.
+
+### Bioasq12b
+| Generator | RAG | Recall | LLMeval (Llama-3.1-70b) |
+|-|-|-|-|
+| gemma-2b-it | No | 0.247 | 0.367 |
+| gemma-2b-it | Yes | 0.438 | 0.584 |
+| qwen-2.5-3b-instruct | No | 0.362 | 0.494 |
+| qwen-2.5-3b-instruct | Yes | 0.634 | 0.769 |
+| llama3-8b-instruct | No | 0.462 | 0.600 |
+| llama3-8b-instruct | Yes | 0.617 | 0.763 |
+| SOLAR-10.7b-instruct | No | 0.431 | 0.609 |
+| SOLAR-10.7b-instruct | Yes | 0.674 | 0.782 |
+
+### CovidQA
+
+| Generator | RAG | Recall | LLMeval (Llama-3.1-70b) |
+|-|-|-|-|
+| gemma-2b-it | No | 0.229 | 0.213 |
+| gemma-2b-it | Yes | 0.357 | 0.453 |
+| qwen-2.5-3b-instruct | No | 0.305 | 0.336 |
+| qwen-2.5-3b-instruct | Yes | 0.480 | 0.559 |
+| llama3-8b-instruct | No | 0.321 | 0.328 |
+| llama3-8b-instruct | Yes | 0.501 | 0.551 |
+| SOLAR-10.7b-instruct | No | 0.311 | 0.405 |
+| SOLAR-10.7b-instruct | Yes | 0.503 | 0.605 |
+
+### FiQA
+
+| Generator | RAG | Recall | LLMeval (Llama-3.1-70b) |
+|-|-|-|-|
+| gemma-2b-it | No | 0.170 | 0.308 |
+| gemma-2b-it | Yes | 0.169 | 0.317 |
+| qwen-2.5-3b-instruct | No | 0.200 | 0.406 |
+| qwen-2.5-3b-instruct | Yes | 0.201 | 0.391 |
+| llama3-8b-instruct | No | 0.198 | 0.432 |
+| llama3-8b-instruct | Yes | 0.230 | 0.438 |
+| SOLAR-10.7b-instruct | No | 0.196 | 0.492 |
+| SOLAR-10.7b-instruct | Yes | 0.218 | 0.499 |
+
+### ParaphraseRC
+
+| Generator | RAG | Recall | LLMeval (Llama-3.1-70b) |
+|-|-|-|-|
+| gemma-2b-it  | No | 0.104 | 0.104 |
+| gemma-2b-it  | Yes | 0.211 | 0.322 |
+| qwen-2.5-3b-instruct  | No | 0.190 | 0.141 |
+| qwen-2.5-3b-instruct  | Yes | 0.553 | 0.572 |
+| llama3-8b-instruct  | No | 0.274 | 0.279 |
+| llama3-8b-instruct  | Yes | 0.607 | 0.624 |
+| SOLAR-10.7b-instruct  | No | 0.377 | 0.356 |
+| SOLAR-10.7b-instruct  | Yes | 0.635 | 0.648 |
+
+### RobustQA-Lifestyle
+
+| Generator | RAG | Recall | LLMeval (Llama-3.1-70b) |
+|-|-|-|-|
+| gemma-2b-it | No | 0.234 | 0.241 |
+| gemma-2b-it | Yes | 0.201 | 0.320 |
+| qwen-2.5-3b-instruct | No | 0.304 | 0.390 |
+| qwen-2.5-3b-instruct | Yes | 0.337 | 0.565 |
+| llama3-8b-instruct | No | 0.299 | 0.442 |
+| llama3-8b-instruct | Yes | 0.358 | 0.592 |
+| SOLAR-10.7b-instruct | No | 0.301 | 0.549 |
+| SOLAR-10.7b-instruct | Yes | 0.360 | 0.688 |
+
+### RobustQA-Recreation
+| Generator | RAG | Recall | LLMeval (Llama-3.1-70b) |
+|-|-|-|-|
+| gemma-2b-it | No | 0.192 | 0.140 |
+| gemma-2b-it | Yes | 0.185 | 0.261 |
+| qwen-2.5-3b-instruct | No | 0.299 | 0.238 |
+| qwen-2.5-3b-instruct | Yes | 0.381 | 0.498 |
+| llama3-8b-instruct | No | 0.282 | 0.283 |
+| llama3-8b-instruct | Yes | 0.367 | 0.532 |
+| SOLAR-10.7b-instruct | No | 0.308 | 0.361 |
+| SOLAR-10.7b-instruct | Yes | 0.412 | 0.603 |
+
+### RobustQA-Science
+| Generator | RAG | Recall | LLMeval (Llama-3.1-70b) |
+|-|-|-|-|
+| gemma-2b-it | No | 0.280 | 0.288 |
+| gemma-2b-it | Yes | 0.242 | 0.376 |
+| qwen-2.5-3b-instruct | No | 0.325 | 0.454 |
+| qwen-2.5-3b-instruct | Yes | 0.339 | 0.457 |
+| llama3-8b-instruct | No | 0.320 | 0.464 |
+| llama3-8b-instruct | Yes | 0.364 | 0.568 |
+| SOLAR-10.7b-instruct | No | 0.325 | 0.426 |
+| SOLAR-10.7b-instruct | Yes | 0.377 | 0.634 |
+
+*science prompt includes "think step by step"
+
+### RobustQA-Technology
+| Generator | RAG | Recall | LLMeval (Llama-3.1-70b) |
+|-|-|-|-|
+| gemma-2b-it | No | 0.239 | 0.241 |
+| gemma-2b-it | Yes | 0.208 | 0.342 |
+| qwen-2.5-3b-instruct | No | 0.289 | 0.380 |
+| qwen-2.5-3b-instruct | Yes | 0.313 | 0.508 |
+| llama3-8b-instruct | No | 0.290 | 0.440 |
+| llama3-8b-instruct | Yes | 0.332 | 0.586 |
+| SOLAR-10.7b-instruct | No | 0.283 | 0.422 |
+| SOLAR-10.7b-instruct | Yes | 0.341 | 0.637 |
+
+*technology prompt includes "think step by step"
+
+### RobustQA-Writing
+| Generator | RAG | Recall | LLMeval (Llama-3.1-70b) |
+|-|-|-|-|
+| gemma-2b-it | No | 0.231 | 0.257 |
+| gemma-2b-it | Yes | 0.193 | 0.313 |
+| qwen-2.5-3b-instruct | No | 0.335 | 0.470 |
+| qwen-2.5-3b-instruct | Yes | 0.353 | 0.549 |
+| llama3-8b-instruct | No | 0.287 | 0.521 |
+| llama3-8b-instruct | Yes | 0.363 | 0.629 |
+| SOLAR-10.7b-instruct | No | 0.318 | 0.567 |
+| SOLAR-10.7b-instruct | Yes | 0.386 | 0.740 |
+
+*writing prompt includes "think step by step"
+
+### SearchQA
+
+| Generator | RAG | Recall | LLMeval (Llama-3.1-70b) |
+|-|-|-|-|
+| gemma-2b-it | No | 0.149 | 0.183 |
+| gemma-2b-it | Yes | 0.315 | 0.350 |
+| qwen-2.5-3b-instruct | No | 0.091 | 0.140 |
+| qwen-2.5-3b-instruct | Yes | 0.671 | 0.724 |
+| llama3-8b-instruct | No | 0.662 | 0.668 |
+| llama3-8b-instruct | Yes | 0.722 | 0.780 |
+| SOLAR-10.7b-instruct | No | 0.397 | 0.552 |
+| SOLAR-10.7b-instruct | Yes | 0.687 | 0.754 |
+
+### SyllabusQA
+
+| Generator | RAG | Recall | LLMeval (Llama-3.1-70b) |
+|-|-|-|-|
+| gemma-2b-it | No | 0.256 | 0.300 |
+| gemma-2b-it | Yes | 0.195 | 0.231 |
+| qwen-2.5-3b-instruct | No | 0.339 | 0.312 |
+| qwen-2.5-3b-instruct | Yes | 0.391 | 0.278 |
+| llama3-8b-instruct | No | 0.382 | 0.304 |
+| llama3-8b-instruct | Yes | 0.311 | 0.313 |
+| SOLAR-10.7b-instruct | No | 0.309 | 0.295 |
+| SOLAR-10.7b-instruct | Yes | 0.305 | 0.284 |
+
+### TechQA
+
+| Generator | RAG | Recall | LLMeval (Llama-3.1-70b) |
+|-|-|-|-|
+| gemma-2b-it | No | 0.237 | 0.184 |
+| gemma-2b-it | Yes | 0.268 | 0.253 |
+| qwen-2.5-3b-instruct | No | 0.274 | 0.256 |
+| qwen-2.5-3b-instruct | Yes | 0.412 | 0.528 |
+| llama3-8b-instruct | No | 0.288 | 0.266 |
+| llama3-8b-instruct | Yes | 0.469 | 0.576 |
+| SOLAR-10.7b-instruct | No | 0.273 | 0.300 |
+| SOLAR-10.7b-instruct | Yes | 0.461 | 0.597 |
