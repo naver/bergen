@@ -1,11 +1,16 @@
+'''
+Implementation of standard metrics for evaluation of RAG pipeline.
+The RAGMetrics class returns a dictionary of standard metrics which are ultimately reported in the output experiment folder.
+For neural metrics such as LLMEval, see eval.py or models/evaluators/ for specific implementations.
+'''
+
 from scipy.stats import pearsonr, spearmanr
-from sklearn.metrics import f1_score, matthews_corrcoef
 import string
 import regex 
 import numpy as np
 from rouge import Rouge
-from tqdm import tqdm
 from collections import Counter
+from typing import List
 
 # partly adapted from https://github.com/facebookresearch/atlas/blob/0ec8889492d5187b26c51b8d1781239a4cf6741e/src/evaluation.py
 

@@ -114,7 +114,7 @@ def get_doc_embeds_from_dataset(d_ids, embeds_dataset):
 # horrible function :/ needs to be refactored into mult_doc and single doc
 # gets q_ids and d_ids and does a lookup by id to get the content
 # then constructs hf_dataset out of it
-def prepare_dataset_from_ids(dataset, q_ids, d_ids, multi_doc=False, query_embeds_path=None, doc_embeds_path=None, query_field="content"):
+def prepare_dataset_from_ids(dataset, q_ids, d_ids, multi_doc=False, query_field="content"):
 
     # if query _ids and doc_ids are None only return queries and optional labels /ranking labels
     if q_ids == d_ids == None:

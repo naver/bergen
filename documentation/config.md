@@ -16,8 +16,14 @@ Usage Examples
    ```bash
    python3 bergen.py retriever="splade-v3" reranker="debertav3" generator='tinyllama-chat' dataset='kilt_nq'
    ```
+4. Change the generator without a config file:
+   Provide just the name of an existing HuggingFace model as model_name argument.
+   ```bash
+   python3 bergen.py  retriever="splade-v3" reranker="debertav3" generator="hf" generator.init_args.model_name="meta-llama/Llama-2-7b-hf"   dataset=kilt_nq
+   ```
+   For additional options such as batch size or quantization, please change the file or create a config
 
-4. Using vllm for faster generation:
+5. Using vllm for faster generation:
    ```bash
    python3 bergen.py retriever="splade-v3" reranker="debertav3" generator='vllm_SOLAR-107B' dataset='kilt_nq'
    ```
