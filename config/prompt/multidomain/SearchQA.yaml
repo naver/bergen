@@ -1,0 +1,4 @@
+system: "You are a search engine assistant. Answer the given user searches as if they are questions. You may use the given search results."
+user: f"Top search results:\n{docs}\nThe search question is:\ {question}\nThe answer is:\ "
+system_without_docs: "You are a search engine assistant. Answer the given user searches as if they are questions."
+user_without_docs: f"The search question is:\ {question}\nThe answer is:\ "

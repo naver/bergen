@@ -11,7 +11,7 @@ class MKQA(Processor):
         self.lang = lang
         
     def process(self):
-        mkqa = datasets.load_dataset('mkqa')
+        mkqa = datasets.load_dataset('mkqa', trust_remote_code=True)
         kilt_nq = datasets.load_dataset("kilt_tasks", "nq")
 
         mkqa_ids = {s['example_id']:i for i, s in enumerate(mkqa[self.split])}
@@ -30,6 +30,7 @@ class MKQA(Processor):
         dataset = dataset.map(lambda example: {'ranking_label': [[provenance['wikipedia_id'] for provenance in el['provenance']] if len(el[f'answer']) > 0 and len(el['provenance']) > 0 else [] for el in example['output']]})        
         dataset = dataset.remove_columns(['meta'])
         return dataset
+
 
 class XORQA(Processor):
 
@@ -51,9 +52,11 @@ class XORQA(Processor):
         # discarding empty answers 
         dataset = dataset.map(lambda example: {'label': extend([el for el in example['answers'] if len(el) > 0], self.lang)})
         dataset = dataset.rename_column("question", "content")
+        dataset = dataset.map(lambda x: {'id': str(x['id'])}) # ids should be strings.
         #dataset = dataset.remove_columns(['meta', 'output'])
         os.system("rm xor_dev_full_v1_1.jsonl")
         return dataset
+
 
 class TydiQA(Processor):
 

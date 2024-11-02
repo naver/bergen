@@ -708,11 +708,94 @@ class ProcessDatasets:
         return True
 
 
+class SquadQuestions(Processor):
+    def __init__(self, *args, **kwargs):
+        dataset_name = 'squad_questions'
+        super().__init__(*args, **kwargs, dataset_name=dataset_name)
+
+    def process(self):
+        dataset = datasets.load_dataset('rajpurkar/squad')['validation']
+        dataset = dataset.rename_column("question", "content")
+        dataset = dataset.map(lambda x: {'label': x['answers']['text']})
+        dataset = dataset.select_columns(['id', 'content', 'label'])
+        return dataset
+    
+    
+class SquadQuestionsChunked(Processor):
+    def __init__(self, *args, **kwargs):
+        dataset_name = 'squad_questions_chunked' # we just change the name for oracle run naming
+        super().__init__(*args, **kwargs, dataset_name=dataset_name)
+
+    def process(self):
+        dataset = datasets.load_dataset('rajpurkar/squad')['validation']
+        dataset = dataset.rename_column("question", "content")
+        dataset = dataset.map(lambda x: {'label': x['answers']['text']})
+        dataset = dataset.select_columns(['id', 'content', 'label'])
+        return dataset
+    
+
+class SquadDocuments(Processor):
+    def __init__(self, *args, **kwargs):
+        dataset_name = 'squad_documents'
+        super().__init__(*args, **kwargs, dataset_name=dataset_name)
+
+    def process(self):
+        dataset = datasets.load_dataset('rajpurkar/squad')['validation']
+        dataset = dataset.rename_column("context", "content")
+        dataset = dataset.select_columns(['id', 'content'])
+        return dataset 
+        
+
+class SquadDocumentsChunked(Processor):
+    def __init__(self, *args, **kwargs):
+        # Squad docs can be long, we chunk them in two halves
+        dataset_name = 'squad_documents_chunked'
+        super().__init__(*args, **kwargs, dataset_name=dataset_name)
+
+    def process(self):
+        dataset = datasets.load_dataset('rajpurkar/squad')['validation']
+
+        # Function to split content into two parts at a reasonable boundary (space or punctuation)
+        def split_content(entry):
+            import re
+            content = entry['context']
+
+            # Split the content into sentences
+            sentences = re.split(r'(?<=[.!?]) +', content)  # Use regex to split at sentence boundaries
+
+            # Calculate the index to split the sentences into two equal parts
+            split_idx = len(sentences) // 2  # Half of the sentences in the first part
+
+            # Split the sentences into two parts
+            part1 = ' '.join(sentences[:split_idx]).strip()  # First half of sentences
+            part2 = ' '.join(sentences[split_idx:]).strip()  # Second half of sentences
+            
+            return part1, part2
+
+        # Function to duplicate and split dataset rows
+        def split_dataset(example):
+            part1, part2 = split_content(example)
+            # Return a dict where each key has two new rows' worth of values
+            return {'part1': part1, 'part2': part2, 'id1': example['id'] + '_1', 'id2': example['id'] + '_2'}
+            
+        # Apply the split_dataset function to each row and reshape
+        new_dataset = dataset.map(split_dataset, batched=False, remove_columns=dataset.column_names)
+        dataset_1 = new_dataset.select_columns(['id1', 'part1']).rename_column("id1", "id").rename_column("part1", "content")
+        dataset_2 = new_dataset.select_columns(['id2', 'part2']).rename_column("id2", "id").rename_column("part2", "content")
+        new_dataset = datasets.interleave_datasets([dataset_1, dataset_2])
+        
+        new_dataset = new_dataset.select_columns(['id', 'content'])
+        
+        return new_dataset
+    
+
 class KILTMULTIQA(Processor):
-    def __init__(self, response_files: list = None, *args, **kwargs):
+    def __init__(self, response_files: list = None, only_matched_labels: bool = False, *args, **kwargs):
         dataset_name = 'kilt_combined_qa'
         super().__init__(*args, **kwargs, dataset_name=dataset_name)
         self.response_files = response_files
+        self.only_matched_labels = only_matched_labels # if True, then only labels where match occurred are kept !
+        self.matched_indices = []
         if response_files is not None:
             self.response_files = response_files
             self.use_cache = False # we'll use labels coming from some input file: we don't want to overwrite anything in this case.
@@ -729,18 +812,82 @@ class KILTMULTIQA(Processor):
                 for elt in data:
                     new_data[elt['q_id']] = elt['response']
                     
-        # We assert that we obtained all ids:
-        original_ids = set(dataset['id'])
-        new_ids = set(new_data.keys())
-        assert  original_ids == new_ids , f"{len(original_ids)} vs {len(new_ids)}"
-        
-        def replace_label(example):
-            example['label'] = [new_data[example['id']]]
-            return example
-                    
-        print('Replacing labels in dataset with read responses...')
-        dataset = dataset.map(replace_label)
-        
+            # We assert that we obtained all ids:
+            original_ids = set(dataset['id'])
+            new_ids = set(new_data.keys())
+            assert  original_ids == new_ids , f"{len(original_ids)} vs {len(new_ids)}"
+            
+            from modules.metrics import match_single
+
+            # Ans we replace
+            def replace_label(example, idx):
+                original_label = example['label'] # This is a list
+                new_label = new_data[example['id']] # This is a str
+                
+                # Is there match ?
+                if max([match_single(new_label, l) for l in original_label]) > 0:
+                    self.matched_indices.append(idx) 
+                
+                example['label'] = [new_label]
+                return example
+                        
+            print('Replacing labels in dataset with read responses...')
+            dataset = dataset.map(replace_label, with_indices=True)
+            
+            if self.only_matched_labels:
+                print(f"Keeping only {len(self.matched_indices)} / {len(dataset)} elements for which new responses matched.")
+                dataset = dataset.select(self.matched_indices)
+            
         return dataset
 
-    
+    def get_dataset(self):
+        print(f"Processing dataset {self.dataset_name} in {self.split} split ")
+        debug_str = '_debug' if self.debug else ''
+        assert self.dataset_name is not None # dataset name needs to be set in processor class
+        # if self.dataset_name == 'kilt_combined_qa':
+        #     print('Overrinding oracle for dataset loading ')
+        #     oracle_provenance_str = ''
+        # else:
+        oracle_provenance_str = '_oracle_provenance' if self.oracle_provenance else ''
+        # oracle_provenance_str = ''
+        out_folder = os.path.join(f'{self.out_folder}', f'{self.dataset_name}_{self.split}{oracle_provenance_str}')
+        if os.path.exists(out_folder) and not self.overwrite and self.use_cache:
+            dataset = datasets.load_from_disk(out_folder)
+            if self.debug:
+                dataset = dataset.select(range(min(50, len(dataset))))
+            if self.shuffle_labels:
+                dataset = self.shuffled_labels_as_content(dataset)
+            #id2index = self.tsv_to_dict(f'{out_folder}/id2index.csv')
+            id2index = pickle.load(open(f'{out_folder}/id2index.p', 'rb'))
+        else:
+            dataset = self.process()
+            id2index = self.get_index_to_id(dataset) 
+            if self.use_cache: # saving only if use_cache set (true most of the time)
+                dataset.save_to_disk(out_folder)
+                pickle.dump(id2index, open(f'{out_folder}/id2index.p', 'wb'))
+            if self.debug:
+                dataset = dataset.select(range(15))
+            if self.shuffle_labels:
+                dataset = self.shuffled_labels_as_content(dataset)
+        
+        # If ids are provided, we select the corresponding range:
+        # We then filter the 'id2index' to keep only ids/index present in the dataset
+        idx_min = self.idx_min or 0
+        idx_max = self.idx_max or len(dataset)
+        if idx_max == -1:
+            idx_max = len(dataset)
+            
+        assert 0 <= idx_min < len(dataset), f"{idx_min} but {len(dataset)}"
+        assert 0 < idx_max <= len(dataset), f"{idx_max} but {len(dataset)}"
+        
+        if idx_min != 0 or idx_max != len(dataset):
+            assert not self.only_matched_labels
+            print(f"Selecting {idx_min} to {idx_max} in dataset {self.dataset_name} of length {len(dataset)}")
+            dataset = dataset.select(range(idx_min, idx_max))
+            dataset.id2index = self.get_index_to_id(dataset) # we recompute it
+        else:
+            dataset.id2index = id2index
+            
+        dataset.name = self.dataset_name + debug_str + oracle_provenance_str
+        
+        return dataset

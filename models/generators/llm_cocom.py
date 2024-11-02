@@ -22,7 +22,10 @@ class LLMCocom(Generator):
                  compr_model_name: str = None,
                  compr_mode: str = 'last',
                  compr_mlp_hidden_dim: int = 1024,
-                 device_map = 'auto'):
+                 compr_n_layers: int = None, # only useful for surgical mistral compressor,
+                 attn_implementation: str = 'flash_attention_2',
+                 device_map = 'auto',
+                 save_generated_embeddings_path: str = None):
         """
         Class to use cocom with compression
         checkpoint_path: path to a COCOM checkpoint
@@ -37,7 +40,9 @@ class LLMCocom(Generator):
 
         # Loading the cocom model:
         if checkpoint_path is not None:
-            self.model = COCOM.from_pretrained(checkpoint_path, device_map=device_map)
+            self.model = COCOM.from_pretrained(checkpoint_path, 
+                                               device_map=device_map,
+                                               attn_implementation=attn_implementation)
         else:
             cfg = COCOMConfig(
                 decoder_model_name=decoder_model_name,
@@ -46,6 +51,7 @@ class LLMCocom(Generator):
                 compr_model_name=compr_model_name,
                 compr_mode=compr_mode,
                 compr_rate=compr_rate,
+                compr_n_layers=compr_n_layers,
                 compr_mlp_hidden_dim=compr_mlp_hidden_dim,
                 lora=True,
                 training_form='both_separately',
@@ -54,6 +60,7 @@ class LLMCocom(Generator):
                 optimize_mem_tokens=True,
                 different_mem_tokens=True,
                 device_map=device_map,
+                attn_implementation=attn_implementation
             )
             print('Creating brand new COCOM model:', cfg)
             self.model = COCOM(cfg)
@@ -64,14 +71,18 @@ class LLMCocom(Generator):
         self.context_max_length = context_max_length
         self.max_new_tokens = max_new_tokens
         self.model_max_length = model_max_length
-                
-    def generate(self, instr_tokenized):
+        self.save_generated_embeddings_path = save_generated_embeddings_path
+        self.tokenizer = self.model.decoder_tokenizer
+        if self.save_generated_embeddings_path is not None:
+            print(f'I will save 100 doc embeddings at {self.save_generated_embeddings_path}')
+        
+    def generate(self, instr_tokenized, return_doc_embeddings: bool = False):
         """
         Nothing to do here, just convey to cocom since instr_tokenized went throught the collate_fn
         """
         device = next(self.model.parameters()).device
         instr_tokenized = {k: v.to(device) for k,v in instr_tokenized.items() if isinstance(v, torch.Tensor)}
-        return self.model.generate(instr_tokenized, max_new_tokens=self.max_new_tokens)
+        return self.model.generate(instr_tokenized, max_new_tokens=self.max_new_tokens, return_doc_embeddings=return_doc_embeddings)
 
     def eval(self, dataset):
         """
@@ -86,11 +97,13 @@ class LLMCocom(Generator):
         # ideally we would convey it somewhere else, but we use asserts later on to continuously check it's unchanged
         example_docs = dataset[0]['doc']
         self.model.generation_top_k = len(example_docs)
+        self.model.eval()
 
         dataloader = DataLoader(dataset, batch_size=self.batch_size,
                                     collate_fn=lambda l: self.collate_fn(l, eval=True), num_workers=4)
 
         responses, instructions, query_ids, queries, labels, ranking_labels = list(), list(), list(), list(), list(), list()
+        doc_embeddings = []
         with torch.no_grad():
             for data_dict in tqdm(dataloader, desc='Generating'):
                 id_ = data_dict['q_id']
@@ -101,8 +114,18 @@ class LLMCocom(Generator):
                 queries += data_dict['query']
                 ranking_labels += data_dict['ranking_label']
                 instructions += instruction
-                generated_response = self.generate(data_dict['model_input'])
+                if self.save_generated_embeddings_path is not None:
+                    generated_response, docs_embeddings = self.generate(data_dict['model_input'], return_doc_embeddings=True)
+                    doc_embeddings.append(docs_embeddings.to('cpu'))
+                else:
+                    generated_response = self.generate(data_dict['model_input'], return_doc_embeddings=False)
                 responses += generated_response
+        
+        if self.save_generated_embeddings_path is not None:
+            doc_embeddings = torch.cat(doc_embeddings, 0) # of shape (dataset_length, top_k, n_mem, hidden_size)
+            doc_embeddings = doc_embeddings[:min(len(doc_embeddings), 100)]
+            torch.save(doc_embeddings, self.save_generated_embeddings_path)
+        
         return query_ids, queries, instructions, responses, labels, ranking_labels
     
     def collate_fn(self, examples, eval=False):
@@ -117,7 +140,6 @@ class LLMCocom(Generator):
         Returns:
             dict: Collated batch of data.
         """
-        from cocom.utils import add_memory_tokens_to_inputs
         batch_size = len(examples)
 
         ignore_index = -100
@@ -226,22 +248,11 @@ class LLMCocom(Generator):
         Takes care of blending the prompt with the memory tokens:
         Also returns, if a label is provided, the position of the first token index of the label (for loss comp later on)
         """        
+        
         # proper names for "eval" call, don't remove these lines
         docs = mem_tokens * self.model.generation_top_k
         question = query
         
-        # label_start = None
-        
-        # if label is not None:
-        #     messages.append({"role": "assistant", "content": label})
-        #     # Compute the start position of the label in the input_ids
-        #     label_start = len(tokenizer.apply_chat_template(messages[:-1], tokenize=True, add_generation_prompt=True, add_special_tokens=False))
-
-        # # todo: when training, should add_generation_prompt be set to True ?
-        # prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=False)
-        
-        # return prompt, label_start
-    
         # Prepare the messages with system and user roles
         messages = [
             {"role": "system", "content": self.prompt.system},
@@ -259,7 +270,7 @@ class LLMCocom(Generator):
                     messages[:-1], tokenize=True, add_generation_prompt=True, add_special_tokens=False))
 
             # Tokenize the full messages list, including system role
-            prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=False)
+            prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=(label is None))
             
         except TemplateError as e:
             # Catch the error related to system role and handle it (e.g. gemma)
@@ -276,7 +287,7 @@ class LLMCocom(Generator):
                         messages[:-1], tokenize=True, add_generation_prompt=True, add_special_tokens=False))
                 
                 # Apply template again without system role
-                prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=False)
+                prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=(label is None))
             else:
                 # Re-raise the exception if it's unrelated to system role
                 raise e

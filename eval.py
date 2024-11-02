@@ -11,8 +11,8 @@ import gc
 
 class Evaluate:
     @staticmethod
-    def eval(experiment_folder="experiments/", split="dev", bem=False, llm=None, llm_ollama=None, vllm=None,gpt=None,bem_batch_size=1, lid=None, lid_advanced=None, llm_batch_size=1, llm_prompt="default_qa", ollama_url=None, folder=None, force=False, samples=None):
-        def eval_single(experiment_folder, folder, split, model, metric_name, nb_samples=None):
+    def eval(experiment_folder="experiments/", split="dev", bem=False, llm=None, llm_ollama=None, vllm=None,gpt=None,bem_batch_size=1, lid=None, lid_advanced=None, llm_att: bool=False, llm_batch_size=1, llm_prompt="default_qa", ollama_url=None, folder=None, force=False, samples=None):
+        def eval_single(experiment_folder, folder, split, model, metric_name, nb_samples: int = -1):
             if folder != None:
                 folders = [folder]
             else:
@@ -36,12 +36,13 @@ class Evaluate:
                         print (f"{experiment_folder}\t{metric_name}\talready done")
                         continue
                     
-                    predictions, references, questions = list(), list(), list()
+                    predictions, references, questions, instructions = list(), list(), list(), list()
 
                     for sample in data:
                         predictions.append(sample['response'])
                         references.append(sample['label'])
                         questions.append(sample['question'])
+                        instructions.append(sample['instruction'])
                         if nb_samples is not None and len(predictions)==nb_samples:
                             break
 
@@ -51,15 +52,32 @@ class Evaluate:
                         costs_out_file = f'{experiment_folder}/eval_{split}_cost_{metric_name}_out.json'
                         with open(costs_out_file, 'w') as fout: fout.write(json.dumps(cost))
                     else:                    
-                        model_score, scores = model(predictions, references, questions)
-                    metrics_out_file = f'{experiment_folder}/eval_{split}_metrics_{metric_name}_out.json'
-                    with open(metrics_out_file, 'w') as fout:
+                        if metric_name == "att":
+                            model_score, scores = model(predictions, references, questions, instructions)
+                        else:
+                            model_score, scores = model(predictions, references, questions)
+                        # model_score, scores = model(predictions, references, questions)
+                    if metric_name =="att":
+                        # metrics_score is a dict of different att metrics in this case
+                        if nb_samples > 0:
+                            metrics_dict.update(model_score)      
+                        else:
+                            metrics_dict.update({f'{k}_{nb_samples}':model_score[k] for k in model_score})      
+                        # print(len(scores))
+                        # print(len(data))
+                        # for k in scores:
+                        #     data[k] = scores[k]
+                        # pass
+                    else:
+                        metrics_out_file = f'{experiment_folder}/eval_{split}_metrics_{metric_name}_out.json'
+                        with open(metrics_out_file, 'w') as fout:
 
-                        for score, sample in zip(scores, data):
-                            jsonl = {'question' : sample['question'], 'response': sample['response'], 'label': sample['label'], 'score': float(score)}
-                            fout.write(json.dumps(jsonl)+'\n')
-                            
-                    metrics_dict.update({metric_name: str(model_score)})
+                            for score, sample in zip(scores, data):
+                                jsonl = {'question' : sample['question'], 'response': sample['response'], 'label': sample['label'], 'score': float(score)}
+                                fout.write(json.dumps(jsonl)+'\n')
+                                
+                        metrics_dict.update({metric_name: str(model_score)})
+                        
                     print(metric_name,model_score)
                     # save to _ tmp file
                     with open(metrics_file + '_', 'w') as fp:
@@ -113,6 +131,36 @@ class Evaluate:
             del model
             torch.cuda.empty_cache()
             gc.collect()
+            
+        if llm_att is not None :
+            from models.evaluators.llm_att import LLM_att
+            if folder == None:
+                folders = [ f.path for f in os.scandir(experiment_folder) if f.is_dir() and 'tmp_' not in f.path]
+            else:
+                folders = [folder]
+            model_name = ''
+            for folder in folders:
+                #get model name from  config
+                config = yaml.safe_load(open(f"{folder}/config.yaml"))
+                generator = config['generator']
+                prompt = config['prompt']
+                if not config['generator']['init_args']['model_name'] == model_name :
+                    # try:
+                    generator['init_args']['_target_'] = generator['init_args']['_target_'].replace('vllm', 'llm')
+                    
+                    model = LLM_att(generator, prompt)   
+
+                    model_name = config['generator']['init_args']['model_name']
+
+                    # except:
+                    #     print("Skip", folder, model_name )
+                    #     continue
+                else:
+                    #if other folder used the same generator, do not load it again, but update prompt
+                    model.llm.model.prompt = prompt
+                short_name = "att"
+                eval_single(experiment_folder, folder, split, model, short_name)
+                
         if llm_ollama is not None:
             from models.evaluators.llm_ollama import OllamaEval
             
@@ -167,6 +215,7 @@ if __name__ == "__main__":
     parser.add_argument('--sample', type=int, default=None, help="Use only subsample of the experiment folder for evaluation, useful for debug purposes")    
     parser.add_argument('--bem', action='store_true')
     parser.add_argument('--lid', action='store_true', default=None)
+    parser.add_argument('--llm_att', action='store_true', default=None, help="Compute attention-based metrics")
     parser.add_argument('--lid_advanced', action='store_true', default=None)
 
     parser.add_argument('--llm', type=str, nargs='*', default=None, 
@@ -206,6 +255,7 @@ if __name__ == "__main__":
         split=args.split, 
         bem=args.bem,
         llm=args.llm, 
+        llm_att = args.llm_att,        
         llm_ollama=args.llm_ollama,
         vllm=args.vllm, 
         gpt=args.gpt,

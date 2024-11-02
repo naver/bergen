@@ -9,5 +9,7 @@ init_args:
     model_max_length: 1280
     compr_rate: null
     compr_model_name: null
+    compr_n_layers: null # only useful for 'mistral_trimmed' compr_model_name
     compr_mode: last_in_mask
     quantization: 'no'
+    save_generated_embeddings_path: null

@@ -58,8 +58,9 @@ def get_scores(file, decimals=2):
     rouge1 = float(data['Rouge-1'])
     rouge2 = float(data['Rouge-2'])
     rougel = float(data['Rouge-L'])
+    recall_char3gram = float(data['Recall_char3gram']) if 'Recall_char3gram' in data else None
 
-    return m, em, f1, precision, recall, rouge1, rouge2, rougel, bem, LLMeval, VLLMeval, GPT4o #ll7b,ll13b,ll70b,  mix7b
+    return m, em, f1, precision, recall, rouge1, rouge2, rougel, recall_char3gram, bem, LLMeval, VLLMeval, GPT4o #ll7b,ll13b,ll70b,  mix7b
 
 def get_generation_time(file):
     data = json.load(open(file))
@@ -90,7 +91,7 @@ def main(args):
                             dataset_query, dataset_doc, retriever, reranker, generator, prompt, retrieve_top_k, rerank_top_k = get_config(file_in_subfolder, split)
 
                         if f'eval_{split}_metrics.json' in str(file_in_subfolder):
-                            m, em, f1, precision, recall, rouge1, rouge2, rougel, bem, LLMeval, VLLMEval, gpt4o = get_scores(file_in_subfolder)
+                            m, em, f1, precision, recall, rouge1, rouge2, rougel, recall_char3gram, bem, LLMeval, VLLMEval, gpt4o = get_scores(file_in_subfolder)
                         if f'eval_{split}_generation_time.json' in str(file_in_subfolder) :
                             gen_time = get_generation_time(file_in_subfolder) 
 
@@ -116,7 +117,7 @@ def main(args):
                     elif args.format =='tiny':
                         ltuple.append([current_folder.name, dataset_query, generator_basename,retriever_basename, reranker_basename, m, LLMeval])
                     elif args.format=='full':     
-                        ltuple.append([current_folder.name, retriever, ranking_metric, reranker, generator,  gen_time, dataset_query, retrieve_top_k, rerank_top_k, m, em, f1, precision, recall, rouge1, rouge2, rougel, bem, LLMeval, VLLMEval, gpt4o])
+                        ltuple.append([current_folder.name, retriever, ranking_metric, reranker, generator,  gen_time, dataset_query, retrieve_top_k, rerank_top_k, m, em, f1, precision, recall, rouge1, rouge2, rougel, recall_char3gram, bem, LLMeval, VLLMEval, gpt4o])
                     else:
                         raise ValueError('Invalid output format')
     
@@ -134,7 +135,7 @@ def main(args):
         #ltuple.append([current_folder.name, dataset_query, generator,retriever, reranker, m, LLMeval])
         df.columns = ['exp_folder', 'query_dataset', 'Generator', 'Retriever', 'Reranker', "M", "LLMeval"]
     elif args.format =='full':
-        df.columns = ['exp_folder', 'Retriever', 'P_1', 'Reranker', 'Generator',  'gen_time', 'query_dataset', "r_top", "rr_top", "M", "EM", "F1", "P", "R", "Rg-1", "Rg-2", "Rg-L", "BEM", "LLMeval", "VLLMeval", "gpt-4o"]
+        df.columns = ['exp_folder', 'Retriever', 'P_1', 'Reranker', 'Generator',  'gen_time', 'query_dataset', "r_top", "rr_top", "M", "EM", "F1", "P", "R", "Rg-1", "Rg-2", "Rg-L", "recall_char3gram", "BEM", "LLMeval", "VLLMeval", "gpt-4o"]
     else:
         raise ValueError('Invalid output format')
     

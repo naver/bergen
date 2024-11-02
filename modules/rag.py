@@ -11,6 +11,7 @@ from modules.process_context import ProcessContext
 from modules.dataset_processor import ProcessDatasets
 from modules.metrics import RAGMetrics
 import time 
+import random
 import shutil
 import os 
 from tqdm import tqdm
@@ -529,6 +530,12 @@ class RAG:
             self.training_config.test_size_ratio = min(len(gen_dataset)//2, self.training_config.test_size_ratio)
             
         train_test_datasets = gen_dataset.train_test_split(self.training_config.test_size_ratio, seed=42)
+        
+        if self.training_config.n_train_samples is not None:
+            n_train_samples = min(self.training_config.n_train_samples, len(train_test_datasets['train']))
+            print(f"Subselecting a subset of {n_train_samples}/{len(train_test_datasets['train'])} from train set")
+            train_indices = random.sample(range(len(train_test_datasets['train'])), n_train_samples)
+            train_test_datasets['train'] = train_test_datasets['train'].select(train_indices)
 
         print("Preprocessing data...")
         if not isinstance(self.generator, LLMCocom):
@@ -669,6 +676,9 @@ class RAG:
         model = trainer.model
         model.save_pretrained(f"{self.experiment_folder}/last_model")
         self.generator.model = model
+        
+        # Restoring eval mode now that training is done
+        self.generator.model.eval()
         
         move_finished_experiment(self.experiment_folder)
         self.experiment_folder = get_finished_experiment_name(self.experiment_folder)

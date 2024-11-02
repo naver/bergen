@@ -1,0 +1,21 @@
+train:
+    doc:
+        null
+    query:
+        null
+dev:
+    doc: 
+        init_args:
+            _target_: modules.processors.multidomain_dataset_processor.LoTTE
+            url: "https://downloads.cs.stanford.edu/nlp/data/colbert/colbertv2/lotte.tar.gz"
+            tmp_download_dir: 'raw_datasets' # default
+            split: all
+    query: 
+        init_args:
+            _target_: modules.processors.multidomain_dataset_processor.RobustQA_Recreation
+            split: dev
+test:
+    doc:
+        null
+    query:
+        null
