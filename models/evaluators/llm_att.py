@@ -225,8 +225,8 @@ class LLM_att():
                     att_by_cat[f"conf1_{layer}_{cat}"] += get_att_coverage_conf(prompt_to_gen_att[:, span.start:span.end]).float().to('cpu').numpy()
                 entropy= get_att_entropy(prompt_to_gen_att).float().to('cpu').numpy()
                 entropy_nobos= get_att_entropy(prompt_to_gen_att[:, 1:]).float().to('cpu').numpy()
-                att_by_cat[f"att_{layer}_prefix"] = np.sum([att_by_cat[x] for x in att_by_cat if not "norm" in x and f'{layer}' in x])
-                att_by_cat[f"att_{layer}_prefix_norm"] = np.sum([att_by_cat[x] for x in att_by_cat if "norm" in x and f'{layer}' in x])
+                att_by_cat[f"att_{layer}_prefix"] = np.sum([att_by_cat[x] for x in att_by_cat if not "norm" in x and f'{layer}' in x and 'att' in x])
+                att_by_cat[f"att_{layer}_prefix_norm"] = np.sum([att_by_cat[x] for x in att_by_cat if "norm" in x and f'{layer}' in x and 'att' in x])
  
                 #att_by_cat[f'var_{layer}'] += get_att_var(prompt_to_gen_att).float().to('cpu').numpy()
                 #att_by_cat[f'var_{layer}_nobos'] += get_att_var(prompt_to_gen_att[:, 1:]).float().to('cpu').numpy()
