@@ -1,0 +1,17 @@
+train:
+    doc: 
+        null
+    query: 
+        null
+dev:
+    doc: 
+        init_args:
+            _target_: modules.processors.multidomain_dataset_processor.PubMed2023_Ragged
+            split: "train"
+    query: 
+        init_args:
+            _target_: modules.processors.multidomain_dataset_processor.BIOASQ11B_Ragged
+            split: "train"
+test:
+    doc: null
+    query: null
