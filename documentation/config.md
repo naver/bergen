@@ -16,8 +16,14 @@ Usage Examples
    ```bash
    python3 bergen.py retriever="splade-v3" reranker="debertav3" generator='tinyllama-chat' dataset='kilt_nq'
    ```
+4. Change the generator without a config file:
+   Provide just the name of an existing HuggingFace model as model_name argument.
+   ```bash
+   python3 bergen.py  retriever="splade-v3" reranker="debertav3" generator="hf" generator.init_args.model_name="meta-llama/Llama-2-7b-hf"   dataset=kilt_nq
+   ```
+   For additional options such as batch size or quantization, please change the file or create a config
 
-4. Using vllm for faster generation:
+5. Using vllm for faster generation:
    ```bash
    python3 bergen.py retriever="splade-v3" reranker="debertav3" generator='vllm_SOLAR-107B' dataset='kilt_nq'
    ```
@@ -67,3 +73,20 @@ python3 print_results.py --csv --folder experiments/
 exp_folder,Retriever,P_1,Reranker,Generator,gen_time,query_dataset,r_top,rr_top,M,EM,F1,P,R,Rg-1,Rg-2,Rg-L,BEM,LLMeval
 216567b3d48ef3fc,naver/splade-v3/,,naver/trecdl22-crossencoder-debertav3,TinyLlama/TinyLlama-1.1B-Chat-v1.0,00:03:53.19,KILTTriviaqa,100,100,0.6763772175536882,0.00018674136321195143,0.11749967712256401,0.07122756370055569,0.5380933823321367,0.1505780809175042,0.055962386132169924,0.14611799602749245,0.47356051206588745,
 ```
+
+
+### Generator
+A typical generator configuration:
+```
+init_args: 
+  _target_: models.generators.llm.LLM
+  model_name: "mistralai/Mistral-7B-Instruct-v0.2"
+  max_new_tokens: 128
+  max_length: 32000
+  batch_size: 256
+  max_doc_len: 100
+```
+Hydra instantiates the given `_target_` class passing the rest of the arguments to the class constructor. Here:
+- max_length: the maximum length (in tokens) of the full prompt passed to the generator
+- max_new_tokens: max number of generated tokens
+- max_doc_len: each retrieved document is cropped to max_doc_len words before being appended to the query

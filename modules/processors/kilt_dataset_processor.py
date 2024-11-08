@@ -247,3 +247,13 @@ class KILTWow(Processor):
         dataset = dataset.rename_column("input", "content")
         dataset = dataset.remove_columns(['meta', 'output'])
         return dataset
+
+
+class KILTMULTIQA(Processor):
+    def __init__(self, response_files: list = None, *args, **kwargs):
+        dataset_name = 'kilt_combined_qa'
+        super().__init__(*args, **kwargs, dataset_name=dataset_name)
+            
+    def process(self):
+        return datasets.load_dataset("dmrau/combined_qa")[self.split]
+        

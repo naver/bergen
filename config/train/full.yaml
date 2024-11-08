@@ -1,5 +1,6 @@
-generate_test_samples: 10
-test_size_ratio: 0.01
+test_size: 0.01
+num_saving_steps: 10
+gradient_checkpointing: True
 trainer:
   dataloader_num_workers: 4
   eval_accumulation_steps: 16
@@ -8,7 +9,7 @@ trainer:
   weight_decay: 0.1
   warmup_ratio: 0.05
   learning_rate: 5e-5
-  per_device_train_batch_size: 4
-  per_device_eval_batch_size: 4
+  per_device_train_batch_size: 2
+  per_device_eval_batch_size: 2
   bf16: True
-  report_to: "wandb"
+  report_to: "none"

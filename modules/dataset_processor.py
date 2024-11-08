@@ -2,33 +2,48 @@
 BERGEN
 Copyright (c) 2024-present NAVER Corp.
 CC BY-NC-SA 4.0 license
+
+Defines the base class for dataset processors and specific processors for general-domain datasets.
+The processors are used to load and preprocess datasets for training and evaluation.
+When called, the processors are called for every split.
+
+The process() method returns a datasets.Dataset object with the following features:
+
+- id: str, unique identifier for the example
+- content: str, for example questions for QA datasets
+- label: List[str] (optional, for query datasets)
+    List of acceptable answers for the given question. Note that elements of the list are assumed to be synonyms / acceptable answers for the same question.
 '''
 
 import datasets
+from datasets import Dataset
 import os
 from collections import defaultdict
 import csv
 from tqdm import tqdm
 import pickle
 from hydra.utils import instantiate
-import urllib.request
 import json
-import requests  
 from functools import partial
+import random
+from typing import Dict
 
 # Base class that every processor interhits from 
 class Processor(object):
+    """
+    Base dataset processor class.
+    """
     
     def __init__(self, 
-                dataset_name,
-                split, 
-                out_folder, 
-                num_proc, 
-                overwrite, 
-                debug, 
-                oracle_provenance, 
-                shuffle_labels
-                ):
+        dataset_name: str,
+        split: str, 
+        out_folder: str, 
+        num_proc: int, 
+        overwrite: bool, 
+        debug: bool, 
+        oracle_provenance: bool, 
+        shuffle_labels: bool
+    ) -> None:
         self.dataset_name = dataset_name
         self.split = split
         self.num_proc = num_proc
@@ -38,20 +53,19 @@ class Processor(object):
         self.oracle_provenance = oracle_provenance
         self.shuffle_labels = shuffle_labels
 
-    def process():
+    def process() -> Dataset:
         raise NotImplementedError()
     
-    def add_index(self, dataset):
+    def add_index(self, dataset: Dataset) -> Dataset:
         dataset = dataset.add_column("index", range(len(dataset)))    
         return dataset
     
-    def get_index_to_id(self, dataset):
+    def get_index_to_id(self, dataset: Dataset) -> Dict[str, int]:
         if 'index' not in dataset.features:
             dataset = self.add_index(dataset)
         return dict(zip(dataset["id"], dataset["index"]))
     
-    def shuffled_labels_as_content(self, dataset):
-        import random
+    def shuffled_labels_as_content(self, dataset: Dataset) -> Dataset:
         random.seed(42)
         col = dataset['label']
         random.shuffle(col)
@@ -59,7 +73,7 @@ class Processor(object):
         dataset_dict['ranking_label'] = [el[0] for el in col]
         return datasets.Dataset.from_dict(dataset_dict)
 
-    def get_dataset(self):
+    def get_dataset(self) -> Dataset:
         print(f"Processing dataset {self.dataset_name} in {self.split} split ")
         debug_str = '_debug' if self.debug else ''
         assert self.dataset_name != None # dataset name needs to be set in processor class
@@ -68,7 +82,7 @@ class Processor(object):
         if os.path.exists(out_folder) and not self.overwrite:
             dataset = datasets.load_from_disk(out_folder)
             if self.debug:
-                dataset = dataset.select(range(15))
+                dataset = dataset.select(range(min(len(dataset), 50)))
             if self.shuffle_labels:
                 dataset = self.shuffled_labels_as_content(dataset)
             #id2index = self.tsv_to_dict(f'{out_folder}/id2index.csv')
@@ -80,7 +94,7 @@ class Processor(object):
             id2index = self.get_index_to_id(dataset) 
             pickle.dump(id2index, open(f'{out_folder}/id2index.p', 'wb'))
             if self.debug:
-                dataset = dataset.select(range(15))
+                dataset = dataset.select(range(min(len(dataset), 50)))
             if self.shuffle_labels:
                 dataset = self.shuffled_labels_as_content(dataset)
             dataset.id2index = id2index
@@ -88,7 +102,7 @@ class Processor(object):
         dataset.name = self.dataset_name + debug_str + oracle_provenance_str
         return dataset
     
-    def dict_to_tsv(self, id_to_index, file_path):
+    def dict_to_tsv(self, id_to_index: Dict[str, int], file_path: str) -> None:
         try:
             with open(file_path, 'w', encoding='utf-8') as file:
                 # Write data
@@ -98,7 +112,7 @@ class Processor(object):
         except Exception as e:
             print(f"Error writing id2index file: {e}")
 
-    def tsv_to_dict(self, file_path):
+    def tsv_to_dict(self, file_path: str) -> Dict[str, int]:
         try:
             id_to_index = {}
             with open(file_path, 'r', encoding='utf-8') as file:
@@ -118,7 +132,7 @@ class Processor(object):
       
 class BIOASQ11B(Processor):
 
-    def __init__(self, data_path, *args, **kwargs):
+    def __init__(self, data_path: str, *args, **kwargs):
         self.dataset_name = 'BIOASQ11B'
         self.path = data_path
         super().__init__(*args, **kwargs, dataset_name=self.dataset_name)
@@ -133,7 +147,7 @@ class BIOASQ11B(Processor):
         # No ranking labels
         #dataset = dataset.map(lambda example: {'ranking_label': [[provenance['wikipedia_id'] for provenance in el['provenance']] if len(el['answer']) > 0 and len(el['provenance']) > 0 else [] for el in example['output']]})
 
-    
+
         return dataset
 
 
@@ -562,7 +576,7 @@ class MergedDocDataset(Processor):
         id2index = self.get_index_to_id(dataset) 
         dataset.id2index = id2index
         if self.debug:
-            dataset = dataset.select(range(15))
+            dataset = dataset.select(range(50))
         if self.shuffle_labels:
             dataset = self.shuffled_labels_as_content(dataset)
         dataset.name = self.dataset_name + debug_str + oracle_provenance_str
@@ -570,7 +584,14 @@ class MergedDocDataset(Processor):
     
 
 class ProcessDatasets:
-                
+    """
+    Static class to process datasets.
+
+    Methods:
+    - process: Process the datasets.
+    - check_instantiate: Check the instantiation of datasets.
+    """
+    
     @staticmethod
     def process(datasets, out_folder='datasets', num_proc=1, overwrite=False, debug=False, oracle_provenance=False, shuffle_labels=False):
         def sanity_checks(dataset):

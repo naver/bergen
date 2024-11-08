@@ -2,6 +2,9 @@
 BERGEN
 Copyright (c) 2024-present NAVER Corp.
 CC BY-NC-SA 4.0 license
+
+A retrieval module for ranking models.
+Example: bm25, splade, oracle_provenance. See models/retrievers/ for specific retrievers.
 '''
 
 # Retrieve
@@ -20,7 +23,6 @@ class Retrieve:
                  batch_size=128, 
                  batch_size_sim=1024, 
                  pyserini_num_threads=1,
-                 return_embeddings=False,
                  continue_batch=None
                  ):
 
@@ -28,7 +30,6 @@ class Retrieve:
         self.batch_size = batch_size
         self.batch_size_sim = batch_size_sim
         self.pyserini_num_threads = pyserini_num_threads
-        self.return_embeddings = return_embeddings
         # instaniate model
         self.model = instantiate(init_args)
 
@@ -89,25 +90,18 @@ class Retrieve:
                 doc_embeds.append(emb_chunk)
 
             for chunk in tqdm(chunks, desc=f'Retrieving docs...', total=len(chunks)):
-                scores_sorted_topk_chunk, indices_sorted_topk_chunk, embeds_sorted_top_k_chunk   = self.load_collection_and_retrieve(chunk, doc_embeds, top_k_documents, dataset_size=len(dataset['doc']),return_embeddings=self.return_embeddings)
+                scores_sorted_topk_chunk, indices_sorted_topk_chunk, embeds_sorted_top_k_chunk   = self.load_collection_and_retrieve(chunk, doc_embeds, top_k_documents, dataset_size=len(dataset['doc']),return_embeddings=False)
                 scores_sorted_topk.append(scores_sorted_topk_chunk)
                 indices_sorted_topk.append(indices_sorted_topk_chunk)
-                if self.return_embeddings:
-                    embeds_sorted_top_k.append(embeds_sorted_top_k_chunk)
-
+               
             scores_sorted_topk = torch.cat(scores_sorted_topk, dim=0)
             indices_sorted_topk = torch.cat(indices_sorted_topk, dim=0)
-            if self.return_embeddings:
-                embeds_sorted_top_k = torch.cat(embeds_sorted_top_k, dim=0)
             
 
 
             # Use sorted top-k indices indices to retrieve corresponding document IDs
             doc_ids = [[doc_ids[i] for i in q_idxs] for q_idxs in indices_sorted_topk]
             return {
-                #"doc_emb": doc_embs if return_embeddings else None,
-                "doc_emb": embeds_sorted_top_k if self.return_embeddings else None,
-                "q_emb": query_embeds if self.return_embeddings else None,
                 "score": scores_sorted_topk,
                 "q_id": q_ids,
                 "doc_id": doc_ids

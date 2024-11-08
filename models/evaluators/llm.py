@@ -4,15 +4,14 @@ Copyright (c) 2024-present NAVER Corp.
 CC BY-NC-SA 4.0 license
 '''
 
-from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig, GenerationConfig
+from transformers import GenerationConfig
 import omegaconf
 from tqdm import tqdm
 import torch
-import re
-import numpy as np
 from hydra.utils import instantiate
 from models.evaluators.utils import *
 import gc
+
 
 class LLMeval():
     """
@@ -151,4 +150,3 @@ class LLMeval():
         torch.cuda.empty_cache()
         gc.collect()
         return get_mean_without_unknown(scores), scores
-

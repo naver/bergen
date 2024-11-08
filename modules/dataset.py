@@ -2,6 +2,8 @@
 BERGEN
 Copyright (c) 2024-present NAVER Corp.
 CC BY-NC-SA 4.0 license
+
+Tokenized_Sorted_Dataset class to format instruction, tokenize, sort data.
 '''
 
 from torch.utils.data import Dataset
@@ -10,7 +12,15 @@ import random
 
 
 class Tokenized_Sorted_Dataset(Dataset):
-    def __init__(self, data, model, training=False):
+    """
+    Custom PyTorch Dataset that tokenizes and sorts data based on token length.
+
+    Args:
+        data (list): The input data to be processed.
+        model: The model object that provides the tokenizer and formatting.
+        training (bool): Whether to include labels in tokenization (for training).
+    """
+    def __init__(self, data, model, training: bool = False):
 
         self.model = model
         self.tokenizer = self.model.tokenizer
@@ -18,24 +28,16 @@ class Tokenized_Sorted_Dataset(Dataset):
 
         # Preprocess, tokenize and store lengths
         processed_data = []
-        if self.training:
-            for item in tqdm(data):
-                formatted_instr = self.model.format_instruction(item) + (item['label'] if isinstance(item['label'], str) else random.choice(item['label'])) + self.tokenizer.eos_token
-                item['formatted_instruction'] = formatted_instr
-                tokenized_input = self.tokenizer(formatted_instr, truncation=True, return_tensors="pt")
-                length = tokenized_input['input_ids'].size(1)  # Length of tokenized input
-                processed_data.append((length, item, tokenized_input))
-        else:
-            for item in tqdm(data):
-                formatted_instr = self.model.format_instruction(item)
-                item['formatted_instruction'] = formatted_instr
-                tokenized_input = self.tokenizer(formatted_instr, truncation=True, return_tensors="pt")
-                length = tokenized_input['input_ids'].size(1)
-                processed_data.append((length, item, tokenized_input))
-
+        for item in tqdm(data):
+            formatted_instr, label_start_index = self.model.format_instruction(item, eval=not self.training)
+            item['formatted_instruction'] = formatted_instr
+            item['label_start_index'] = label_start_index
+            tokenized_input = self.tokenizer(formatted_instr, truncation=True, return_tensors="pt")
+            length = tokenized_input['input_ids'].size(1)  # Length of tokenized input
+            processed_data.append((length, item, tokenized_input))
+        
             # Sort by tokenized input length
         self.sorted_data = sorted(processed_data, key=lambda x: x[0])
-
 
     def __len__(self):
         return len(self.sorted_data)
@@ -46,11 +48,10 @@ class Tokenized_Sorted_Dataset(Dataset):
         item['tokenized_input'] = tokenized_input
         return item
 
-    def select(self, indices):
+    def select(self, indices: list[int]):
         # Create a new dataset based on selected indices
-        selected_data = []
-        for i in indices:
-            _, item, tokenized_input = self.sorted_data[i]
-            item['tokenized_input'] = tokenized_input  # Ensure tokenized_input is included
-            selected_data.append(item)
-        return selected_data
+        selected_data = [self.sorted_data[i] for i in indices]
+        # Return a new instance of Tokenized_Sorted_Dataset with selected data
+        selected_dataset = Tokenized_Sorted_Dataset([], self.model, self.training)
+        selected_dataset.sorted_data = selected_data
+        return selected_dataset

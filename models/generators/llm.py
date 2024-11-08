@@ -3,45 +3,56 @@ BERGEN
 Copyright (c) 2024-present NAVER Corp.
 CC BY-NC-SA 4.0 license
 '''
-from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig, AutoConfig
-import torch
-from models.generators.generator import Generator
-import warnings
-from utils import prepare_labels
-from peft import AutoPeftModelForCausalLM, PeftConfig
 import random
 import os
 import json
 import gc
+import torch
+import warnings
+
+from peft import AutoPeftModelForCausalLM, PeftConfig
+from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
+
+from utils import prepare_labels, left_pad
+from models.generators.generator import Generator
+
 random.seed(42)
 
 
 class LLM(Generator):
     def __init__(self, 
-                model_name=None,
-                batch_size=1, 
-                max_new_tokens=1, 
-                max_doc_len=100,
-                max_length=None,
-                prompt=None,
-                quantization=None,
-                gguf_file=None,  # for gguf model format
-                attn_implementation="flash_attention_2",
-                local_path=False, # activates local_files_only argument for AutoModel.from_pretrained() method; used to load local models after fine-tuning
-                 ):
-        Generator.__init__(self, model_name=model_name, batch_size=batch_size)
-        # device_index = Accelerator().process_index
-        # device_map = {"": device_index}
+                model_name: str = None,
+                batch_size: int = 1, 
+                max_new_tokens: int = 1, 
+                max_doc_len: int = 100,
+                max_length: int = None,
+                prompt: str = None,
+                quantization: str = None,
+                gguf_file: str = None,
+                attn_implementation: str = "flash_attention_2",
+                local_path: bool = False,
+                ):
+        """
+        :model_name: hf model name or path to a local checkpoint
+        :max_new_tokens: how many tokens to generate at most
+        :max_doc_len: documents are cropped to a maximum of max_doc_len words
+        :gguf_file: specify to use a gguf_file (see from_pretrained)
+        :local_path: forces only local reading (i.e. no hf download)
+        """
+        Generator.__init__(self,
+                           model_name=model_name,
+                           batch_size=batch_size,
+                           max_new_tokens=max_new_tokens,
+                           max_doc_len=max_doc_len,
+                           max_length=max_length)
         # check type of gpu: if not A100 then change attn implementation to sdpa
-        if not "A100" in torch.cuda.get_device_name(torch.cuda.current_device):
+        if "A100" not in torch.cuda.get_device_name(torch.cuda.current_device):
             attn_implementation="sdpa"
-        self.max_length = max_length
-        self.max_doc_len = max_doc_len
+            
         self.quantization = quantization
-         # get tokenizer of lora adapter if exists else use models' tokenizer
-
+        
+         # get tokenizer or lora adapter if it exists else use models' tokenizer
         if quantization == "no":
-            warnings.warn(f"Could not find PeftConfig for {model_name}. Using regular model.")
             tokenizer_name = self.model_name
             model_class = AutoModelForCausalLM
         else:
@@ -49,25 +60,34 @@ class LLM(Generator):
                 config = PeftConfig.from_pretrained(model_name)
                 tokenizer_name = config.base_model_name_or_path
                 model_class = AutoPeftModelForCausalLM
-                print("loading adaptor")
+                print(f"Found peft config for {model_name}")
             except:
                 warnings.warn(f"Could not find PeftConfig for {model_name}. Using regular model.")
                 tokenizer_name = self.model_name
                 model_class = AutoModelForCausalLM
-        print(tokenizer_name)
+                
+        print(f"Tokenizer used: {tokenizer_name}")
+        
         try:
-            self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name, gguf_file=gguf_file)
+            self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name, 
+                                                           gguf_file=gguf_file, 
+                                                           clean_up_tokenization_spaces=True)
         except:
-
             config_dict = os.path.join(tokenizer_name, 'config.json')
             with open(config_dict, 'r') as f:
                 config = json.load(f)
             tokenizer_name = config['_name_or_path']
-            self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name, gguf_file=gguf_file)
-
+            self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name, 
+                                                           gguf_file=gguf_file, 
+                                                           clean_up_tokenization_spaces=True)
 
         self.tokenizer.padding_side = "left"
-        self.tokenizer.pad_token = self.tokenizer.bos_token
+        if self.tokenizer.bos_token is not None:
+            self.tokenizer.pad_token = self.tokenizer.bos_token
+        elif self.tokenizer.pad_token is not None:
+            self.tokenizer.pad_token = self.tokenizer.pad_token
+        else:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
 
 
         if quantization == "int8":
@@ -82,7 +102,6 @@ class LLM(Generator):
                 device_map='auto',
                 local_files_only=local_path,
             )
-
 
         elif quantization == "int4":
             quant_config = BitsAndBytesConfig(
@@ -106,25 +125,11 @@ class LLM(Generator):
                 gguf_file=gguf_file,
             )
 
-        # self.model.merge_and_unload()
-        #self.model.config.use_cache = False
         self.model = self.model.bfloat16()
         self.model.eval()
         self.model.config.pretraining_tp = 1
-        self.max_new_tokens = max_new_tokens
         self.prompt = prompt
 
-    def get_response(self):
-        return '\nResponse:\n'
-
-    def get_response_template_ids(self):
-        response_template =  self.get_response()
-        return self.tokenizer.encode(response_template, add_special_tokens=False)
-
-    def prediction_step(self, model, model_input, label_ids=None):
-        output = model(**model_input, labels=label_ids)
-        return output.logits, output.loss
-       
     def generate(self, instr_tokenized):
         input_ids = instr_tokenized['input_ids'].to(self.model.device)
         attention_mask = instr_tokenized['attention_mask'].to(self.model.device)
@@ -142,12 +147,33 @@ class LLM(Generator):
         return decoded
         
     def __del__(self):
-    #del self.model.llm_engine.model_executor
-    #    del self.model
         gc.collect()
         torch.cuda.empty_cache()
 
-    def collate_fn(self, examples, eval=False, **kwargs):
+    def assert_label_masking_is_correct(self, original_labels: list[str], label: torch.LongTensor):
+        """
+        Check that the non-masked area of 'label' corresponds to one of the original_labels.
+        (Only used during training for loss computation)
+        NB: this assert involves multiple tokenization/detokenization but on CPU and it's worth it
+        """
+        # Tokenize and detokenize all original labels to handle tokenization inconsistencies (like extra spaces).
+        # We eliminate the spaces because they cause assert problems due to how tokenization handles spaces
+        sanitized_original_labels = [
+            self.tokenizer.decode(self.tokenizer(elt)['input_ids'], skip_special_tokens=True).strip().replace(" ", "") 
+            for elt in original_labels
+        ]
+
+        # Build the recovered label from the provided label tensor.
+        recovered_label = self.tokenizer.decode(label, skip_special_tokens=True).strip().replace(" ", "")
+
+        # Check if the recovered label matches any of the sanitized original labels.
+        is_valid_label = any(recovered_label == sanitized_label for sanitized_label in sanitized_original_labels)
+
+        # Assert if the recovered label was found in the original labels.
+        if not is_valid_label:
+            warnings.warn(f"###### <{recovered_label}> NOT INCLUDED IN <{original_labels}>")
+
+    def collate_fn(self, examples: list[dict], eval: bool = False, **kwargs):
         ignore_index = -100
         q_ids = [e['q_id'] for e in examples]
 
@@ -159,35 +185,42 @@ class LLM(Generator):
         ranking_label = [e['ranking_label'] for e in examples] if 'ranking_label' in examples[0] else [None] * len(examples)
         instr = [e["formatted_instruction"] for e in examples]
 
+        # NB: we apply padding after tokenization to be able to sort batches by size beforehand
         # Determine the maximum sequence length from input_ids
         max_length = max(len(ids) for ids in input_ids_list)
-
-        # Perform left padding manually for input_ids
-        input_ids_tensor = torch.stack([
-            torch.cat([torch.full((max_length - len(ids),), self.tokenizer.pad_token_id, dtype=torch.long),
-                       torch.tensor(ids, dtype=torch.long)])
-            for ids in input_ids_list
-        ])
-
-        # Assuming 0 is the appropriate padding value for attention_mask
-        attention_mask_tensor = torch.stack([
-            torch.cat(
-                [torch.full((max_length - len(mask),), 0, dtype=torch.long), torch.tensor(mask, dtype=torch.long)])
-            for mask in attention_mask_list
-        ])
+        
+        input_ids_tensor = torch.stack([left_pad(ids, max_length, self.tokenizer.pad_token_id) for ids in input_ids_list])
+        attention_mask_tensor = torch.stack([left_pad(mask, max_length, 0) for mask in attention_mask_list])
+        
         model_input = {
             "input_ids": input_ids_tensor,
             "attention_mask": attention_mask_tensor,
         }
-        data_dict = {}
-        # prepare labels only for training 
-        if not eval:
-
-            response_token_ids = self.get_response_template_ids()
-            label_ids = prepare_labels(model_input['input_ids'], response_token_ids[1:], ignore_index=ignore_index)
-            data_dict['label_ids'] =  label_ids
-
         
+        data_dict = {}
+        
+        # prepare labels: only for training 
+        if not eval:
+            label_ids = input_ids_tensor.clone()
+            for i in range(len(label_ids)):
+                assert examples[i]['label_start_index'] is not None
+                # Count the number of padding tokens on the left
+                left_padding_count = (attention_mask_tensor[i] == 0).sum().item()
+                # todo: handle case where left padding count is too large or we cropped the label no ?
+                
+                if examples[i]['label_start_index']+left_padding_count + 1 > label_ids.size(1):
+                    warnings.warn("Docs + query is too long: label will be ignored. If it happens too often consider\
+                        increasing the `max_seq_length`.")
+                
+                # In the label there is only tokens after position padding_count + label_start_idnex:
+                label_ids[i, :examples[i]['label_start_index']+left_padding_count + 1] = ignore_index
+                
+                # Here we assert that the label_ids, when decoded, is one of the original labels
+                self.assert_label_masking_is_correct(label[i], label_ids[i][label_ids[i] != ignore_index])
+
+            model_input['labels'] =  label_ids
+            return model_input
+
         data_dict.update({
             'model_input': model_input,
             'q_id': q_ids, 
@@ -198,18 +231,3 @@ class LLM(Generator):
         })
 
         return data_dict
-
-    def format_instruction(self, sample):
-        # will be injected into formatted prompt string
-        question = sample['query']
-        # in case we have previously retrieved documents
-        if 'doc' in sample:
-            docs = ''
-            for i, doc in enumerate(sample['doc']):
-                doc = ' '.join(doc.split()[:self.max_doc_len])
-                docs += f"Document {i+1}: {doc}\n"
-            compiled_prompt = self.compile_prompt(self.prompt.system, self.prompt.user, question, docs)
-        else:
-            # without retrieval we don't put documents in the prompt
-            compiled_prompt = self.compile_prompt(self.prompt.system_without_docs, self.prompt.user_without_docs, question)
-        return compiled_prompt + self.get_response()
