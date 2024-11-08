@@ -5,7 +5,7 @@ BERGEN supports a range of multi-domain query datasets along with each specific 
 
 ## Quick start
 
-Example of launching evaluation on the bioasq12b dataset with retrieval from pubmed abstracts.
+Example of launching evaluation on the SyllabusQA dataset with retrieval from relevant course syllabi.
 
 ```bash
 python3 bergen.py reranker='debertav3' retriever='splade-v3' generator='qwen-25-3b-instruct' dataset='multidomain/syllabusQA' prompt='multidomain/syllabusQA'
