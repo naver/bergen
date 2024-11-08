@@ -8,7 +8,7 @@ BERGEN supports a range of multi-domain query datasets along with each specific 
 Example of launching evaluation on the bioasq12b dataset with retrieval from pubmed abstracts.
 
 ```bash
-python3 bergen.py reranker='debertav3' retriever='splade-v3' generator='qwen-25-3b-instruct' dataset='multidomain/bioasq12b' prompt='multidomain/bioasq'
+python3 bergen.py reranker='debertav3' retriever='splade-v3' generator='qwen-25-3b-instruct' dataset='multidomain/bioasq11b' prompt='multidomain/bioasq11b'
 ```
 
 You can add `++experiments_folder=$exp_folder` to specify a custom folder to save results and `+run_name=$label"` to specify a custom experiment name.
