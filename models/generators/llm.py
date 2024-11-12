@@ -82,13 +82,7 @@ class LLM(Generator):
                                                            clean_up_tokenization_spaces=True)
 
         self.tokenizer.padding_side = "left"
-        if self.tokenizer.bos_token is not None:
-            self.tokenizer.pad_token = self.tokenizer.bos_token
-        elif self.tokenizer.pad_token is not None:
-            self.tokenizer.pad_token = self.tokenizer.pad_token
-        else:
-            self.tokenizer.pad_token = self.tokenizer.eos_token
-
+        self.tokenizer.pad_token = self.tokenizer.bos_token
 
         if quantization == "int8":
             quant_config = BitsAndBytesConfig(
