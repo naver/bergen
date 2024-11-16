@@ -3,8 +3,8 @@ BERGEN
 Copyright (c) 2024-present NAVER Corp.
 CC BY-NC-SA 4.0 license
 '''
-
-from transformers import AutoTokenizer
+import os
+from transformers import AutoTokenizer, AutoModel
 import torch
 from models.generators.generator import Generator
 import random
@@ -26,8 +26,10 @@ class LLM(Generator):
                 prompt=None,
                 quantization=None,
                 gpu_memory_utilization=0.9,
+                # decoding parameters:
                 beam_search: bool = False,
-                best_of: int = 5
+                best_of: int = 1,
+                temperature: float = 0
                 ):
         Generator.__init__(self, model_name=model_name, batch_size=batch_size)
 
@@ -41,14 +43,29 @@ class LLM(Generator):
         self.tokenizer = AutoTokenizer.from_pretrained(model_name, padding_side='left')
         self.tokenizer.pad_token = self.tokenizer.bos_token
 
-        if self.quantization is None:
-            self.model = vllm(model=self.model_name,tensor_parallel_size=torch.cuda.device_count(),dtype=torch.float16,gpu_memory_utilization=gpu_memory_utilization,max_model_len=self.max_length,enforce_eager=True,kv_cache_dtype="fp8_e5m2")        
+
+        if os.path.isdir(self.model_name):
+            model = AutoModel.from_pretrained(self.model_name)
+            tokenizer = AutoModel.from_pretrained(model.name_or_path)
+            if self.quantization is None:
+                self.model = vllm(model=model,tensor_parallel_size=torch.cuda.device_count(),dtype=torch.float16,gpu_memory_utilization=gpu_memory_utilization,max_model_len=self.max_length,enforce_eager=True,kv_cache_dtype="fp8_e5m2")        
+            else:
+                self.model = vllm(model=model,tensor_parallel_size=torch.cuda.device_count(),gpu_memory_utilization=gpu_memory_utilization,quantization=self.quantization)
         else:
-            self.model = vllm(model=self.model_name,tensor_parallel_size=torch.cuda.device_count(),gpu_memory_utilization=gpu_memory_utilization,quantization=self.quantization)
+            if self.quantization is None:
+                self.model = vllm(model=self.model_name,tensor_parallel_size=torch.cuda.device_count(),dtype=torch.float16,gpu_memory_utilization=gpu_memory_utilization,max_model_len=self.max_length,enforce_eager=True,kv_cache_dtype="fp8_e5m2")        
+            else:
+                self.model = vllm(model=self.model_name,tensor_parallel_size=torch.cuda.device_count(),gpu_memory_utilization=gpu_memory_utilization,quantization=self.quantization)
         if self.beam_search:
-            self.sampling_params =  SamplingParams(temperature=0, use_beam_search=True, max_tokens=max_new_tokens, best_of=best_of, top_p=1, top_k=-1)
+            assert temperature == 0, f'beam search requires temperature = 0, not {temperature}'
+            if best_of == 1:
+                Warning('You are doing beam search with best_of=1: it is greedy decoding. Consider increasing best_of.')
+            self.sampling_params =  SamplingParams(temperature=temperature, use_beam_search=True, max_tokens=max_new_tokens, best_of=best_of, top_p=1, top_k=-1)
         else:
-            self.sampling_params =  SamplingParams(temperature=1, max_tokens=max_new_tokens, best_of=1, top_p=1, top_k=-1)
+            if best_of > 1:
+                Warning('You set best_of > 1 without beam_search: vllm will do best of n sampling.')
+                assert temperature > 0, 'To do best of n sampling, you need temperature > 0'
+            self.sampling_params =  SamplingParams(temperature=0, max_tokens=max_new_tokens, best_of=best_of, top_p=1, top_k=-1)
 
     def prediction_step(self, model, model_input, label_ids=None):
         output = model(**model_input, labels=label_ids)

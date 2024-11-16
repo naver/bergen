@@ -23,6 +23,7 @@ class LLMCocom(Generator):
                  compr_mode: str = 'last',
                  compr_mlp_hidden_dim: int = 1024,
                  compr_n_layers: int = None, # only useful for surgical mistral compressor,
+                 compr_use_mlp: bool = True,
                  attn_implementation: str = 'flash_attention_2',
                  device_map = 'auto',
                  save_generated_embeddings_path: str = None):
@@ -183,10 +184,7 @@ class LLMCocom(Generator):
                                         truncation=True,  max_length=self.model_max_length)
         else:
             label = [e['label'] if isinstance(e['label'], str) else random.choice(e['label']) for e in examples]
-            
-            # Cropping labels if they are too long:
-            label = [self.crop_label_to_max_tokens(e, self.model.decoder_tokenizer) for e in label]
-            
+                        
             instr, labels_start = zip(*[self.blend_prompt_and_memory_tokens(self.model.decoder_tokenizer, mem_tokens_str, query=q, label=e)
                                         for q, e in zip(query, label)])
             instr, labels_start = list(instr), list(labels_start)
@@ -293,23 +291,6 @@ class LLMCocom(Generator):
                 raise e
 
         return prompt, label_start
-    
-    def crop_label_to_max_tokens(self, label: str, tokenizer):
-        if self.max_new_tokens >= 128:
-            return label # to preserve legacy behaviour
-        
-        # Tokenize the text
-        tokens = tokenizer(label, return_tensors="pt", truncation=False)
-
-        # If token length is greater than self.max_new_tokens, truncate the tokens
-        if tokens['input_ids'].shape[1] > self.max_new_tokens:
-            cropped_tokens = tokens['input_ids'][0, :self.max_new_tokens]  # Truncate to 64 tokens
-            # Decode the cropped tokens back to text
-            cropped_label = tokenizer.decode(cropped_tokens, skip_special_tokens=True)
-        else:
-            cropped_label = label  # If already within self.max_new_tokens tokens, use the original text
-
-        return cropped_label
 
 
 class LLMCocomOnlyDecoder(LLM):
