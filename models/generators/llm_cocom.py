@@ -23,6 +23,7 @@ class LLMCocom(Generator):
                  compr_mode: str = 'last',
                  compr_mlp_hidden_dim: int = 1024,
                  compr_n_layers: int = None, # only useful for surgical mistral compressor,
+                 query_dependent: bool = False,
                  compr_use_mlp: bool = True,
                  attn_implementation: str = 'flash_attention_2',
                  device_map = 'auto',
@@ -70,6 +71,9 @@ class LLMCocom(Generator):
         
         self.prompt = prompt
         self.context_max_length = context_max_length
+        self.query_dependent = query_dependent
+        if self.query_dependent:
+            self.context_max_length += 32  # hard-coded at the moment
         self.max_new_tokens = max_new_tokens
         self.model_max_length = model_max_length
         self.save_generated_embeddings_path = save_generated_embeddings_path
@@ -155,7 +159,12 @@ class LLMCocom(Generator):
 
         #### BULIDING ENCODER INPUTS ####
         docs = sum([example['doc'] for example in examples], []) # flatten all the docs for encoder input
-        inp_enc = self.model.prepare_encoder_inputs(docs, max_length=self.context_max_length)
+        if self.query_dependent:
+            # also add the flattened query to the input for the encoder
+            flattened_query = sum([[q] * self.model.generation_top_k for q in query], [])
+            inp_enc = self.model.prepare_encoder_inputs(texts=docs, q_texts=flattened_query, max_length=self.context_max_length)
+        else:
+            inp_enc = self.model.prepare_encoder_inputs(texts=docs, max_length=self.context_max_length)
         enc_input_ids, enc_attention_mask = inp_enc['input_ids'], inp_enc['attention_mask']
         
         # input_ids are of shape (top_k * batch_size, enc_token_length)
