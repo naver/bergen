@@ -19,7 +19,7 @@ BERGEN (BEnchmarking Retrieval-augmented GENeration) is a library designed to be
 ![](documentation/images/teaser_bergen.jpg) 
 
 For more information and experimental findings, please see:
-- The initial BERGEN paper: https://arxiv.org/abs/2407.01102
+- The initial BERGEN paper: https://arxiv.org/abs/2407.01102 and our [EMNLP'24 slides](documentation/BERGEN.pdf)
 - The Multilingual RAG paper: https://arxiv.org/abs/2407.01463
 
 ## Quick Start

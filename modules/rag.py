@@ -2,6 +2,8 @@
 BERGEN
 Copyright (c) 2024-present NAVER Corp.
 CC BY-NC-SA 4.0 license
+
+This file contains the main pipeline for RAG: training using RAG and evaluation of RAG pipeline.
 '''
 import time 
 import shutil
@@ -29,6 +31,51 @@ from modules.metrics import RAGMetrics
 
 
 class RAG:
+    """
+    RAG class
+
+    Methods
+    eval: Evaluate RAG pipeline
+    retrieve: Retrieve documents
+    rerank: Rerank documents
+    generate_query: Generate queries
+    process_context: Process context
+    generate: Generate questions
+    eval_metrics: Evaluate metrics
+    train: Train RAG pipeline
+
+    
+    init args:
+        config (str): Hydra config name which can contain all the following arguments
+
+        generator (str): Generator config name
+        retriever (str): Retriever config name
+        reranker (str): Reranker config name
+        query_generator (str): Query generator config name
+        context_processor (str): Context processor config name
+        runs_folder (str): Path to folder to save retrieval runs
+        run_name (str): Name of the run
+        dataset (str): Dataset config name
+        processing_num_proc (int): Number of processes for dataset processing
+        dataset_folder (str): Path to folder where datasets are stored
+        index_folder (str): Path to folder where indexes are stored
+        generated_query_folder (str): Path to folder where generated queries are stored
+        processed_context_folder (str): Path to folder where processed contexts are stored
+        experiments_folder (str): Path to folder where experiments are stored
+        qrels_folder (str): Path to folder where qrels are stored
+        overwrite_datasets (bool): Whether to overwrite datasets (queries and documents)
+        overwrite_exp (bool): Whether to overwrite experiment with same run_name
+        overwrite_index (bool): Whether to overwrite indexes
+        retrieve_top_k (int): Number of documents to retrieve
+        rerank_top_k (int): Number of documents to rerank, must be less than or equal to retrieve_top_k
+        generation_top_k (int): Number of documents used at generation, must be less than or equal to rerank_top_k
+        pyserini_num_threads (int): Number of threads for pyserini
+        debug (bool): Debug mode (uses a short subset of queries dataset)
+        continue_batch (int): Where to start from for indexing (i.e., for retrieval document encoding)
+        train (str): Train config name
+        prompt (str): Prompt config name
+    """
+
     def __init__(self, 
                 generator=None, 
                 retriever=None, 
@@ -248,8 +295,6 @@ class RAG:
             retrieve_top_k,
             self.query_generator.get_clean_model_name()
         )
-        #if return_embeddings:
-                #raise NotImplementedError('For returning Embeddings is not yet fully implemented!')
         doc_embeds_path = get_index_path(self.index_folder, doc_dataset_name, self.retriever.get_clean_model_name(), 'doc')
         query_embeds_path = get_index_path(self.index_folder, query_dataset_name, self.retriever.get_clean_model_name(), 'query', dataset_split=dataset_split, query_generator_name=self.query_generator.get_clean_model_name())
         if not os.path.exists(ranking_file) or self.overwrite_exp or self.overwrite_index:
@@ -292,7 +337,6 @@ class RAG:
                query_ids, 
                doc_ids, 
                rerank_top_k, 
-               return_embeddings=False
                ):
         
         doc_ids = [doc_ids_q[:rerank_top_k] for doc_ids_q in doc_ids]
@@ -317,7 +361,7 @@ class RAG:
                     multi_doc=False,
                     query_field="generated_query"
                 )
-            out_ranking = self.reranker.eval(rerank_dataset, return_embeddings=return_embeddings)
+            out_ranking = self.reranker.eval(rerank_dataset)
             query_ids, doc_ids, scores = out_ranking['q_id'], out_ranking['doc_id'], out_ranking['score']
             write_trec(reranking_file, query_ids, doc_ids, scores)
         else:

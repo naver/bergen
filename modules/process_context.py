@@ -1,3 +1,8 @@
+'''
+A class for processing context for a given dataset.
+Example: context translation, context compression (see models/context_processors/ for specific context processors)
+'''
+
 from tqdm import tqdm
 from hydra.utils import instantiate
 import torch
