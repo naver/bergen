@@ -42,9 +42,8 @@ class LLMCocom(Generator):
 
         # Loading the cocom model:
         if checkpoint_path is not None:
-            self.model = COCOM.from_pretrained(checkpoint_path, 
-                                               device_map=device_map,
-                                               attn_implementation=attn_implementation)
+            self.model = COCOM.from_pretrained(checkpoint_path, device_map=device_map, attn_implementation=attn_implementation)
+            
         else:
             cfg = COCOMConfig(
                 decoder_model_name=decoder_model_name,
@@ -62,7 +61,8 @@ class LLMCocom(Generator):
                 optimize_mem_tokens=True,
                 different_mem_tokens=True,
                 device_map=device_map,
-                attn_implementation=attn_implementation
+                attn_implementation=attn_implementation,
+                query_dependent=query_dependent
             )
             print('Creating brand new COCOM model:', cfg)
             self.model = COCOM(cfg)
@@ -71,7 +71,7 @@ class LLMCocom(Generator):
         
         self.prompt = prompt
         self.context_max_length = context_max_length
-        self.query_dependent = query_dependent
+        self.query_dependent = self.model.query_dependent
         if self.query_dependent:
             self.context_max_length += 32  # hard-coded at the moment
         self.max_new_tokens = max_new_tokens
