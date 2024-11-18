@@ -8,7 +8,7 @@ from modules.retrieve import Retrieve
 from modules.rerank import Rerank
 from modules.generate_query import GenerateQueries
 from modules.process_context import ProcessContext
-frfrom modules.metrics import RAGMetrics
+from modules.metrics import RAGMetrics
 import time 
 import random
 import shutil
