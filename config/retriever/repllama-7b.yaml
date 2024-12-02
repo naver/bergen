@@ -1,5 +1,11 @@
-init_args: 
-  _target_: models.retrievers.repllama.RepLlama
+init_args:
+  _target_: models.retrievers.dense_llm.DenseLLM
   model_name: "castorini/repllama-v1-7b-lora-passage"
   max_len: 256
-batch_size: 128
+  similarity: 
+    _target_: models.retrievers.dense.CosineSim
+  prompt_q: "query: "
+  prompt_d: "passage: "
+  adapters: True
+batch_size: 212
+batch_size_sim: 1048
