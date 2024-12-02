@@ -1,0 +1,19 @@
+train:
+    doc: null
+       
+    
+    query: null
+        
+dev:
+    doc: 
+        init_args:
+            _target_: modules.dataset_processor.KILT100w
+            split: "full"
+    
+    query: 
+        init_args:
+            _target_: modules.processors.ambig_qa_processor.AmbigQA_UB
+            split: 'custom'
+test:
+    doc: null
+    query: null
