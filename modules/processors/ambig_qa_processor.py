@@ -5,6 +5,8 @@ from collections import defaultdict
 import urllib.request
 import json
 import pdb
+#UB means Upper Bound for our experiments
+#FIXME rename
 class AmbigQA_UB(Processor):
 
     def __init__(self, *args, **kwargs):
@@ -18,14 +20,14 @@ class AmbigQA_UB(Processor):
             sid='ambigqa_ub'
             i=0
             #for split in ['train','dev','test']:
+            # we keep only dev and test for now 
             for split in ['dev','test']:
                 ds = load_dataset('erbacher/AmbigNQ-clarifying-question',num_proc=self.num_proc)[split]
                 for x in ds:
+                    #FIXME for some reason the fields are stored as string instead of list
                     qs=eval(x['intent'])
                     answers=eval(x['answer'])
-
                     if x['ambig'] is True:
-                        #pdb.set_trace()
                         for q,a in zip(qs,answers):
                             qid=sid+str(i)
                             i+=1
