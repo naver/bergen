@@ -469,7 +469,7 @@ def get_index_path(
         if query_generator_name == "copy" or query_or_doc == "doc"
         else f".{query_generator_name}"
     )
-    use_instruction_add = ".instruct_rerank" if use_instruction else ""
+    use_instruction_add = ".instruct_retrieve" if use_instruction else ""
     return os.path.join(
         index_folder,
         f"{dataset_name}_{dataset_split}{query_or_doc}_{model_name}{query_gen_add}{use_instruction_add}",
