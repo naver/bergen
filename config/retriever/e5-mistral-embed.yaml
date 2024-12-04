@@ -1,0 +1,10 @@
+init_args: 
+  _target_: models.retrievers.dense_llm.DenseLLM
+  model_name: "intfloat/e5-mistral-7b-instruct"
+  max_len: 256
+  similarity: 
+    _target_: models.retrievers.dense.CosineSim
+  prompt_q: "Query: "
+  adapters: False
+batch_size: 196
+batch_size_sim: 1048

@@ -1,0 +1,11 @@
+init_args: 
+  _target_: models.retrievers.dense_llm.DenseLLM
+  model_name: "samaya-ai/promptriever-mistral-v0.1-7b-v1"
+  max_len: 256
+  similarity: 
+    _target_: models.retrievers.dense.CosineSim
+  prompt_q: "query:  "
+  prompt_d: "passage:  "
+  adapters: True
+batch_size: 212
+batch_size_sim: 1048
