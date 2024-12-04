@@ -35,6 +35,7 @@ class Rerank():
             
         # get flat tensor of scores        
         scores = torch.cat(scores).ravel()
+        print(scores)
         # sort by scores 
         q_ids_sorted, d_ids_sorted, scores_sorted = self.sort_by_score_indexes(scores, q_ids, d_ids)
         self.model.model.to('cpu')

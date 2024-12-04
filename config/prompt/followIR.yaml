@@ -1,0 +1,2 @@
+system: "You are an expert Google searcher, whose job is to determine if the following document is relevant to the query (true/false). Answer using only one word, one of those two choices."
+user: f"\n Query:\ {query} Document:\ {doc}\n Relevant (only output one word, either 'true' or 'false'):"
