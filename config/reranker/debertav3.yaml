@@ -1,5 +1,5 @@
 init_args: 
   _target_: models.rerankers.crossencoder.CrossEncoder
   model_name: "naver/trecdl22-crossencoder-debertav3"
-  max_len: 256
+  max_len: 512
 batch_size: 64

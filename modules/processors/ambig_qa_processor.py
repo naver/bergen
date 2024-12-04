@@ -83,7 +83,8 @@ class AmbigQAInstructV1(Processor):
                         # )
                         yield {
                             "id": f"ambigqa_{i}",
-                            "content": q.strip() + " " + instruction.strip(),
+                            "content": q.strip(),
+                            "instruction": instruction.strip(),
                             "label": [answer],
                         }
                         i += 1
@@ -132,45 +133,46 @@ class AmbigQAInstructV2(Processor):
                             instruction = ""
                         yield {
                             "id": f"ambigqa_ub{i}",
-                            "content": q.strip() + " " + instruction.strip(),
-                            "label": [answer],
-                        }
-                        i += 1
-
-        return datasets.Dataset.from_generator(my_gen)
-
-
-class AmbigQABase(Processor):
-    """This dataset is to evaluate the perf wo/ instructions
-    we have an ambiguous query (by construction), for which we consider an un-ambiguous answer (== the first answer == from the first desambiguated query)
-    """
-
-    def __init__(self, *args, **kwargs):
-        dataset_name = "ambig_qa_base"
-        super().__init__(*args, **kwargs, dataset_name=dataset_name)
-
-    def process(self):
-        def my_gen():
-            i = 0
-            d = {}
-            for split in ["dev", "test"]:
-                ds = load_dataset(
-                    "erbacher/AmbigNQ-clarifying-question", num_proc=self.num_proc
-                )[split]
-                for x in ds:
-                    if x["ambig"]:
-                        # FIXME for some reason the fields are stored as string instead of list
-                        q = x[
-                            "question"
-                        ]  # ambiguous question (to which we are going to append an instruction)
-                        answer = eval(x["answer"])[
-                            0
-                        ]  # hard-coded (bc how we constructed the instructions for now ==> the first answer is the correct one)
-                        yield {
-                            "id": f"ambigqa_{i}",
                             "content": q.strip(),
+                            "instruction": instruction.strip(),
                             "label": [answer],
                         }
                         i += 1
 
         return datasets.Dataset.from_generator(my_gen)
+
+
+# class AmbigQABase(Processor):
+#     """This dataset is to evaluate the perf wo/ instructions
+#     we have an ambiguous query (by construction), for which we consider an un-ambiguous answer (== the first answer == from the first desambiguated query)
+#     """
+
+#     def __init__(self, *args, **kwargs):
+#         dataset_name = "ambig_qa_base"
+#         super().__init__(*args, **kwargs, dataset_name=dataset_name)
+
+#     def process(self):
+#         def my_gen():
+#             i = 0
+#             d = {}
+#             for split in ["dev", "test"]:
+#                 ds = load_dataset(
+#                     "erbacher/AmbigNQ-clarifying-question", num_proc=self.num_proc
+#                 )[split]
+#                 for x in ds:
+#                     if x["ambig"]:
+#                         # FIXME for some reason the fields are stored as string instead of list
+#                         q = x[
+#                             "question"
+#                         ]  # ambiguous question (to which we are going to append an instruction)
+#                         answer = eval(x["answer"])[
+#                             0
+#                         ]  # hard-coded (bc how we constructed the instructions for now ==> the first answer is the correct one)
+#                         yield {
+#                             "id": f"ambigqa_{i}",
+#                             "content": q.strip(),
+#                             "label": [answer],
+#                         }
+#                         i += 1
+
+#         return datasets.Dataset.from_generator(my_gen)

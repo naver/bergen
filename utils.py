@@ -1,15 +1,15 @@
-'''
+"""
 BERGEN
 Copyright (c) 2024-present NAVER Corp.
 CC BY-NC-SA 4.0 license
-'''
+"""
 
 import datasets
-import random 
+import random
 import json
 import shutil
 import pytrec_eval
-import os 
+import os
 import torch
 import time
 import glob
@@ -23,7 +23,9 @@ from omegaconf import OmegaConf
 from tqdm import tqdm
 
 
-def left_pad(sequence: torch.LongTensor, max_length: int, pad_value: int) -> torch.LongTensor:
+def left_pad(
+    sequence: torch.LongTensor, max_length: int, pad_value: int
+) -> torch.LongTensor:
     """
     Helper function to perform left padding
     torch.long
@@ -39,32 +41,45 @@ def get_by_id(dataset, ids, field=None):
     # if single id is passed cast it to list
     if not isinstance(ids, list):
         ids = [ids]
-    idxs = [ dataset.id2index[id_] for id_ in ids if id_ in dataset.id2index]
+    idxs = [dataset.id2index[id_] for id_ in ids if id_ in dataset.id2index]
     if field != None:
         return dataset[idxs][field] if field in dataset[idxs] else []
     else:
         return idxs
-    
-    
+
+
 def load_embeddings(index_path):
     try:
-        emb_files = glob.glob(f'{index_path}/*.pt')
-        sorted_emb_files = sorted(emb_files, key=lambda x: int(''.join(filter(str.isdigit, x))))
+        emb_files = glob.glob(f"{index_path}/*.pt")
+        sorted_emb_files = sorted(
+            emb_files, key=lambda x: int("".join(filter(str.isdigit, x)))
+        )
         embeds = list()
-        for i, emb_file in enumerate(tqdm(sorted_emb_files, total=len(sorted_emb_files), desc=f'Load embeddings...')):
+        for i, emb_file in enumerate(
+            tqdm(
+                sorted_emb_files,
+                total=len(sorted_emb_files),
+                desc=f"Load embeddings...",
+            )
+        ):
             emb_chunk = torch.load(emb_file)
             embeds.append(emb_chunk)
         embeds = torch.concat(embeds)
     except RuntimeError:
-        # RuntimeError: torch.cat(): expected a non-empty list of Tensors 
+        # RuntimeError: torch.cat(): expected a non-empty list of Tensors
         # --> embeddings were not found
-        raise RuntimeError("No embeddings found. Check .trec run file name if you are running oracle provenance.")
+        raise RuntimeError(
+            "No embeddings found. Check .trec run file name if you are running oracle provenance."
+        )
     except Exception as e:
         print("Exception occured: ", e)
-        raise IOError(f'Embedding index corrupt. Please delete folder "{index_path}" and run again.')
+        raise IOError(
+            f'Embedding index corrupt. Please delete folder "{index_path}" and run again.'
+        )
     return embeds
 
-'''
+
+"""
 seem deprecated here
 def get_embeddings_by_id(ids, index_path):
     if not isinstance(ids[0], list):
@@ -92,10 +107,10 @@ def get_embeddings_by_id(ids, index_path):
         embeds.append(embeds_q)
     embeds = torch.stack(embeds)
     return embeds
-'''
+"""
 
 
-'''
+"""
 def get_doc_embeds_from_dataset(d_ids, embeds_dataset):
     if len(d_ids) == 0:
         return None
@@ -108,105 +123,146 @@ def get_doc_embeds_from_dataset(d_ids, embeds_dataset):
     doc_embeds = torch.stack(doc_embeds) 
 
     return doc_embeds.cpu()
-'''
+"""
 
 
 # horrible function :/ needs to be refactored into mult_doc and single doc
 # gets q_ids and d_ids and does a lookup by id to get the content
 # then constructs hf_dataset out of it
-def prepare_dataset_from_ids(dataset, q_ids, d_ids, multi_doc=False, query_field="content",use_intruction=False):
+def prepare_dataset_from_ids(
+    dataset, q_ids, d_ids, multi_doc=False, query_field="content", use_intruction=False
+):
 
     # if query _ids and doc_ids are None only return queries and optional labels /ranking labels
     if q_ids == d_ids == None:
         dataset_dict = {
-            'query': dataset['query'][query_field], 
-            'q_id': dataset['query']['id'],
-            }
+            "query": dataset["query"][query_field],
+            "q_id": dataset["query"]["id"],
+        }
         # if labels or ranking_labels are in query dataset add them to the dataset
 
-        dataset_dict.update({'label': dataset['query']['label'] } if 'label' in dataset['query'].features else {})
-        dataset_dict.update({'ranking_label': dataset['query']['ranking_label']} if 'ranking_label' in dataset['query'].features else {})
+        dataset_dict.update(
+            {"label": dataset["query"]["label"]}
+            if "label" in dataset["query"].features
+            else {}
+        )
+        dataset_dict.update(
+            {"ranking_label": dataset["query"]["ranking_label"]}
+            if "ranking_label" in dataset["query"].features
+            else {}
+        )
         return datasets.Dataset.from_dict(dataset_dict)
     else:
         assert isinstance(d_ids[0][0], str), f"{d_ids[0]}"
-        assert isinstance(list(dataset['doc'].id2index.keys())[0], str), "Dataset id type is not string, real index retrieval will fail and retrieve nothing. Please convert to string in dataset_processor!"
+        assert isinstance(
+            list(dataset["doc"].id2index.keys())[0], str
+        ), "Dataset id type is not string, real index retrieval will fail and retrieve nothing. Please convert to string in dataset_processor!"
         dataset_dict = defaultdict(list)
         # get labels
-        labels = get_by_id(dataset['query'], q_ids, 'label')
+        labels = get_by_id(dataset["query"], q_ids, "label")
         # get ranking_labels
-        ranking_labels = get_by_id(dataset['query'], q_ids, 'ranking_label')
+        ranking_labels = get_by_id(dataset["query"], q_ids, "ranking_label")
         # get queries
-        queries = get_by_id(dataset['query'], q_ids, query_field)
+        queries = get_by_id(dataset["query"], q_ids, query_field)
         if use_intruction:
-            queries_intruction = get_by_id(dataset['query'], q_ids, 'instruction')
+            queries_intructions = get_by_id(dataset["query"], q_ids, "instruction")
 
         # put together dataset_dict for each query
         def mygen():
-            for i, q_id in tqdm(enumerate(q_ids), desc='Fetching data from dataset...', total=len(q_ids)):
-                docs = get_by_id(dataset['doc'], d_ids[i], 'content') 
-                doc_idxs = get_by_id(dataset['doc'], d_ids[i])
+            for i, q_id in tqdm(
+                enumerate(q_ids), desc="Fetching data from dataset...", total=len(q_ids)
+            ):
+                docs = get_by_id(dataset["doc"], d_ids[i], "content")
+                doc_idxs = get_by_id(dataset["doc"], d_ids[i])
                 # for multi_doc=True, all documents are saved to the 'doc' entry
 
                 if multi_doc:
                     if use_intruction:
-                        x={'doc':docs, 'query': queries[i] +' '+queries_intruction[i],'q_id':q_id,'d_id':d_ids[i],'d_idx':doc_idxs}
+                        x = {
+                            "doc": docs,
+                            "query": queries[i] + " " + queries_intructions[i],
+                            "q_id": q_id,
+                            "d_id": d_ids[i],
+                            "d_idx": doc_idxs,
+                        }
                     else:
-                        x={'doc':docs, 'query': queries[i],'q_id':q_id,'d_id':d_ids[i],'d_idx':doc_idxs}
+                        x = {
+                            "doc": docs,
+                            "query": queries[i],
+                            "q_id": q_id,
+                            "d_id": d_ids[i],
+                            "d_idx": doc_idxs,
+                        }
                     # add labels if they exist in datset
                     if len(labels) > 0:
-                        #dataset_dict['label'].append(labels[i])
-                        x['label']=labels[i]
+                        # dataset_dict['label'].append(labels[i])
+                        x["label"] = labels[i]
                     # add ranking_labels if they exist in datset
                     if len(ranking_labels) > 0:
-                        #dataset_dict['ranking_label'].append(ranking_labels[i])
-                        x['ranking_labels']=ranking_labels[i]
+                        # dataset_dict['ranking_label'].append(ranking_labels[i])
+                        x["ranking_labels"] = ranking_labels[i]
                     yield x
                 else:
                     # for multi_doc=False, we save every document to a new entry
-                        for d_id, doc, d_idx in zip(d_ids[i], docs, doc_idxs):
-                            if use_intruction:
-                                x= {'d_id': d_id, 'd_idx':d_idx,'doc': doc, 'query':queries[i]+' '+queries_intruction[i],'q_id':q_id} 
-                            else:
-                                x= {'d_id': d_id, 'd_idx':d_idx,'doc': doc, 'query':queries[i],'q_id':q_id} 
-                            # add labels if they exist in datset
-                            if len(labels) > 0 :
-                                dataset_dict['label'].append(labels[i])
-                                x['label']=labels[i]
-                            # add ranking_labels if they exist in datset
-                            if len(ranking_labels) > 0:
-                                dataset_dict['ranking_label'].append(ranking_labels[i])
-                                x['ranking_labels']=ranking_labels[i]
-                            yield x
+                    for d_id, doc, d_idx in zip(d_ids[i], docs, doc_idxs):
+                        if use_intruction:
+                            x = {
+                                "d_id": d_id,
+                                "d_idx": d_idx,
+                                "doc": doc,
+                                "query": queries[i] + " " + queries_intructions[i],
+                                "q_id": q_id,
+                            }
+                        else:
+                            x = {
+                                "d_id": d_id,
+                                "d_idx": d_idx,
+                                "doc": doc,
+                                "query": queries[i],
+                                "q_id": q_id,
+                            }
+                        # add labels if they exist in datset
+                        if len(labels) > 0:
+                            dataset_dict["label"].append(labels[i])
+                            x["label"] = labels[i]
+                        # add ranking_labels if they exist in datset
+                        if len(ranking_labels) > 0:
+                            dataset_dict["ranking_label"].append(ranking_labels[i])
+                            x["ranking_labels"] = ranking_labels[i]
+                        yield x
 
         return datasets.Dataset.from_generator(mygen)
 
-def print_generate_out(queries, instructions, responses, query_ids, labels, ranking_labels, n=5):
+
+def print_generate_out(
+    queries, instructions, responses, query_ids, labels, ranking_labels, n=5
+):
     rand = random.sample(range(len(query_ids)), n)
     for i in rand:
-        print('_'*50)
-        print('Query ID:', query_ids[i])
-        print('Query:', queries[i])
-        print('_'*50)
+        print("_" * 50)
+        print("Query ID:", query_ids[i])
+        print("Query:", queries[i])
+        print("_" * 50)
         if instructions[i] != None:
-            print('Instruction to Generator:')
+            print("Instruction to Generator:")
             print(instructions[i])
         print()
-        print('LLM Answer:')
+        print("LLM Answer:")
         print(responses[i])
-        print('Label(s):')
+        print("Label(s):")
         print(labels[i])
         if ranking_labels[i] != None:
-            print('Ranking Label(s):')
+            print("Ranking Label(s):")
             print(ranking_labels[i])
         print()
         print()
 
 
-def print_rag_model(rag, retriever_kwargs,reranker_kwargs, generator_kwargs):
+def print_rag_model(rag, retriever_kwargs, reranker_kwargs, generator_kwargs):
     print()
     print()
-    print(':'*100)
-    print('RAG Model:')
+    print(":" * 100)
+    print("RAG Model:")
     # init modules
     if retriever_kwargs != None:
         print(f"Retriever: {retriever_kwargs['init_args']['model_name']}")
@@ -215,40 +271,53 @@ def print_rag_model(rag, retriever_kwargs,reranker_kwargs, generator_kwargs):
     if generator_kwargs != None:
         print(f"Generator: {generator_kwargs['init_args']['model_name']}")
 
-    print(':'*100)
+    print(":" * 100)
     print()
     print()
 
 
 def write_trec(fname, q_ids, d_ids, scores):
-    with open(fname, 'w') as fout:
+    with open(fname, "w") as fout:
         for i, q_id in enumerate(q_ids):
             for rank, (d_id, score) in enumerate(zip(d_ids[i], scores[i])):
-                fout.write(f'{q_id}\tq0\t{d_id}\t{rank+1}\t{score}\trun\n')
+                fout.write(f"{q_id}\tq0\t{d_id}\t{rank+1}\t{score}\trun\n")
 
 
-def write_generated(out_folder, out_filename, query_ids, questions, instructions, responses, labels, ranking_labels):
+def write_generated(
+    out_folder,
+    out_filename,
+    query_ids,
+    questions,
+    instructions,
+    responses,
+    labels,
+    ranking_labels,
+):
     jsonl_list = list()
-    for i, (q_id, question, response, instruction, label, ranking_label) in enumerate(zip(query_ids, questions, responses, instructions, labels, ranking_labels)):
+    for i, (q_id, question, response, instruction, label, ranking_label) in enumerate(
+        zip(query_ids, questions, responses, instructions, labels, ranking_labels)
+    ):
         jsonl = {}
-        jsonl['q_id'] = q_id
-        jsonl['response'] = response
-        jsonl['instruction'] = instruction
-        jsonl['label'] = label
-        jsonl['question'] = question
-        jsonl['ranking_label'] = ranking_label
+        jsonl["q_id"] = q_id
+        jsonl["response"] = response
+        jsonl["instruction"] = instruction
+        jsonl["label"] = label
+        jsonl["question"] = question
+        jsonl["ranking_label"] = ranking_label
         jsonl_list.append(jsonl)
     write_dict(out_folder, out_filename, jsonl_list)
 
+
 def write_dict(out_folder, out_filename, dict_to_write):
-    with open(f'{out_folder}/{out_filename}', 'w') as fp:
+    with open(f"{out_folder}/{out_filename}", "w") as fp:
         json.dump(dict_to_write, fp, indent=2)
+
 
 def load_trec(fname):
     # read file
     trec_dict = defaultdict(list)
-    for l in tqdm(open(fname), desc=f'Loading existing trec run {fname}'):
-        q_id, _, d_id, _, score, _ = l.split('\t')
+    for l in tqdm(open(fname), desc=f"Loading existing trec run {fname}"):
+        q_id, _, d_id, _, score, _ = l.split("\t")
         trec_dict[q_id].append((d_id, score))
     q_ids, d_ids, scores = list(), list(), list()
     for q_id in trec_dict:
@@ -262,52 +331,84 @@ def load_trec(fname):
     return q_ids, d_ids, scores
 
 
-
-def eval_retrieval_kilt(experiment_folder, qrels_folder, query_dataset_name, doc_dataset_name, split, query_ids, doc_ids, scores, top_k=5, reranking=False, debug=False, write_trec=True):
-    #only evaluate if wikipedia ids are in dataset
+def eval_retrieval_kilt(
+    experiment_folder,
+    qrels_folder,
+    query_dataset_name,
+    doc_dataset_name,
+    split,
+    query_ids,
+    doc_ids,
+    scores,
+    top_k=5,
+    reranking=False,
+    debug=False,
+    write_trec=True,
+):
+    # only evaluate if wikipedia ids are in dataset
     # if all(sublist for sublist in doc_ids):
     #     return
     scores = scores.tolist() if torch.is_tensor(scores) else scores
-    reranking_str = 're' if reranking else ''
-    qrels_file = get_qrel_ranking_filename(qrels_folder, query_dataset_name, split, debug)
-    if not os.path.exists(qrels_file): return
+    reranking_str = "re" if reranking else ""
+    qrels_file = get_qrel_ranking_filename(
+        qrels_folder, query_dataset_name, split, debug
+    )
+    if not os.path.exists(qrels_file):
+        return
     qrel = json.load(open(qrels_file))
     if "doc_dataset_name" in qrel:
-        if qrel["doc_dataset_name"] != doc_dataset_name: return
+        if qrel["doc_dataset_name"] != doc_dataset_name:
+            return
         qrel.pop("doc_dataset_name")
-    evaluator = pytrec_eval.RelevanceEvaluator(qrel, {'P_1', f'recall_{top_k}'})
+    evaluator = pytrec_eval.RelevanceEvaluator(qrel, {"P_1", f"recall_{top_k}"})
     run = defaultdict(dict)
     for i, q_id in enumerate(query_ids):
         for i, (doc_id, score) in enumerate(zip(doc_ids[i], scores[i])):
             # if we have duplicate doc ids (because different passage can map to same wiki page) only write the max scoring passage
             if doc_id not in run[q_id]:
-                run[q_id].update({doc_id: score}) 
+                run[q_id].update({doc_id: score})
             # if there is a higher scoring passage from the same wiki_doc, update the score (maxP)
             elif score >= run[q_id][doc_id]:
-                run[q_id].update({doc_id: score}) 
+                run[q_id].update({doc_id: score})
 
     if write_trec:
-        with open(f'{experiment_folder}/eval_{split}_{reranking_str}ranking_run.trec', 'w') as trec_out:
+        with open(
+            f"{experiment_folder}/eval_{split}_{reranking_str}ranking_run.trec", "w"
+        ) as trec_out:
             for q_id, scores_dict in run.items():
                 # Sort the dictionary by scores in decreasing order
-                sorted_scores = dict(sorted(scores_dict.items(), key=lambda item: item[1], reverse=True))
+                sorted_scores = dict(
+                    sorted(scores_dict.items(), key=lambda item: item[1], reverse=True)
+                )
                 for i, (doc_id, score) in enumerate(sorted_scores.items()):
-                    trec_out.write(f'{q_id}\tQO\t{doc_id}\t{i+1}\t{score}\trun\n')
+                    trec_out.write(f"{q_id}\tQO\t{doc_id}\t{i+1}\t{score}\trun\n")
 
     metrics_out = evaluator.evaluate(run)
     p_1 = sum([d["P_1"] for d in metrics_out.values()]) / max(1, len(metrics_out))
-    recall = sum([d[f"recall_{top_k}"] for d in metrics_out.values()]) / max(1, len(metrics_out))
-    
-    mean_metrics = {'P_1':p_1, f'recall_{top_k}': recall}
+    recall = sum([d[f"recall_{top_k}"] for d in metrics_out.values()]) / max(
+        1, len(metrics_out)
+    )
+
+    mean_metrics = {"P_1": p_1, f"recall_{top_k}": recall}
     fname = f"eval_{split}_{reranking_str}ranking_metrics.json"
-    write_dict(experiment_folder,  fname, mean_metrics)
+    write_dict(experiment_folder, fname, mean_metrics)
 
 
-def init_experiment(config, experiments_folder, index_folder, runs_folder, run_name, overwrite_exp=False, continue_batch=None):
+def init_experiment(
+    config,
+    experiments_folder,
+    index_folder,
+    runs_folder,
+    run_name,
+    overwrite_exp=False,
+    continue_batch=None,
+):
     # if run_name != None hash self to get run_name to avoid overwriting and exp. folder mess
-    run_name = f'tmp_{Hasher.hash(str(config))}' if run_name == None else f'tmp_{run_name}'
+    run_name = (
+        f"tmp_{Hasher.hash(str(config))}" if run_name == None else f"tmp_{run_name}"
+    )
     experiment_folder = os.path.join(experiments_folder, run_name)
-    print(f'Unfinished experiment_folder: {experiment_folder}')
+    print(f"Unfinished experiment_folder: {experiment_folder}")
     # get name of finished experiment
     finished_exp_name = get_finished_experiment_name(experiment_folder)
     if os.path.exists(finished_exp_name) and overwrite_exp:
@@ -315,18 +416,17 @@ def init_experiment(config, experiments_folder, index_folder, runs_folder, run_n
     # if experiment already exists finished quit
     if os.path.exists(finished_exp_name) and continue_batch == None:
         raise OSError(f"Experiment {finished_exp_name} already exists!")
-    print('experiment_folder', finished_exp_name)
+    print("experiment_folder", finished_exp_name)
 
     # make dirs
     os.makedirs(experiments_folder, exist_ok=True)
     os.makedirs(index_folder, exist_ok=True)
     os.makedirs(runs_folder, exist_ok=True)
     os.makedirs(experiment_folder, exist_ok=True)
-    # save entire config 
+    # save entire config
     OmegaConf.save(config=config, f=f"{experiment_folder}/config.yaml")
     # print config
     print(OmegaConf.to_yaml(config))
-
 
     wandb_project = f"NAVER-RAG-{experiments_folder.replace('/', '')}"
     os.environ["WANDB_PROJECT"] = wandb_project
@@ -336,51 +436,122 @@ def init_experiment(config, experiments_folder, index_folder, runs_folder, run_n
 
 # IO
 
+
 def get_finished_experiment_name(experiment_folder):
-    return experiment_folder.replace('tmp_', '')
+    return experiment_folder.replace("tmp_", "")
+
 
 def move_finished_experiment(experiment_folder):
     shutil.move(experiment_folder, get_finished_experiment_name(experiment_folder))
 
 
 def get_oracle_ranking_filename(runs_folder, dataset_name, split):
-    return f'{runs_folder}/run.oracle.{dataset_name}.{split}.trec'
+    return f"{runs_folder}/run.oracle.{dataset_name}.{split}.trec"
+
 
 def get_qrel_ranking_filename(qrels_folder, dataset_name, split, debug=False):
-    dataset_name = dataset_name.replace('_debug', '') if debug else dataset_name
-    return f'{qrels_folder}/qrel.{dataset_name}.{split}.json'
+    dataset_name = dataset_name.replace("_debug", "") if debug else dataset_name
+    return f"{qrels_folder}/qrel.{dataset_name}.{split}.json"
 
-def get_index_path(index_folder, dataset_name, model_name, query_or_doc, dataset_split='', query_generator_name='copy'):
-    dataset_split = dataset_split + '_' if dataset_split != '' else ''
-    query_gen_add = "" if query_generator_name == "copy" or query_or_doc=="doc" else f".{query_generator_name}"
-    return os.path.join(index_folder,f'{dataset_name}_{dataset_split}{query_or_doc}_{model_name}{query_gen_add}')
 
-def get_reranking_filename(runs_folder, query_dataset, doc_dataset, dataset_split, retriever_name, retrieve_top_k, reranker_name, rerank_top_k, query_generator_name):
+def get_index_path(
+    index_folder,
+    dataset_name,
+    model_name,
+    query_or_doc,
+    dataset_split="",
+    query_generator_name="copy",
+    use_instruction=False,
+):
+    dataset_split = dataset_split + "_" if dataset_split != "" else ""
+    query_gen_add = (
+        ""
+        if query_generator_name == "copy" or query_or_doc == "doc"
+        else f".{query_generator_name}"
+    )
+    use_instruction_add = ".instruct_rerank" if use_instruction else ""
+    return os.path.join(
+        index_folder,
+        f"{dataset_name}_{dataset_split}{query_or_doc}_{model_name}{query_gen_add}{use_instruction_add}",
+    )
+
+
+def get_reranking_filename(
+    runs_folder,
+    query_dataset,
+    doc_dataset,
+    dataset_split,
+    retriever_name,
+    retrieve_top_k,
+    reranker_name,
+    rerank_top_k,
+    query_generator_name,
+    use_instruction,
+):
     query_gen_add = "" if query_generator_name == "copy" else f".{query_generator_name}"
-    return f'{runs_folder}/run.rerank.retriever.top_{retrieve_top_k}.{retriever_name}.rerank.top_{rerank_top_k}.{query_dataset}.{doc_dataset}.{dataset_split}.{reranker_name}{query_gen_add}.trec'
+    use_instruction_add = ".instruct_rerank" if use_instruction else ""
+    return f"{runs_folder}/run.rerank.retriever.top_{retrieve_top_k}.{retriever_name}.rerank.top_{rerank_top_k}.{query_dataset}.{doc_dataset}.{dataset_split}.{reranker_name}{query_gen_add}{use_instruction_add}.trec"
 
-def get_ranking_filename(runs_folder, query_dataset, doc_dataset, retriever_name, dataset_split, retrieve_top_k, query_generator_name):
-    if retriever_name == 'oracle_provenance':
+
+def get_ranking_filename(
+    runs_folder,
+    query_dataset,
+    doc_dataset,
+    retriever_name,
+    dataset_split,
+    retrieve_top_k,
+    query_generator_name,
+    use_instruction,
+):
+    if retriever_name == "oracle_provenance":
         return get_oracle_ranking_filename(runs_folder, query_dataset, dataset_split)
     else:
-        query_gen_add = "" if query_generator_name == "copy" else f".{query_generator_name}"
-        return f'{runs_folder}/run.retrieve.top_{retrieve_top_k}.{query_dataset}.{doc_dataset}.{dataset_split}.{retriever_name}{query_gen_add}.trec'
+        query_gen_add = (
+            "" if query_generator_name == "copy" else f".{query_generator_name}"
+        )
+        use_instruction_add = ".instruct_retrieve" if use_instruction else ""
+        return f"{runs_folder}/run.retrieve.top_{retrieve_top_k}.{query_dataset}.{doc_dataset}.{dataset_split}.{retriever_name}{query_gen_add}{use_instruction_add}.trec"
 
-def get_query_generation_filename(query_generation_folder, query_dataset, query_generator_name, split):
-    return f'{query_generation_folder}/generated_queries.{query_dataset}.{split}.{query_generator_name}.json'
 
-def get_context_processing_filename(context_processing_folder, query_dataset, doc_dataset, dataset_split, retriever_name, retrieve_top_k, reranker_name, rerank_top_k, query_generator_name, context_processor_name):
+def get_query_generation_filename(
+    query_generation_folder, query_dataset, query_generator_name, split
+):
+    return f"{query_generation_folder}/generated_queries.{query_dataset}.{split}.{query_generator_name}.json"
+
+
+def get_context_processing_filename(
+    context_processing_folder,
+    query_dataset,
+    doc_dataset,
+    dataset_split,
+    retriever_name,
+    retrieve_top_k,
+    reranker_name,
+    rerank_top_k,
+    query_generator_name,
+    context_processor_name,
+):
     query_gen_add = "" if query_generator_name == "copy" else f".{query_generator_name}"
-    rerank_name = f"rerank.top_{rerank_top_k}.{reranker_name}" if reranker_name is not None else "no_rerank"
-    return f'{context_processing_folder}/processed_contexts.{context_processor_name}.retriever.top_{retrieve_top_k}.{retriever_name}.{rerank_name}.{query_dataset}.{doc_dataset}.{dataset_split}{query_gen_add}.json'
-        
+    rerank_name = (
+        f"rerank.top_{rerank_top_k}.{reranker_name}"
+        if reranker_name is not None
+        else "no_rerank"
+    )
+    return f"{context_processing_folder}/processed_contexts.{context_processor_name}.retriever.top_{retrieve_top_k}.{retriever_name}.{rerank_name}.{query_dataset}.{doc_dataset}.{dataset_split}{query_gen_add}.json"
+
+
 def get_embedding_datasets_path(embeddings_path):
-    embeddings_path = embeddings_path.rstrip('/')
-    return f'{embeddings_path}.hf'
+    embeddings_path = embeddings_path.rstrip("/")
+    return f"{embeddings_path}.hf"
+
 
 def format_time(field_name, generation_time):
-    return {field_name: time.strftime("%H:%M:%S.{}".format(str(generation_time % 1)[2:])[:11], time.gmtime(generation_time))}
-
+    return {
+        field_name: time.strftime(
+            "%H:%M:%S.{}".format(str(generation_time % 1)[2:])[:11],
+            time.gmtime(generation_time),
+        )
+    }
 
 
 def get_embeddings_dataset(embeddings_path, embedding_dim, num_proc=30):
@@ -394,23 +565,30 @@ def make_embeddings_dataset(embeddings_path, embedding_dim, num_proc):
     class StreamDatasetBuilder(datasets.GeneratorBasedBuilder):
         def _info(self):
             return datasets.DatasetInfo(
-                description='dataset',
+                description="dataset",
                 features=datasets.Features(
                     {
-                        "embedding":  datasets.Array2D(shape=(1, embedding_dim), dtype='float16'),
+                        "embedding": datasets.Array2D(
+                            shape=(1, embedding_dim), dtype="float16"
+                        ),
                     }
                 ),
                 supervised_keys=None,
                 homepage="",
-                citation='',
+                citation="",
             )
 
         def _split_generators(self, dl_manager):
-            emb_files = glob.glob(f'{embeddings_path}/*.pt')
-            sorted_emb_files = sorted(emb_files, key=lambda x: int(''.join(filter(str.isdigit, x))))
+            emb_files = glob.glob(f"{embeddings_path}/*.pt")
+            sorted_emb_files = sorted(
+                emb_files, key=lambda x: int("".join(filter(str.isdigit, x)))
+            )
             print(sorted_emb_files)
             return [
-                datasets.SplitGenerator(name=datasets.Split.TRAIN, gen_kwargs={"filepaths": sorted_emb_files}),
+                datasets.SplitGenerator(
+                    name=datasets.Split.TRAIN,
+                    gen_kwargs={"filepaths": sorted_emb_files},
+                ),
             ]
 
         def _generate_examples(self, filepaths):
@@ -418,14 +596,15 @@ def make_embeddings_dataset(embeddings_path, embedding_dim, num_proc):
             for filepath in filepaths:
                 embeds = torch.load(filepath)
                 for emb in embeds:
-                    yield id_, {'embedding': emb.unsqueeze(0)}
+                    yield id_, {"embedding": emb.unsqueeze(0)}
                     id_ += 1
 
-    dataset_builder = StreamDatasetBuilder(config_name='Stream')
+    dataset_builder = StreamDatasetBuilder(config_name="Stream")
     dataset_builder.download_and_prepare(num_proc=num_proc)
     dataset = dataset_builder.as_dataset(split="train")
-    dataset.save_to_disk(get_embedding_datasets_path(embeddings_path), num_proc=num_proc)
-
+    dataset.save_to_disk(
+        get_embedding_datasets_path(embeddings_path), num_proc=num_proc
+    )
 
 
 # adapted from https://github.com/huggingface/trl/blob/main/trl/trainer/utils.py
@@ -451,10 +630,13 @@ def prepare_labels(input_ids, response_token_ids, ignore_index=-100):
             )
             label_ids[i, :] = ignore_index
         else:
-            response_token_ids_end_idx = response_token_ids_start_idx + len(response_token_ids)
+            response_token_ids_end_idx = response_token_ids_start_idx + len(
+                response_token_ids
+            )
             # Make pytorch loss function ignore all tokens up through the end of the response key
             label_ids[i, :response_token_ids_end_idx] = ignore_index
     return label_ids
+
 
 def print_gpu_memory():
     if torch.cuda.is_available():
@@ -462,20 +644,23 @@ def print_gpu_memory():
         gpu_id = torch.cuda.current_device()
         gpu_name = torch.cuda.get_device_name(gpu_id)
         print(f"Using GPU: {gpu_name} (ID: {gpu_id})")
-        
+
         # Get the total and free memory in bytes
         total_memory = torch.cuda.get_device_properties(gpu_id).total_memory
         reserved_memory = torch.cuda.memory_reserved(gpu_id)
         allocated_memory = torch.cuda.memory_allocated(gpu_id)
         free_memory = reserved_memory - allocated_memory
-        
+
         print(f"Total GPU memory: {total_memory / (1024 ** 3):.2f} GB")
         print(f"Reserved GPU memory: {reserved_memory / (1024 ** 3):.2f} GB")
         print(f"Allocated GPU memory: {allocated_memory / (1024 ** 3):.2f} GB")
-        print(f"Reserved - Allocated = Free GPU memory: {free_memory / (1024 ** 3):.2f} GB")
+        print(
+            f"Reserved - Allocated = Free GPU memory: {free_memory / (1024 ** 3):.2f} GB"
+        )
 
         import subprocess
-        result = subprocess.run(['nvidia-smi'], stdout=subprocess.PIPE)
+
+        result = subprocess.run(["nvidia-smi"], stdout=subprocess.PIPE)
         print(result.stdout.decode())
 
     else:
