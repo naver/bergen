@@ -104,6 +104,8 @@ class RAG:
                 continue_batch=None,
                 train=None,
                 prompt=None,
+                reranker_use_query_instruction=False,
+                generator_use_query_instruction=False,
                 **kwargs,
                 ):
         
@@ -114,6 +116,8 @@ class RAG:
         context_processor_config = context_processor
         dataset_config = dataset
         
+        self.reranker_use_query_instruction=reranker_use_query_instruction
+        self.generator_use_query_instruction=generator_use_query_instruction
         #if all the config are still None, load from config
 
         #if none, then load from config
@@ -359,7 +363,8 @@ class RAG:
                     query_ids, 
                     doc_ids,
                     multi_doc=False,
-                    query_field="generated_query"
+                    query_field="generated_query",
+                    use_intruction=self.reranker_use_query_instruction
                 )
             out_ranking = self.reranker.eval(rerank_dataset)
             query_ids, doc_ids, scores = out_ranking['q_id'], out_ranking['doc_id'], out_ranking['score']
@@ -432,6 +437,7 @@ class RAG:
             doc_ids,
             multi_doc=True, 
             query_field="content",
+            use_intruction=self.generator_use_query_instruction
             )
 
         if self.context_processor is not None and self.retriever is not None:

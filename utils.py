@@ -114,7 +114,7 @@ def get_doc_embeds_from_dataset(d_ids, embeds_dataset):
 # horrible function :/ needs to be refactored into mult_doc and single doc
 # gets q_ids and d_ids and does a lookup by id to get the content
 # then constructs hf_dataset out of it
-def prepare_dataset_from_ids(dataset, q_ids, d_ids, multi_doc=False, query_field="content"):
+def prepare_dataset_from_ids(dataset, q_ids, d_ids, multi_doc=False, query_field="content",use_intruction=False):
 
     # if query _ids and doc_ids are None only return queries and optional labels /ranking labels
     if q_ids == d_ids == None:
@@ -137,6 +137,9 @@ def prepare_dataset_from_ids(dataset, q_ids, d_ids, multi_doc=False, query_field
         ranking_labels = get_by_id(dataset['query'], q_ids, 'ranking_label')
         # get queries
         queries = get_by_id(dataset['query'], q_ids, query_field)
+        if use_intruction:
+            queries_intruction = get_by_id(dataset['query'], q_ids, 'instruction')
+
         # put together dataset_dict for each query
         def mygen():
             for i, q_id in tqdm(enumerate(q_ids), desc='Fetching data from dataset...', total=len(q_ids)):
@@ -145,7 +148,10 @@ def prepare_dataset_from_ids(dataset, q_ids, d_ids, multi_doc=False, query_field
                 # for multi_doc=True, all documents are saved to the 'doc' entry
 
                 if multi_doc:
-                    x={'doc':docs, 'query': queries[i],'q_id':q_id,'d_id':d_ids[i],'d_idx':doc_idxs}
+                    if use_intruction:
+                        x={'doc':docs, 'query': queries[i] +' '+queries_intruction[i],'q_id':q_id,'d_id':d_ids[i],'d_idx':doc_idxs}
+                    else:
+                        x={'doc':docs, 'query': queries[i],'q_id':q_id,'d_id':d_ids[i],'d_idx':doc_idxs}
                     # add labels if they exist in datset
                     if len(labels) > 0:
                         #dataset_dict['label'].append(labels[i])
@@ -158,7 +164,10 @@ def prepare_dataset_from_ids(dataset, q_ids, d_ids, multi_doc=False, query_field
                 else:
                     # for multi_doc=False, we save every document to a new entry
                         for d_id, doc, d_idx in zip(d_ids[i], docs, doc_idxs):
-                            x= {'d_id': d_id, 'd_idx':d_idx,'doc': doc, 'query':queries[i],'q_id':q_id} 
+                            if use_intruction:
+                                x= {'d_id': d_id, 'd_idx':d_idx,'doc': doc, 'query':queries[i]+' '+queries_intruction[i],'q_id':q_id} 
+                            else:
+                                x= {'d_id': d_id, 'd_idx':d_idx,'doc': doc, 'query':queries[i],'q_id':q_id} 
                             # add labels if they exist in datset
                             if len(labels) > 0 :
                                 dataset_dict['label'].append(labels[i])
