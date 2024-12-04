@@ -1,0 +1,6 @@
+init_args: 
+  _target_: models.rerankers.crossencoder.CrossEncoder
+  model_name: "castorini/rankllama-v1-7b-lora-passage"
+  tokenizer_name: "meta-llama/Llama-2-7b-hf"
+  max_len: 2048
+batch_size: 64
