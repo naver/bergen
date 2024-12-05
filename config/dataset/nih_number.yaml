@@ -1,0 +1,19 @@
+train:
+    doc: null
+    query: null
+dev:
+    doc: 
+        init_args:
+            _target_: modules.processors.nih_dataset_processor.NIHDatasetNumber
+            is_query: false
+            split: "train"
+    
+    query: 
+        init_args:
+            _target_: modules.processors.nih_dataset_processor.NIHDatasetNumber
+            is_query: true
+            split: "train"
+
+test:
+    doc: null
+    query: null
