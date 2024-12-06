@@ -53,3 +53,13 @@ If you have local ollama server running, you can call models installed on this s
 python3 eval.py --experiments_folder experiments/ --llm_ollama "phi3:latest" --ollama_url "http://localhost:11434"   --llm_prompt default_multi_qa
 ```
 
+### Metrics tailored for RAG
+
+If you need fine-grained metrics to evaluate specific components of RAG, you can use the ```--ragchecker``` flag which implements the [RAGChecker metrics](https://arxiv.org/abs/2408.08067) that outputs overall metrics, retriever metrics, and generator metrics. 
+
+Example:
+```bash
+ python3 eval.py --ragchecker --experiments_folder experiments/
+ ```
+
+ Similarly this will output ```ragchecker_dev_out.json```, ```ragchecker_dev_metrics.json```, ```ragchecker_dev_viz.json```, the latter being a spider diagram to visualise these metrics.

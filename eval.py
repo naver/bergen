@@ -171,6 +171,26 @@ def gpt_eval(gpt, experiment_folder, folder, split, win_rate_opponent_folder, wi
         metric_name += '_win_rate_' + win_rate_opponent_name
     eval_single(experiment_folder, folder, split, model, gpt=gpt, metric_name=metric_name, nb_samples=nb_samples, win_rate_opponent_folder=win_rate_opponent_folder, force=force)
 
+def ragchecker_eval(experiment_folder, folder, split, nb_samples, force):
+    from models.evaluators.ragchecker import RAGChecker
+    if folder is None:
+        folders = [ f.path for f in os.scandir(experiment_folder) if f.is_dir() and 'tmp_' not in f.path]
+    else:
+        folders = [folder]
+    model = RAGChecker(split=split, nb_samples=nb_samples) # note: this does not load the model weights because loading 2 models would force to use smaller bs
+    for folder in folders:
+        print('evaluating', folder)
+        input_file = f'{folder}/eval_{split}_out.json'
+        if os.path.exists(input_file):
+            ragchecker_split_out = input_file.replace(f"eval_{split}_out.json", f"ragchecker_{split}_out.json")
+            ragchecker_split_metrics = input_file.replace(f"eval_{split}_out.json", f"ragchecker_{split}_metrics.json")
+            if not force and os.path.exists(ragchecker_split_out) and os.path.exists(ragchecker_split_metrics):
+                print (f"{folder}\tRAGChecker\talready done")
+                continue
+            model.forward(folder)
+        else:
+            print(f"{folder} doesn't have eval_{split}_out.json")
+            continue
 
 def run_eval(experiment_folder="experiments/",
              split="dev",
@@ -178,6 +198,7 @@ def run_eval(experiment_folder="experiments/",
              llm_ollama: list[str]=None,
              vllm: list[str]=None,
              gpt: bool=None,
+             ragchecker: bool=None,
              lid: bool=None,
              lid_advanced: bool=None,
              llm_batch_size: int=None,
@@ -207,6 +228,8 @@ def run_eval(experiment_folder="experiments/",
         if lid is not None or lid_advanced is not None:
             lid_eval(lid, lid_advanced, experiment_folder, folder, split, nb_samples=nb_samples, force=force)
             
+        if ragchecker:
+            ragchecker_eval(experiment_folder, folder, split, nb_samples, force)
 
 if __name__ == "__main__":
     import argparse
@@ -236,6 +259,7 @@ if __name__ == "__main__":
                 - if short name is missing: use full name in naming
                 """ )
     parser.add_argument('--gpt', type=str,default=None)
+    parser.add_argument('--ragchecker', action='store_true')
     parser.add_argument('--win_rate_opponent_folder', type=str, default=None, help='Provide a second folder via this to run pairwise comparisons\
         (only available with gpt and when specifying a folder)')
     parser.add_argument('--win_rate_opponent_name', type=str, default=None, help='Provide a second folder via this to run pairwise comparisons\
@@ -263,6 +287,7 @@ if __name__ == "__main__":
         llm=args.llm, 
         llm_ollama=args.llm_ollama,
         gpt=args.gpt,
+        ragchecker=args.ragchecker,
         lid=args.lid,
         lid_advanced=args.lid_advanced,
         llm_batch_size=args.llm_batch_size,
