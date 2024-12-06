@@ -8,6 +8,8 @@ import openai
 from tqdm import tqdm
 import numpy as np
 import os
+import random
+
 
 def openai_api_calculate_cost(usage,model="gpt-4-1106-preview"):
     pricing = {
@@ -62,7 +64,7 @@ def run_llm(client, model_name,messages):
 
 
 
-def create_instruction(question,answer,prediction):
+def create_instruction(question: str, answer: str, prediction: str):
     prefix =  [{'role': 'system',
              'content': "You are an evaluation tool. Just answer by {Yes} or {No}."}]
     prefix.extend([{'role': 'user',
@@ -72,20 +74,33 @@ def create_instruction(question,answer,prediction):
     return prefix    
 
 
+def create_pairwise_instruction(question, ref_answer, answer_1, answer_2):
+    prefix =  [{
+        'role': 'system',
+        'content': "You are a helpful assistant, that ranks models by the quality of their answers. Please act as an impartial judge. Do not allow the length of the responses to influence your evaluation. Be as objective as possible."
+        }]
+    prefix.extend([{
+        'role': 'user',
+        'content' :  f"Here is a question, a ground truth answer, an AI-generated answer 1 and an AI-generated answer 2. Which answer is the most correct one ? Simply answer {{1}} if the first is better, {{2}} if the second is better and {{3}} if it's a tie. \n Question: {question}.\n Ground truth answer: {ref_answer}.\n Answer 1: {answer_1}.\n Answer 2: {answer_2}."
+        }])
+    return prefix    
+
 # for evaluation
 class OpenAI():
-    def __init__(self,model):
+    
+    def __init__(self, model):
         self.client = openai.OpenAI(api_key = os.environ.get("OPENAI_API_KEY"),)
         self.model_name=model
+        
     def __call__(self, predictions, references, questions):
-        scores=list()
-        weird=list()
-        total_cost=0
-        prompt_cost=0
-        completion_cost=0
-        for q,r,p in (tq:= tqdm(zip(questions,references,predictions),total=len(questions),desc=f"score:  0.0%")):
+        scores = list()
+        weird = list()
+        total_cost = 0
+        prompt_cost = 0
+        completion_cost = 0
+        for q,r,p in (tq:= tqdm(zip(questions,references,predictions),total=len(questions),desc="score:  0.0%")):
             prompt = create_instruction(q,r[0],p)
-            response,costs = run_llm(self.client,self.model_name,prompt)
+            response, costs = run_llm(self.client,self.model_name,prompt)
             total_cost += costs[0]
             prompt_cost += costs[1]
             completion_cost += costs[2]
@@ -95,3 +110,52 @@ class OpenAI():
             tq.set_description(f"cost:{total_cost:4.1f} score: {np.mean(scores)* 100:4.1f}% weird {np.mean(weird)* 100:4.1f}%")
         print(total_cost,prompt_cost,completion_cost)
         return np.mean(scores), scores, {"total_cost":total_cost,"prompt_cost":prompt_cost,"completion_cost":completion_cost}
+    
+    def pairwise_win_rate(self, predictions, other_predictions, references, questions):
+        assert len(predictions) == len(other_predictions)
+        scores = []
+        weird = []
+        total_cost = 0
+        prompt_cost = 0
+        completion_cost = 0
+        for pred_1, pred_2, ref_answer, question in (tq:= tqdm(zip(predictions, other_predictions, references, questions), total=len(questions),desc="score:  0.0%")):
+            
+            # Randomly switch order to prevent position bias in judge
+            switch_order = (random.randint(0, 1) == 1)
+            if switch_order:
+                pred_1, pred_2 = pred_2, pred_1
+                
+            prompt = create_pairwise_instruction(question, ref_answer[0], answer_1=pred_1, answer_2=pred_2)
+            response, costs = run_llm(self.client,self.model_name,prompt)
+            total_cost += costs[0]
+            prompt_cost += costs[1]
+            completion_cost += costs[2]
+            score = None
+            if '1' in response.lower():
+                score = 1
+                w = 0
+            elif '2' in response.lower():
+                score = 0
+                w = 0
+            elif '3' in response.lower():
+                score = 0.5
+                w = 0
+            else:
+                score = 0.5 # tie by default
+                w = 1
+            
+            if switch_order:
+                score = 1 - score
+                
+            scores.append(score)
+            weird.append(w)
+            tq.set_description(f"cost:{total_cost:4.1f} win: {scores.count(1)*100./len(scores):4.1f}% tie {scores.count(0.5)*100./len(scores):4.1f}% lose {scores.count(0)*100./len(scores):4.1f}%  weird {np.mean(weird)* 100:4.1f}%")
+        print(total_cost, prompt_cost, completion_cost)
+        avg_scores = {
+            'win': scores.count(1)*100./len(scores),
+            'tie': scores.count(0.5)*100./len(scores),
+            'lose': scores.count(0)*100./len(scores)
+        }
+        return avg_scores, scores, {"total_cost":total_cost,"prompt_cost":prompt_cost,"completion_cost":completion_cost}
+            
+        
