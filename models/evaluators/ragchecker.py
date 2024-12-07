@@ -39,7 +39,7 @@ class RAGChecker():
 
         self.split = split
         self.nb_samples = nb_samples
-        self.debug = True if nb_samples is not None else False
+        self.debug = True if nb_samples is not None and nb_samples > 0 else False
 
     def init_folder(self, experiment_path):
         self.experiment_path = os.path.join(experiment_path, f"eval_{self.split}_out.json")
