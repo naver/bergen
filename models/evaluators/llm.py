@@ -9,8 +9,9 @@ import omegaconf
 from tqdm import tqdm
 import torch
 from hydra.utils import instantiate
-from models.evaluators.utils import *
+from models.evaluators.utils import process_llm_outputs_assess_scores, get_mean_without_unknown, unswitch_switched_scores
 import gc
+import random
 
 
 class LLMeval():
@@ -20,7 +21,6 @@ class LLMeval():
         - output score is computed as interpolation between prob of label and it's associated value 
         (defined by options map in config): eg. p(x=yes)*1 + p(x=no)*0 
     - otherwise: we just check if label is present in the answer (yes/no) and return associated value (1/0)
-
     """
     def __init__(self, model_config: dict, batch_size: int = None, config: str = "default_qa" ):
         """
@@ -37,84 +37,111 @@ class LLMeval():
         self.options = eval_config.output_options
         self.rubrik_section = ", ".join(["{"+opt+"}" for opt in self.options])
         self.prompt = eval_config['prompt']
+        self.prompt_pairwise = eval_config['prompt_pairwise']
         self.llm.max_new_tokens = eval_config['max_new_tokens']
-        if not batch_size == None:
-            self.llm.batch_size = batch_size
+        self.llm.batch_size = batch_size or self.llm.batch_size
         self.system_prompt = eval(self.prompt.system).replace(':\ ', ': ')
+        self.system_prompt_pairwise = eval(self.prompt_pairwise.system).replace(':\ ', ': ')
         #FIXME: what shall we do if label corrsponds to multiple tokens?
         self.output_ids = [self.llm.tokenizer.encode(opt, add_special_tokens=False) for opt in sorted(self.options)]
         self.output_values = torch.tensor([self.options[opt] for opt in sorted(self.options)]).float()
         
         self.generation_config = GenerationConfig.from_model_config(self.llm.model.config) 
-        self.generation_config.do_sample=False,
+        self.generation_config.do_sample = False,
         # according to documentation from https://huggingface.co/docs/transformers/v4.43.2/main_classes/text_generation this is supposed to force model to generate tokens from the list, but it doesn't seem to work in practice 
         # --> rollback to simple solution: just check first token logit of each predefined label
-        self.generation_config.force_word_ids=self.output_ids, 
-        self.generation_config.max_new_tokens=self.llm.max_new_tokens                    
+        self.generation_config.force_word_ids = self.output_ids, 
+        self.generation_config.max_new_tokens = self.llm.max_new_tokens                    
                  
-                                     
-                
-        
     def __del__(self):
-    #    print(f"Delete evaluator {self.llm.model_name}")
         torch.cuda.empty_cache()
         gc.collect()        
 
-    def create_instruction(self,sample):
+    def create_instruction(self, sample):
         answer = sample['reference']
-        question=sample['question']
-        prediction=sample['candidate']
-        if 'response' in sample:
-            response = sample['response']
-        else:
-            response = None
+        question = sample['question']
+        prediction = sample['candidate']
         prefix = []
         if getattr(self.llm.tokenizer, "chat_template") is not None and  'system' in self.llm.tokenizer.chat_template:
-            prefix =  [{'role': 'system',
-                'content': self.system_prompt}]
-            prefix.extend([{'role': 'user',
-                'content': eval(self.prompt.user).replace(':\ ', ': ')}]
-            )
-        
+            prefix =  [
+                {'role': 'system', 'content': self.system_prompt},
+                {'role': 'user', 'content': eval(self.prompt.user).replace(':\ ', ': ')}
+            ]
         else:
-            prefix = ([{'role': 'user',
-                'content': eval(self.prompt.user_without_system).replace(':\ ', ': ')}]
-            )
-        if 'assistant' in self.prompt:
-            prefix.extend([{'role': 'assistant',
-                'content': eval(self.prompt.assistant).replace(':\ ', ': ')}]
-                )
-        if not response is None:
-            prefix.extend([{'role': 'assistant',
-                'content': response}]
-            )
+            prefix = ([
+                {'role': 'user','content': eval(self.prompt.user_without_system).replace(':\ ', ': ')}
+            ])
         return self.llm.tokenizer.apply_chat_template(prefix,  add_generation_prompt=True, tokenize=False) 
-
-   
-   
-    def collate_fn(self, examples, max_length=512):
-        instr = [self.create_instruction(sample) for sample in examples]  # Add prompt to each text
-        instr_tokenized = self.llm.tokenizer(instr, padding=True, truncation=True, return_tensors="pt")
-        return instr_tokenized, instr
+    
+    def create_pairwise_instruction(self, sample):
+        question = sample['question']
+        ref_answer = sample['reference']
+        
+        answer = sample['candidate']
+        opponent_answer = sample['candidate']
+        switch = random.choice([True, False])
+        
+        # To prevent positional bias, orders of answers is randomly switched
+        if switch:
+            answer_1, answer_2 = opponent_answer, answer
+        else:
+            answer_1, answer_2 = answer, opponent_answer
+            
+        assert hasattr(self.llm.tokenizer, 'chat_template'), 'Please use an LLM with a chat template'
+        prefix =  [
+                {'role': 'system', 'content': self.system_prompt},
+                {'role': 'user', 'content': eval(self.prompt.user).replace(':\ ', ': ')}
+            ]
+        return self.llm.tokenizer.apply_chat_template(prefix,  add_generation_prompt=True, tokenize=False), switch
+        
+    def collate_fn(self, examples, pairwise: bool = False):
+        if pairwise:
+            instr, switches = []
+            for sample in examples:
+                sample_instr, sample_switch = self.create_pairwise_instruction(sample)
+                instr.append(sample_instr)
+                switches.append(sample_switch)
+        else:
+            instr = [self.create_instruction(sample) for sample in examples]  # Add prompt to each text
+        inputs = self.llm.tokenizer(instr, padding=True, truncation=True, return_tensors="pt")
+        
+        inputs['intr'] = instr
+        
+        if pairwise:
+            inputs['switches'] = switches
+        
+        return inputs
 
     @torch.no_grad()
-    def __call__(self, predictions, references, questions):
+    def __call__(self, predictions, references, questions, opponent_predictions = None):
+        """
+        other_preditions: opponent model prediction in pairwise comparison
+        """
         assert len(predictions) == len(references) == len(questions)
-        examples = [{'question': questions[i], 'reference': references[i], 'candidate': predictions[i]}  for i in range(len(predictions))]
+        
+        pairwise = (opponent_predictions is not None)
+        if not pairwise:
+            assert len(opponent_predictions) == len(predictions)
+            examples = [{'question': questions[i], 'reference': references[i], 'candidate': predictions[i]}
+                        for i in range(len(predictions))]
+        else:
+            examples = [{'question': questions[i], 'reference': references[i], 
+                         'candidate': predictions[i], 'other_candidate': opponent_predictions[i]}
+                        for i in range(len(predictions))]
+            
         # The outputs are raw logits.
         scores = list()
         weird = list()
         # Perform batch inference
-        full_inputs, full_instrs = self.collate_fn(examples)
         for i in (tq:=tqdm(range(0, len(examples), self.llm.batch_size), desc=f'LLM evaluation with {self.llm.model_name}...')):
             # Extract batch
             batch_examples = examples[i:i+self.llm.batch_size]
-            inputs, instrs = self.collate_fn(batch_examples)
+            inputs = self.collate_fn(batch_examples, pairwise=pairwise)
             input_ids = inputs['input_ids'].to(self.llm.model.device)
             attention_mask = inputs['attention_mask'].to(self.llm.model.device)                        
                            
             if self.use_logits:
-                self.generation_config.output_logits=True 
+                self.generation_config.output_logits = True 
                 self.generation_config.return_dict_in_generate=True                    
                 model_outputs = self.llm.model.generate(
                         input_ids,                            
@@ -127,24 +154,32 @@ class LLMeval():
                 model_scores = model_scores[0, :, [tok[0] for tok in self.output_ids]].float()
                 #normalizing scores - getting probablity of each of predefined labesl
                 pos_prob = torch.softmax(model_scores, 1).detach().cpu()
-                #final score is computed as interpolation between prob of label and it's associated value (defined by options map in config): eg. p(x=yes)*1 + p(x=no)*0 
+                #final score is computed as interpolation between prob of label 
+                # and its associated value (defined by options map in config): eg. p(x=yes)*1 + p(x=no)*0 
                 for i, score in enumerate(pos_prob):
                     scores.append(torch.dot(score,self.output_values).item())
+                    
+            elif pairwise:
+                decoded = self.llm.model.generate(
+                        input_ids,                            
+                        attention_mask=attention_mask,
+                        generation_config=self.generation_config
+                )
+                switched_scores, batch_weird  = process_llm_outputs_assess_scores(decoded, {'1': 1, '2': 0, '3': 0.5})
+                
+                # We post-process the scores to take into account the switches (to deter positional bias)
+                batch_scores = unswitch_switched_scores(switched_scores=switched_scores, switches=inputs['switches'])
+                        
+                weird.extend(batch_weird)
+                scores.extend(batch_scores)                
+                
             else:
-                # discrete model output            
                 # get real answer generation
                 decoded = self.llm.generate(inputs)
-                # #model_generations = self.llm.model.generate(input_ids,
-                #                     attention_mask=attention_mask,
-                #                     generation_config=self.generation_config 
-                #                     )
-                # decoded = self.llm.tokenizer.batch_decode(model_generations)
-                # breakpoint()
                 batch_scores, batch_weird  = process_llm_outputs_assess_scores(decoded, self.options)
                 weird.extend(batch_weird)
-                # if string value specified in options is present in the generated output: assign corresponding score,
-                # if multiple values are present: take maximum value
                 scores.extend(batch_scores)                
+                
             tq.set_description(f" score: {get_mean_without_unknown(scores)* 100:4.1f}%, weird :{float(len(weird))/len(scores)*100:4.1f}%")
         
         torch.cuda.empty_cache()

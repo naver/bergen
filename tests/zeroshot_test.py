@@ -7,7 +7,7 @@ CC BY-NC-SA 4.0 license
 import shutil
 from hydra import initialize, compose
 from bergen import main
-from eval import Evaluate
+from eval import run_eval
 from omegaconf import OmegaConf
 import pytest
 import gc
@@ -209,33 +209,33 @@ class TestBergenEval:
         with initialize(config_path="../config",version_base="1.2"):
             test_name = inspect.currentframe().f_code.co_name
             exp_folder = "tests/utdata/"
-            Evaluate.eval(experiment_folder=exp_folder, lid=True, force=True)
+            run_eval(experiment_folder=exp_folder, lid=True, force=True)
 
    
     def test_llmeval_default(self):
         with initialize(config_path="../config",version_base="1.2"):
             test_name = inspect.currentframe().f_code.co_name
             exp_folder = "tests/utdata/"
-            Evaluate.eval(experiment_folder=exp_folder, llm=["tinyllama-chat", "test-llm-1"], llm_batch_size= 4, llm_prompt="default_qa", force=True, samples=4)
+            run_eval(experiment_folder=exp_folder, llm=["tinyllama-chat", "test-llm-1"], llm_batch_size= 4, llm_prompt="default_qa", force=True, samples=4)
      
        
     def test_llmeval_multi(self):
         with initialize(config_path="../config",version_base="1.2"):
             test_name = inspect.currentframe().f_code.co_name
             exp_folder = "tests/utdata/"
-            Evaluate.eval(experiment_folder=exp_folder, llm=["tinyllama-chat", "test-llm-2"], llm_batch_size= 4, llm_prompt="default_multi_qa", force=True)
+            run_eval(experiment_folder=exp_folder, llm=["tinyllama-chat", "test-llm-2"], llm_batch_size= 4, llm_prompt="default_multi_qa", force=True)
     
     def test_vllmeval(self):
         with initialize(config_path="../config",version_base="1.2"):
             test_name = inspect.currentframe().f_code.co_name
             exp_folder = "tests/utdata/"
-            Evaluate.eval(experiment_folder=exp_folder, vllm=["tinyllama-chat", "test-vllm-1"], llm_batch_size=4, llm_prompt="default_qa", force=True)
+            run_eval(experiment_folder=exp_folder, vllm=["tinyllama-chat", "test-vllm-1"], llm_batch_size=4, llm_prompt="default_qa", force=True)
    
     def test_vllmeval_multi(self):
         with initialize(config_path="../config",version_base="1.2"):
             test_name = inspect.currentframe().f_code.co_name
             exp_folder = "tests/utdata/"
-            Evaluate.eval(experiment_folder=exp_folder, vllm=["tinyllama-chat", "test-vllm-2"], llm_batch_size=4, llm_prompt="default_multi_qa", force=True)
+            run_eval(experiment_folder=exp_folder, vllm=["tinyllama-chat", "test-vllm-2"], llm_batch_size=4, llm_prompt="default_multi_qa", force=True)
    
     
 

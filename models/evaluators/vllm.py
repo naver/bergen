@@ -6,19 +6,15 @@ CC BY-NC-SA 4.0 license
 
 from tqdm import tqdm
 import torch
-import numpy as np
-from vllm import LLM as vllm
-from vllm import  SamplingParams
+from models.evaluators.llm import LLMeval
 import omegaconf
 from hydra.utils import instantiate
-import random
-from models.evaluators.utils import *
+from models.evaluators.utils import process_llm_outputs_assess_scores, get_mean_without_unknown, unswitch_switched_scores
 import logging
 logger = logging.getLogger(__name__)
-import gc
 
 
-class VLLMeval:
+class VLLMeval(LLMeval):
     """
     - relies on vllm for inference, directly loads the model and runs inference (no need to initiate vllm server in advance) 
     - output score for each sample is 1 (when positive word is present in llm output) or 0  (otherwise) 
@@ -35,67 +31,57 @@ class VLLMeval:
         self.options = eval_config.output_options
         self.rubrik_section = ", ".join(["{"+opt+"}" for opt in self.options])
         self.prompt = eval_config['prompt']
+        self.prompt_pairwise = eval_config['prompt_pairwise']
+
         self.llm.sampling_params.max_new_token = eval_config['max_new_tokens']
-        if not batch_size == None:
-            self.llm.batch_size = batch_size
+        self.llm.batch_size = batch_size or self.llm.batch_size
         self.llm.max_new_tokens = eval_config['max_new_tokens']
         self.system_prompt = eval(self.prompt.system).replace(':\ ', ': ')
+        self.system_prompt_pairwise = eval(self.prompt_pairwise.system).replace(':\ ', ': ')
         self.output_ids = [self.llm.tokenizer.encode(opt, add_special_tokens=False)[-1] for opt in sorted(self.options)]
         self.output_values = torch.tensor([self.options[opt] for opt in sorted(self.options)]).float()
-        
-     
-    def create_instruction(self,sample):
-        answer = sample['reference']
-        question=sample['question']
-        prediction=sample['candidate']
-        if 'response' in sample:
-            response = sample['response']
-        else:
-            response = None
-        prefix = []
-        if 'system' in self.llm.tokenizer.chat_template:
-            prefix =  [{'role': 'system',
-                'content': self.system_prompt}]
-            prefix.extend([{'role': 'user',
-                'content': eval(self.prompt.user).replace(':\ ', ': ')}]
-            )
-        
-        else:
-            prefix = ([{'role': 'user',
-                'content': eval(self.prompt.user_without_system).replace(':\ ', ': ')}]
-            )
-        if 'assistant' in self.prompt:
-            prefix.extend([{'role': 'assistant',
-                'content': eval(self.prompt.assistant).replace(':\ ', ': ')}]
-                )
-        if not response is None:
-            prefix.extend([{'role': 'assistant',
-                'content': response}]
-            )
-        return self.llm.tokenizer.apply_chat_template(prefix,  add_generation_prompt=True, tokenize=False) 
 
-    def __del__(self):
-    #    logger.info("Deleting object")        
-        torch.cuda.empty_cache()
-        gc.collect()        
-    
     @torch.no_grad()
-    def __call__(self, predictions, references, questions):
-        # Loading the TensorFlow Hub model
+    def __call__(self, predictions, references, questions, opponent_predictions=None):
         assert len(predictions) == len(references) == len(questions)
+        
+        pairwise = (opponent_predictions is not None)
+        if not pairwise:
+            assert len(opponent_predictions) == len(predictions)
+            examples = [{'question': questions[i], 'reference': references[i], 'candidate': predictions[i]}
+                        for i in range(len(predictions))]
+        else:
+            examples = [{'question': questions[i], 'reference': references[i], 'candidate': predictions[i], 'other_candidate': opponent_predictions[i]}
+                        for i in range(len(predictions))]
+        
         examples = [{'question': questions[i], 'reference': references[i], 'candidate': predictions[i]}  for i in range(len(predictions))]
-        instrs = [self.create_instruction(sample) for sample in examples]
+        if pairwise:
+            instr, switches = []
+            for sample in examples:
+                sample_instr, sample_switch = self.create_pairwise_instruction(sample)
+                instr.append(sample_instr)
+                switches.append(sample_switch)
+        else:
+            instrs = [self.create_instruction(sample) for sample in examples]
+            
         scores = list()
         weird = list() 
         # Perform batch inference
         for i in (tq:=tqdm(range(0, len(instrs), self.llm.batch_size), desc=f'LLM evaluation with {self.llm.model_name}...')):
             decoded = self.llm.generate(instrs[i:i+self.llm.batch_size])
-            batch_scores, batch_weird  = process_llm_outputs_assess_scores(decoded, self.options)
+            
+            if pairwise:
+                switched_scores, batch_weird  = process_llm_outputs_assess_scores(decoded, {'1': 1., '2': 0., '3': 0.5})
+                batch_scores = unswitch_switched_scores(switched_scores=switched_scores, switches=switches[i:i+self.llm.batch_size])
+
+            else:
+                batch_scores, batch_weird  = process_llm_outputs_assess_scores(decoded, self.options)
+                
             scores.extend(batch_scores)
             weird.extend(batch_weird)
+                
             tq.set_description(f" score: {get_mean_without_unknown(scores)* 100:4.1f}%, weird :{float(len(weird))/len(scores)*100:4.1f}%")
         logger.info(weird)
         print("Weird", len(weird))
     
         return get_mean_without_unknown(scores), scores
-
