@@ -17,6 +17,23 @@ def load_data(input_file, nb_samples):
     return data
 
 
+def load_opponent_predictions(opponent_folder: str, split: str, data: dict) -> list:
+    """
+    Loads predictions from the opponent folder
+    Orders them as in 'data' and checks all elements are present
+    """
+    # We filter the other data to keep the q_ids in data
+    other_data = load_data(f'{opponent_folder}/eval_{split}_out.json', nb_samples=-1)
+    other_data = other_data[other_data.q_id.isin(data.q_id.unique())]
+    # Reordering along data order:
+    other_data = other_data.set_index('q_id').reindex(data['q_id']).reset_index()
+
+    # Sanity checks:
+    for elt, other_elt in zip(data['q_id'].values, other_data['q_id'].values):
+        assert elt == other_elt, f'Unmatching q_id {elt} vs {other_elt} in json files: cannot compare'
+    return other_data['response'].values
+
+
 def eval_single(experiment_folder,
                 folder,
                 split: str,
@@ -58,24 +75,19 @@ def eval_single(experiment_folder,
                 if win_rate_opponent_folder is None:
                     model_score, scores, cost = model(predictions, references, questions)
                 else:
-                    # We filter the other data to keep the q_ids in data
-                    other_data = load_data(f'{win_rate_opponent_folder}/eval_{split}_out.json', nb_samples=-1)
-                    other_data = other_data[other_data.q_id.isin(data.q_id.unique())]
-                    # Reordering along data order:
-                    other_data = other_data.set_index('q_id').reindex(data['q_id']).reset_index()
-
-                    # Sanity checks:
-                    for elt, other_elt in zip(data['q_id'].values, other_data['q_id'].values):
-                        assert elt == other_elt, f'Unmatching q_id {elt} vs {other_elt} in json files: cannot compare'
-                    other_predictions = other_data['response'].values
-
-                    model_score, scores, cost = model.pairwise_win_rate(predictions, other_predictions, references, questions)
+                    opponent_predictions = load_opponent_predictions(win_rate_opponent_folder, split=split, data=data)
+                    model_score, scores, cost = model.pairwise_win_rate(predictions, opponent_predictions, references, questions)
                     
                 # openai costs
                 costs_out_file = f'{experiment_folder}/eval_{split}_cost_{metric_name}_out.json'
                 with open(costs_out_file, 'w') as fout: fout.write(json.dumps(cost))
-            else:                    
-                model_score, scores = model(predictions, references, questions)
+            else:
+                if win_rate_opponent_folder is None:                    
+                    model_score, scores = model(predictions, references, questions)
+                else:
+                    opponent_predictions = load_opponent_predictions(win_rate_opponent_folder, split=split, data=data)
+                    model_score, scores = model(predictions, opponent_predictions, references, questions)
+                    
             data[metric_name] = scores
             metrics_out_file = f'{experiment_folder}/eval_{split}_out.json'
             if nb_samples >0:
@@ -97,13 +109,16 @@ def eval_single(experiment_folder,
             shutil.move(metrics_file + '_', metrics_file)
                     
                     
-def llm_eval(llm: list[str], experiment_folder, folder, split, batch_size, llm_prompt, nb_samples, force):
+def llm_eval(llm: list[str], experiment_folder, folder, split, batch_size, llm_prompt, win_rate_opponent_folder, win_rate_opponent_name, nb_samples, force):
     if len(llm) == 0:
-        model_config, short_name = "SOLAR-107B", "LLMeval"            
+        model_config, metric_name = "SOLAR-107B", "LLMeval"            
     else:
         model_config = llm[0]
-        short_name = llm[1] if len(llm) > 1 else model_config
-        short_name = f"LLMeval_{short_name}"
+        metric_name = llm[1] if len(llm) > 1 else model_config
+        metric_name = f"LLMeval_{metric_name}"
+        
+    if win_rate_opponent_folder is not None:
+        metric_name += '_win_rate_' + win_rate_opponent_name
 
     model_config = omegaconf.OmegaConf.load(f"config/generator/{model_config}.yaml")            
     if model_config['init_args']['_target_']=='models.generators.vllm.VLLM':
@@ -114,9 +129,9 @@ def llm_eval(llm: list[str], experiment_folder, folder, split, batch_size, llm_p
         from models.evaluators.llm import LLMeval 
         model = LLMeval(model_config, batch_size=batch_size, config=llm_prompt)
         if model.use_logits :
-            short_name = f"{short_name}_logits"
+            metric_name = f"{metric_name}_logits"
         
-    eval_single(experiment_folder, folder, split, model, metric_name=short_name, nb_samples=nb_samples, force=force)
+    eval_single(experiment_folder, folder, split, model, metric_name=metric_name, nb_samples=nb_samples, force=force)
     del model
     torch.cuda.empty_cache()
     gc.collect()
@@ -188,24 +203,36 @@ def run_eval(experiment_folder="experiments/",
              nb_samples: int=-1,
              win_rate_opponent_folder: str = None,
              win_rate_opponent_name: str = None):
-        if gpt is not None:
-            gpt_eval(gpt, 
-                     experiment_folder, 
-                     folder, 
-                     split, 
-                     win_rate_opponent_folder=win_rate_opponent_folder, 
-                     win_rate_opponent_name=win_rate_opponent_name, 
-                     nb_samples=nb_samples, 
-                     force=force)
+    """
+    Entry point for all LLM evaluations.
+    """
+    if gpt is not None:
+        gpt_eval(gpt, 
+                    experiment_folder, 
+                    folder, 
+                    split, 
+                    win_rate_opponent_folder=win_rate_opponent_folder, 
+                    win_rate_opponent_name=win_rate_opponent_name, 
+                    nb_samples=nb_samples, 
+                    force=force)
+    
+    if llm is not None:
+        llm_eval(llm,
+                 experiment_folder,
+                 folder,
+                 split,
+                 llm_batch_size,
+                 llm_prompt, 
+                 win_rate_opponent_folder=win_rate_opponent_folder, 
+                 win_rate_opponent_name=win_rate_opponent_name, 
+                 nb_samples=nb_samples,
+                 force=force)
         
-        if llm is not None:
-            llm_eval(llm, experiment_folder, folder, split, llm_batch_size, llm_prompt, nb_samples=nb_samples, force=force)
-            
-        if llm_ollama is not None:
-            llm_ollama_eval(llm_ollama, experiment_folder, folder, split, llm_batch_size, llm_prompt, ollama_url, nb_samples=nb_samples, force=force)
-            
-        if lid is not None or lid_advanced is not None:
-            lid_eval(lid, lid_advanced, experiment_folder, folder, split, nb_samples=nb_samples, force=force)
+    if llm_ollama is not None:
+        llm_ollama_eval(llm_ollama, experiment_folder, folder, split, llm_batch_size, llm_prompt, ollama_url, nb_samples=nb_samples, force=force)
+        
+    if lid is not None or lid_advanced is not None:
+        lid_eval(lid, lid_advanced, experiment_folder, folder, split, nb_samples=nb_samples, force=force)
             
 
 if __name__ == "__main__":
@@ -236,6 +263,8 @@ if __name__ == "__main__":
                 - if short name is missing: use full name in naming
                 """ )
     parser.add_argument('--gpt', type=str,default=None)
+    
+    # Use these arguments to do pairwise evaluations:
     parser.add_argument('--win_rate_opponent_folder', type=str, default=None, help='Provide a second folder via this to run pairwise comparisons\
         (only available with gpt and when specifying a folder)')
     parser.add_argument('--win_rate_opponent_name', type=str, default=None, help='Provide a second folder via this to run pairwise comparisons\
@@ -250,10 +279,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     if args.win_rate_opponent_folder is not None:
-        assert args.gpt is not None, 'Pairwise only supported with gpt currently'
         assert args.folder is not None, 'Pairwise only supported if you specify a folder'
         assert os.path.isdir(args.win_rate_opponent_folder), 'Pairwise_on argument should point to a directory to which compare the folder arg outputs.'
-        assert args.win_rate_opponent_name is not None, 'Specify a name for the opponent'
+        assert args.win_rate_opponent_name is not None, 'Specify a name for the opponent (to name the metrics)'
         print('Pairwise comparison detected:', args.win_rate_opponent_folder, args.win_rate_opponent_name)
     
     e = run_eval(
@@ -273,4 +301,3 @@ if __name__ == "__main__":
         win_rate_opponent_folder=args.win_rate_opponent_folder,
         win_rate_opponent_name=args.win_rate_opponent_name
     )
-

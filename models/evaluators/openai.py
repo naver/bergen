@@ -111,14 +111,14 @@ class OpenAI():
         print(total_cost,prompt_cost,completion_cost)
         return np.mean(scores), scores, {"total_cost":total_cost,"prompt_cost":prompt_cost,"completion_cost":completion_cost}
     
-    def pairwise_win_rate(self, predictions, other_predictions, references, questions):
-        assert len(predictions) == len(other_predictions)
+    def pairwise_win_rate(self, predictions, opponent_predictions, references, questions):
+        assert len(predictions) == len(opponent_predictions)
         scores = []
         weird = []
         total_cost = 0
         prompt_cost = 0
         completion_cost = 0
-        for pred_1, pred_2, ref_answer, question in (tq:= tqdm(zip(predictions, other_predictions, references, questions), total=len(questions),desc="score:  0.0%")):
+        for pred_1, pred_2, ref_answer, question in (tq:= tqdm(zip(predictions, opponent_predictions, references, questions), total=len(questions),desc="score:  0.0%")):
             
             # Randomly switch order to prevent position bias in judge
             switch_order = (random.randint(0, 1) == 1)
