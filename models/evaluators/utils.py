@@ -14,4 +14,3 @@ def get_mean_without_unknown(scores, unknown_value=-100):
         return np.mean(scores_to_consider)
     else:
         return 0    
-

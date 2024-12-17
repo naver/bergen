@@ -790,12 +790,10 @@ class SquadDocumentsChunked(Processor):
     
 
 class KILTMULTIQA(Processor):
-    def __init__(self, response_files: list = None, only_matched_labels: bool = False, *args, **kwargs):
+    def __init__(self, response_files: list = None, *args, **kwargs):
         dataset_name = 'kilt_combined_qa'
         super().__init__(*args, **kwargs, dataset_name=dataset_name)
         self.response_files = response_files
-        self.only_matched_labels = only_matched_labels # if True, then only labels where match occurred are kept !
-        self.matched_indices = []
         if response_files is not None:
             self.response_files = response_files
             self.use_cache = False # we'll use labels coming from some input file: we don't want to overwrite anything in this case.
@@ -823,20 +821,12 @@ class KILTMULTIQA(Processor):
             def replace_label(example, idx):
                 original_label = example['label'] # This is a list
                 new_label = new_data[example['id']] # This is a str
-                
-                # Is there match ?
-                if max([match_single(new_label, l) for l in original_label]) > 0:
-                    self.matched_indices.append(idx) 
-                
+            
                 example['label'] = [new_label]
                 return example
                         
             print('Replacing labels in dataset with read responses...')
             dataset = dataset.map(replace_label, with_indices=True)
-            
-            if self.only_matched_labels:
-                print(f"Keeping only {len(self.matched_indices)} / {len(dataset)} elements for which new responses matched.")
-                dataset = dataset.select(self.matched_indices)
             
         return dataset
 
@@ -881,7 +871,6 @@ class KILTMULTIQA(Processor):
         assert 0 < idx_max <= len(dataset), f"{idx_max} but {len(dataset)}"
         
         if idx_min != 0 or idx_max != len(dataset):
-            assert not self.only_matched_labels
             print(f"Selecting {idx_min} to {idx_max} in dataset {self.dataset_name} of length {len(dataset)}")
             dataset = dataset.select(range(idx_min, idx_max))
             dataset.id2index = self.get_index_to_id(dataset) # we recompute it

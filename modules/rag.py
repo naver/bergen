@@ -596,7 +596,7 @@ class RAG:
             eval_steps=100,
             save_strategy='steps', # 'no' if self.training_config.deepspeed else 'steps'
             save_steps=500,
-            save_total_limit=20,
+            save_total_limit=10,
             logging_strategy='steps',
             logging_steps=100,
             local_rank=-1,

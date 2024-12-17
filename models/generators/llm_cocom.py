@@ -18,14 +18,16 @@ class LLMCocom(Generator):
                  quantization='no',
                  model_max_length: int = 1280,
                  prompt: str = None,
+                 lora_compressor: bool = False,
                  compr_rate: float = None,
                  compr_model_name: str = None,
                  compr_mode: str = 'last',
                  compr_mlp_hidden_dim: int = 1024,
                  compr_n_layers: int = None, # only useful for surgical mistral compressor,
-                 query_dependent: bool = False,
+                 compr_rms_norm: bool = False, # only useful for surgical mistral compressor
                  compr_use_mlp: bool = True,
                  attn_implementation: str = 'flash_attention_2',
+                 query_dependent: bool = False,
                  device_map = 'auto',
                  save_generated_embeddings_path: str = None):
         """
@@ -43,7 +45,7 @@ class LLMCocom(Generator):
         # Loading the cocom model:
         if checkpoint_path is not None:
             self.model = COCOM.from_pretrained(checkpoint_path, device_map=device_map, attn_implementation=attn_implementation)
-            
+                
         else:
             cfg = COCOMConfig(
                 decoder_model_name=decoder_model_name,
@@ -53,8 +55,10 @@ class LLMCocom(Generator):
                 compr_mode=compr_mode,
                 compr_rate=compr_rate,
                 compr_n_layers=compr_n_layers,
+                compr_rms_norm=compr_rms_norm,
                 compr_mlp_hidden_dim=compr_mlp_hidden_dim,
                 lora=True,
+                lora_compressor=lora_compressor,
                 training_form='both_separately',
                 lora_r=16,
                 kbtc_training=False,
@@ -62,7 +66,6 @@ class LLMCocom(Generator):
                 different_mem_tokens=True,
                 device_map=device_map,
                 attn_implementation=attn_implementation,
-                query_dependent=query_dependent
             )
             print('Creating brand new COCOM model:', cfg)
             self.model = COCOM(cfg)
@@ -71,9 +74,9 @@ class LLMCocom(Generator):
         
         self.prompt = prompt
         self.context_max_length = context_max_length
-        self.query_dependent = self.model.query_dependent
+        self.query_dependent = query_dependent
         if self.query_dependent:
-            self.context_max_length += 32  # hard-coded at the moment
+            self.context_max_length += 64  # hard-coded at the moment
         self.max_new_tokens = max_new_tokens
         self.model_max_length = model_max_length
         self.save_generated_embeddings_path = save_generated_embeddings_path
@@ -164,7 +167,8 @@ class LLMCocom(Generator):
             flattened_query = sum([[q] * self.model.generation_top_k for q in query], [])
             inp_enc = self.model.prepare_encoder_inputs(texts=docs, q_texts=flattened_query, max_length=self.context_max_length)
         else:
-            inp_enc = self.model.prepare_encoder_inputs(texts=docs, max_length=self.context_max_length)
+            inp_enc = self.model.prepare_encoder_inputs(texts=docs, max_length=self.context_max_length, q_texts=None)
+            
         enc_input_ids, enc_attention_mask = inp_enc['input_ids'], inp_enc['attention_mask']
         
         # input_ids are of shape (top_k * batch_size, enc_token_length)
@@ -300,53 +304,3 @@ class LLMCocom(Generator):
                 raise e
 
         return prompt, label_start
-
-
-class LLMCocomOnlyDecoder(LLM):
-    def __init__(self,
-                 model_name: str,
-                 batch_size: int,
-                 checkpoint_path: str,
-                 context_max_length: int = 128,
-                 max_doc_len: int = 100,
-                 max_new_tokens: int = 128,
-                 model_max_length: int = 1280,
-                 prompt: str = None):
-        """
-        Uses the decoder of COCOM as an independent LLM (for evaluation purposes)
-        This is just a reimplementation of LLM where in the init we extract the decoder from the cocom object
-        checkpoint_path: path to a COCOM checkpoint
-        context_max_length: maximum length for encoding documents
-        max_new_tokens: maximum number of tokens for generation
-        model_max_length: maximum length used in the final query (should be large enough)
-        """
-        from cocom.model import COCOM
-        
-        Generator.__init__(self, model_name=model_name, batch_size=batch_size)
-
-        # Loading the cocom model:
-        cocom = COCOM.from_pretrained(checkpoint_path)
-        
-        # We will only need this adapter if it exists
-        if 'decoder_adapter' in cocom.adapter_keys:
-            print('Activating decoder adapter.')
-            cocom.decoder.set_adapter('decoder_adapter')
-            
-        cocom.eval()
-        
-        self.model = cocom.decoder
-        self.tokenizer = cocom.decoder_tokenizer
-
-        self.max_doc_len = max_doc_len # limit in words for documents.
-
-        self.prompt = prompt
-        self.context_max_length = context_max_length
-        self.max_new_tokens = max_new_tokens
-        self.model_max_length = model_max_length
-        
-        self.model.bfloat16()
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.model.to(self.device)
-        
-        self.tokenizer.padding_side = "left"
-        self.tokenizer.pad_token = self.tokenizer.bos_token
