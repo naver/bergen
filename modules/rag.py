@@ -578,14 +578,7 @@ class RAG:
             self.generator.model = get_peft_model(self.generator.model, lora_config)
             self.generator.model.print_trainable_parameters()
             self.generator.model = self.generator.model.bfloat16()
-                    
-        # TODO: for other models, seems like '.eval' was called, we should do .train()            
-        # if self.training_config.deepspeed:
-        #     print('Using deepspeed, destructing model to instantiate it after distrib init')
-        #     import gc
-        #     del self.generator
-        #     gc.collect()
-            
+                                
         print(self.training_config.trainer)
 
         args = TrainingArguments(
@@ -625,6 +618,8 @@ class RAG:
         #     self.generator.model.prepare_mem_tokens_optimization()
         
         model = self.generator.model
+        
+        print(model)
 
         trainer = Trainer(
             model=model,

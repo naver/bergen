@@ -56,6 +56,7 @@ class LLMCocom(Generator):
                 compr_rate=compr_rate,
                 compr_n_layers=compr_n_layers,
                 compr_rms_norm=compr_rms_norm,
+                compr_use_mlp=compr_use_mlp,
                 compr_mlp_hidden_dim=compr_mlp_hidden_dim,
                 lora=True,
                 lora_compressor=lora_compressor,
