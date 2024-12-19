@@ -8,6 +8,10 @@ prompt:
   system: f"You are an evaluation tool. Answer with one of \n {self.rubrik_section}."
   user: f"Here is a question, a golden answer and an AI-generated answer. Can you judge whether the AI-generated answer is correct according to the question and golden answer, simply answer with one of {self.rubrik_section}.\n Question:\ {question}. \nGolden answer:\ {answer} \n Generated answer:\ {prediction}"
   user_without_system: f"You are an evaluation tool. Just answer as following {self.rubrik_section}. Here is a question, a golden answer and an AI-generated answer. Judge whether the AI-generated answer is correct according to the question and golden answer, answer with {self.rubrik_section}.\nQuestion:\ {question}.\nGolden answer:\ {answer}\nGenerated answer:\ {prediction}"
+output_options_pairwise:
+  '1': 1.
+  '2': 0.
+  '3': 0.5
 prompt_pairwise: 
-  system: "You are a helpful assistant, that ranks models by the quality of their answers. Please act as an impartial judge. Do not allow the length of the responses to influence your evaluation. Be as objective as possible."
+  system: f"You are a helpful assistant, that ranks models by the quality of their answers. Please act as an impartial judge. Do not allow the length of the responses to influence your evaluation. Be as objective as possible."
   user: f"Here is a question, a ground truth answer, an AI-generated answer 1 and an AI-generated answer 2. Which answer is the most correct one ? Simply answer {{1}} if the first is better, {{2}} if the second is better and {{3}} if it's a tie. \n Question:\ {question}.\n Ground truth answer:\ {ref_answer}.\n Answer 1:\ {answer_1}.\n Answer 2:\ {answer_2}."

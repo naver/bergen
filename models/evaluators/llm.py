@@ -9,59 +9,60 @@ import omegaconf
 from tqdm import tqdm
 import torch
 from hydra.utils import instantiate
-from models.evaluators.utils import process_llm_outputs_assess_scores, get_mean_without_unknown, unswitch_switched_scores
+from models.evaluators.utils import process_llm_outputs_assess_scores, get_mean_without_unknown, unswitch_switched_scores, set_tq_description, get_pairwise_scores_without_unknown
 import gc
 import random
 
 
-class LLMeval():
+class BaseEval:
     """
-    - relies on default HF inference 
-    - if use_logits is set to True (in evaluator config) 
-        - output score is computed as interpolation between prob of label and it's associated value 
-        (defined by options map in config): eg. p(x=yes)*1 + p(x=no)*0 
-    - otherwise: we just check if label is present in the answer (yes/no) and return associated value (1/0)
+    Base class for evaluation logic shared by LLMeval and VLLMeval.
     """
-    def __init__(self, model_config: dict, batch_size: int = None, config: str = "default_qa" ):
+    def __init__(self, model_config: dict, batch_size: int = None, config: str = "default_qa"):
         """
-            model_config: generator config specified as yaml file in cofig/generator directory
-            batch_size: if none, it keeps default llm batch size from config 
-            confg: name of evaluator config specified as yaml file at config/evaluators
+        Base initializer for evaluation classes.
         """
-        
         eval_config = omegaconf.OmegaConf.load(f"config/evaluator/{config}.yaml")
-        model_config['init_args']['max_new_tokens']= eval_config['max_new_tokens']
+        model_config['init_args']['max_new_tokens'] = eval_config['max_new_tokens']
 
-        self.use_logits = eval_config.use_logits
-        self.llm = instantiate(model_config['init_args'], prompt=eval_config['prompt'])
+        self.llm = self.initialize_llm(model_config, eval_config)
+        
         self.options = eval_config.output_options
-        self.rubrik_section = ", ".join(["{"+opt+"}" for opt in self.options])
+        self.rubrik_section = ", ".join(self.options) 
+
+        self.options_pairwise = eval_config.output_options_pairwise
+        
+        # Set up prompts
         self.prompt = eval_config['prompt']
         self.prompt_pairwise = eval_config['prompt_pairwise']
-        self.llm.max_new_tokens = eval_config['max_new_tokens']
-        self.llm.batch_size = batch_size or self.llm.batch_size
         self.system_prompt = eval(self.prompt.system).replace(':\ ', ': ')
         self.system_prompt_pairwise = eval(self.prompt_pairwise.system).replace(':\ ', ': ')
-        #FIXME: what shall we do if label corrsponds to multiple tokens?
+
+        # Set up LLM parameters
+        self.batch_size = batch_size or self.llm.batch_size
+        self.llm.max_new_tokens = eval_config['max_new_tokens']
+        
+        # output_ids contains the token ids for the possible answers
         self.output_ids = [self.llm.tokenizer.encode(opt, add_special_tokens=False) for opt in sorted(self.options)]
+        # output_values contain the associated 'score' for each option
         self.output_values = torch.tensor([self.options[opt] for opt in sorted(self.options)]).float()
         
-        self.generation_config = GenerationConfig.from_model_config(self.llm.model.config) 
-        self.generation_config.do_sample = False,
-        # according to documentation from https://huggingface.co/docs/transformers/v4.43.2/main_classes/text_generation this is supposed to force model to generate tokens from the list, but it doesn't seem to work in practice 
-        # --> rollback to simple solution: just check first token logit of each predefined label
-        self.generation_config.force_word_ids = self.output_ids, 
-        self.generation_config.max_new_tokens = self.llm.max_new_tokens                    
-                 
+        self.output_ids_pairwise = [self.llm.tokenizer.encode(opt, add_special_tokens=False) for opt in sorted(self.options_pairwise)]
+        self.output_values_pairwise = torch.tensor([self.options_pairwise[opt] for opt in sorted(self.options_pairwise)]).float()
+
+    def initialize_llm(self, model_config, eval_config):
+        """
+        Placeholder for LLM initialization, to be overridden by subclasses if needed.
+        """
+        return instantiate(model_config['init_args'], prompt=eval_config['prompt'])
+    
     def __del__(self):
         torch.cuda.empty_cache()
         gc.collect()        
-
-    def create_instruction(self, sample):
-        answer = sample['reference']
-        question = sample['question']
-        prediction = sample['candidate']
+                 
+    def create_instruction(self, answer: str, question: str, prediction: str) -> str:
         prefix = []
+        rubrik_section = self.rubrik_section # for the 'eval'
         if getattr(self.llm.tokenizer, "chat_template") is not None and  'system' in self.llm.tokenizer.chat_template:
             prefix =  [
                 {'role': 'system', 'content': self.system_prompt},
@@ -73,115 +74,137 @@ class LLMeval():
             ])
         return self.llm.tokenizer.apply_chat_template(prefix,  add_generation_prompt=True, tokenize=False) 
     
-    def create_pairwise_instruction(self, sample):
-        question = sample['question']
-        ref_answer = sample['reference']
-        
-        answer = sample['candidate']
-        opponent_answer = sample['candidate']
+    def create_pairwise_instruction(self, question: str, answer: str, prediction_1: str, prediction_2: str) -> (str, bool):
+        """
+        To prevent positional bias, orders of answers is randomly switched
+        We switch the scores appropriately later on in '__call__'
+        so this method returns the prompt + the 'switch' boolean
+        Unused arguments are used in the "eval"
+        """
         switch = random.choice([True, False])
-        
-        # To prevent positional bias, orders of answers is randomly switched
         if switch:
-            answer_1, answer_2 = opponent_answer, answer
-        else:
-            answer_1, answer_2 = answer, opponent_answer
+            prediction_1, prediction_2 = prediction_2, prediction_1
             
         assert hasattr(self.llm.tokenizer, 'chat_template'), 'Please use an LLM with a chat template'
         prefix =  [
-                {'role': 'system', 'content': self.system_prompt},
-                {'role': 'user', 'content': eval(self.prompt.user).replace(':\ ', ': ')}
+                {'role': 'system', 'content': self.system_prompt_pairwise},
+                {'role': 'user', 'content': eval(self.prompt_pairwise.user).replace(':\ ', ': ')}
             ]
         return self.llm.tokenizer.apply_chat_template(prefix,  add_generation_prompt=True, tokenize=False), switch
         
-    def collate_fn(self, examples, pairwise: bool = False):
+    def create_inputs(self, predictions, references, questions, opponent_predictions=None) -> dict:
+        """
+        Create all the prompts
+        For pairwise case, it also creates the 'switches' which correspond to inversions in answer order to prevent bias.
+        """
+        assert len(predictions) == len(references) == len(questions)
+        pairwise = (opponent_predictions is not None)
         if pairwise:
-            instr, switches = []
-            for sample in examples:
-                sample_instr, sample_switch = self.create_pairwise_instruction(sample)
-                instr.append(sample_instr)
-                switches.append(sample_switch)
-        else:
-            instr = [self.create_instruction(sample) for sample in examples]  # Add prompt to each text
-        inputs = self.llm.tokenizer(instr, padding=True, truncation=True, return_tensors="pt")
-        
-        inputs['intr'] = instr
-        
-        if pairwise:
-            inputs['switches'] = switches
-        
+            assert len(opponent_predictions) == len(predictions)
+            
+        inputs = []
+            
+        for i in range(len(predictions)):
+            if pairwise:
+                sample_instr, sample_switch = self.create_pairwise_instruction(question=questions[i],
+                                                                               answer=references[i],
+                                                                               prediction_1=predictions[i],
+                                                                               prediction_2=opponent_predictions[i])
+                inputs.append({'instr': sample_instr, 'switch': sample_switch})
+            else:
+                sample_instr = self.create_instruction(question=questions[i], answer=references[i], prediction=predictions[i])
+                inputs.append({'instr': sample_instr})
+                
         return inputs
 
+                
+class LLMeval(BaseEval):
+    """
+    Evaluation class for HF inference.
+    """
+    def __init__(self, model_config: dict, batch_size: int = None, config: str = "default_qa"):
+        super().__init__(model_config, batch_size, config)
+
+        eval_config = omegaconf.OmegaConf.load(f"config/evaluator/{config}.yaml")
+        self.use_logits = eval_config.use_logits
+
+        # Set up generation config for HF
+        self.generation_config = GenerationConfig.from_model_config(self.llm.model.config)
+        self.generation_config.do_sample = False
+        self.generation_config.max_new_tokens = self.llm.max_new_tokens   
+
     @torch.no_grad()
-    def __call__(self, predictions, references, questions, opponent_predictions = None):
+    def __call__(self, predictions, references, questions, opponent_predictions=None):
         """
         other_preditions: opponent model prediction in pairwise comparison
         """
         assert len(predictions) == len(references) == len(questions)
         
         pairwise = (opponent_predictions is not None)
-        if not pairwise:
-            assert len(opponent_predictions) == len(predictions)
-            examples = [{'question': questions[i], 'reference': references[i], 'candidate': predictions[i]}
-                        for i in range(len(predictions))]
-        else:
-            examples = [{'question': questions[i], 'reference': references[i], 
-                         'candidate': predictions[i], 'other_candidate': opponent_predictions[i]}
-                        for i in range(len(predictions))]
+        
+        output_ids = self.output_ids_pairwise if pairwise else self.output_ids
+        output_values = self.output_values_pairwise if pairwise else self.output_values
+        options = self.options_pairwise if pairwise else self.options
+
+        # list of dictionaries containing each sample formatted instruction, and switch (if pairwise)
+        inputs = self.create_inputs(predictions=predictions, references=references, questions=questions, opponent_predictions=opponent_predictions)
             
         # The outputs are raw logits.
-        scores = list()
-        weird = list()
+        scores, weirds = [], []
         # Perform batch inference
-        for i in (tq:=tqdm(range(0, len(examples), self.llm.batch_size), desc=f'LLM evaluation with {self.llm.model_name}...')):
+        for i in (tq:=tqdm(range(0, len(inputs), self.batch_size), desc=f'LLM evaluation with {self.llm.model_name}...')):
             # Extract batch
-            batch_examples = examples[i:i+self.llm.batch_size]
-            inputs = self.collate_fn(batch_examples, pairwise=pairwise)
-            input_ids = inputs['input_ids'].to(self.llm.model.device)
-            attention_mask = inputs['attention_mask'].to(self.llm.model.device)                        
+            batch_examples = inputs[i:i+self.batch_size]
+            instrs = [elt['instr'] for elt in batch_examples]
+            
+            llm_inputs = self.llm.tokenizer(instrs, padding=True, truncation=True, return_tensors="pt")
+
+            input_ids = llm_inputs['input_ids'].to(self.llm.model.device)
+            attention_mask = llm_inputs['attention_mask'].to(self.llm.model.device)                        
                            
-            if self.use_logits:
+            if self.use_logits and not pairwise:
                 self.generation_config.output_logits = True 
                 self.generation_config.return_dict_in_generate=True                    
-                model_outputs = self.llm.model.generate(
-                        input_ids,                            
-                        attention_mask=attention_mask,
-                        generation_config=self.generation_config
-                )  
+                model_outputs = self.llm.model.generate(input_ids, attention_mask=attention_mask, generation_config=self.generation_config)  
+                
                 #get processed logits from model outputs: expected shape (n_tokens, 1, vocab_size)
                 model_scores = torch.stack(model_outputs.logits)
                 #get scores corresponding to first token of predefined labels from the first generated tokens
-                model_scores = model_scores[0, :, [tok[0] for tok in self.output_ids]].float()
+                model_scores = model_scores[0, :, [tok[0] for tok in output_ids]].float()
                 #normalizing scores - getting probablity of each of predefined labesl
                 pos_prob = torch.softmax(model_scores, 1).detach().cpu()
                 #final score is computed as interpolation between prob of label 
                 # and its associated value (defined by options map in config): eg. p(x=yes)*1 + p(x=no)*0 
+
                 for i, score in enumerate(pos_prob):
-                    scores.append(torch.dot(score,self.output_values).item())
-                    
-            elif pairwise:
-                decoded = self.llm.model.generate(
+                    scores.append(torch.dot(score, output_values).item())
+                                                
+            else: # case: pairwise or pointwise, non-logits.
+                output = self.llm.model.generate(
                         input_ids,                            
                         attention_mask=attention_mask,
-                        generation_config=self.generation_config
-                )
-                switched_scores, batch_weird  = process_llm_outputs_assess_scores(decoded, {'1': 1, '2': 0, '3': 0.5})
+                        generation_config=self.generation_config).detach().cpu().numpy()                
+                decoded = self.llm.tokenizer.batch_decode(output[:, input_ids.shape[1]:], skip_special_tokens=True)
                 
-                # We post-process the scores to take into account the switches (to deter positional bias)
-                batch_scores = unswitch_switched_scores(switched_scores=switched_scores, switches=inputs['switches'])
-                        
-                weird.extend(batch_weird)
-                scores.extend(batch_scores)                
+                batch_scores, batch_weirds  = process_llm_outputs_assess_scores(decoded, options)
                 
-            else:
-                # get real answer generation
-                decoded = self.llm.generate(inputs)
-                batch_scores, batch_weird  = process_llm_outputs_assess_scores(decoded, self.options)
-                weird.extend(batch_weird)
-                scores.extend(batch_scores)                
+                if pairwise:
+                    # We post-process the scores to take into account the switches (which deter positional bias)
+                    switches = [elt['switch'] for elt in batch_examples]
+                    batch_scores = unswitch_switched_scores(switched_scores=batch_scores, switches=switches)
+                    
+                weirds.extend(batch_weirds)
+                scores.extend(batch_scores)              
                 
-            tq.set_description(f" score: {get_mean_without_unknown(scores)* 100:4.1f}%, weird :{float(len(weird))/len(scores)*100:4.1f}%")
+            set_tq_description(tq, scores, weirds, pairwise)
         
         torch.cuda.empty_cache()
         gc.collect()
-        return get_mean_without_unknown(scores), scores
+        
+        if pairwise:
+            avg_scores = get_pairwise_scores_without_unknown(scores)
+        else:
+            avg_scores = get_mean_without_unknown(scores)
+            
+        return avg_scores, scores
+            

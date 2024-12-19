@@ -7,7 +7,7 @@ CC BY-NC-SA 4.0 license
 import shutil
 from hydra import initialize, compose
 from bergen import main
-from eval import run_eval
+from evaluate import run_eval
 from omegaconf import OmegaConf
 import pytest
 import gc
@@ -33,12 +33,20 @@ def init():
     def rmdir(folder):
         if os.path.exists(folder):
             shutil.rmtree(folder)
+            
+    def rmfile(file):
+        if os.path.exists(file):
+            os.remove(file)
 
     def clean_dirs():
         rmdir('tests/exp/')
         rmdir('tests/index/')
         rmdir('tests/run/')
         rmdir('tests/dataset/')
+        
+        # some eval tests generate metrics: we remove them
+        rmfile('tests/utdata/utexp_neg/eval_dev_metrics.json')
+        rmfile('tests/utdata/utexp_pos/eval_dev_metrics.json')
 
 
     if not torch.cuda.is_available():
@@ -210,15 +218,13 @@ class TestBergenEval:
             test_name = inspect.currentframe().f_code.co_name
             exp_folder = "tests/utdata/"
             run_eval(experiment_folder=exp_folder, lid=True, force=True)
-
    
     def test_llmeval_default(self):
         with initialize(config_path="../config",version_base="1.2"):
             test_name = inspect.currentframe().f_code.co_name
             exp_folder = "tests/utdata/"
-            run_eval(experiment_folder=exp_folder, llm=["tinyllama-chat", "test-llm-1"], llm_batch_size= 4, llm_prompt="default_qa", force=True, samples=4)
+            run_eval(experiment_folder=exp_folder, llm=["tinyllama-chat", "test-llm-1"], llm_batch_size= 4, llm_prompt="default_qa", force=True, nb_samples=4)
      
-       
     def test_llmeval_multi(self):
         with initialize(config_path="../config",version_base="1.2"):
             test_name = inspect.currentframe().f_code.co_name
@@ -229,15 +235,28 @@ class TestBergenEval:
         with initialize(config_path="../config",version_base="1.2"):
             test_name = inspect.currentframe().f_code.co_name
             exp_folder = "tests/utdata/"
-            run_eval(experiment_folder=exp_folder, vllm=["tinyllama-chat", "test-vllm-1"], llm_batch_size=4, llm_prompt="default_qa", force=True)
+            run_eval(experiment_folder=exp_folder, llm=["vllm_tinyllama-chat", "test-vllm-1"], llm_batch_size=4, llm_prompt="default_qa", force=True)
    
     def test_vllmeval_multi(self):
         with initialize(config_path="../config",version_base="1.2"):
             test_name = inspect.currentframe().f_code.co_name
             exp_folder = "tests/utdata/"
-            run_eval(experiment_folder=exp_folder, vllm=["tinyllama-chat", "test-vllm-2"], llm_batch_size=4, llm_prompt="default_multi_qa", force=True)
+            run_eval(experiment_folder=exp_folder, llm=["vllm_tinyllama-chat", "test-vllm-2"], llm_batch_size=4, llm_prompt="default_multi_qa", force=True)
    
-    
-
+    def test_llmeval_pairwise(self):
+        with initialize(config_path="../config",version_base="1.2"):
+            test_name = inspect.currentframe().f_code.co_name
+            folder = "tests/utdata/utexp_neg"
+            opponent_folder = "tests/utdata/utexp_neg"
+            opponent_name = "utexp_neg"
+            run_eval(folder=folder, llm=["tinyllama-chat", "test-llm-pairwise"], llm_batch_size=4, llm_prompt="default_qa", force=True, 
+                     opponent_folder=opponent_folder, opponent_name=opponent_name)
    
-    
+    def test_vllmeval_pairwise(self):
+        with initialize(config_path="../config",version_base="1.2"):
+            test_name = inspect.currentframe().f_code.co_name
+            folder = "tests/utdata/utexp_neg"
+            opponent_folder = "tests/utdata/utexp_neg"
+            opponent_name = "utexp_neg"
+            run_eval(folder=folder, llm=["vllm_tinyllama-chat", "test-vllm-pairwise"], llm_batch_size=4, llm_prompt="default_qa", force=True, 
+                     opponent_folder=opponent_folder, opponent_name=opponent_name)
