@@ -3,13 +3,6 @@ BERGEN
 Copyright (c) 2024-present NAVER Corp.
 CC BY-NC-SA 4.0 license
 '''
-
-from modules.retrieve import Retrieve
-from modules.rerank import Rerank
-from modules.generate_query import GenerateQueries
-from modules.process_context import ProcessContext
-from modules.dataset_processor import ProcessDatasets
-from modules.metrics import RAGMetrics
 import time 
 import random
 import shutil
@@ -17,6 +10,14 @@ import os
 from tqdm import tqdm
 import json
 from hydra.utils import instantiate
+
+from transformers import AdamW
+from modules.retrieve import Retrieve
+from modules.rerank import Rerank
+from modules.generate_query import GenerateQueries
+from modules.process_context import ProcessContext
+from modules.dataset_processor import ProcessDatasets
+from modules.metrics import RAGMetrics
 from utils import (
     eval_retrieval_kilt, init_experiment, move_finished_experiment,
     write_trec, prepare_dataset_from_ids, load_trec,
@@ -587,37 +588,38 @@ class RAG:
             **self.training_config.trainer,
             eval_strategy="steps",
             eval_steps=100,
-            save_strategy='steps', # 'no' if self.training_config.deepspeed else 'steps'
+            save_strategy='steps',
             save_steps=500,
             save_total_limit=10,
             logging_strategy='steps',
             logging_steps=100,
             local_rank=-1,
             remove_unused_columns=False,
-            # deepspeed=ds_config if self.training_config.deepspeed else None
         )
         
-        # if self.training_config.deepspeed:
-        #     # With deepspeed, model needs to be instantiated AFTER training arguments have been called
-        #     # https://huggingface.co/docs/transformers/deepspeed?zero-config=ZeRO-3#zero-configuration
-        #     print('Re-instantiating the generator after training args:')
-        #     self.generator = instantiate(self.generator_config.init_args, prompt=self.prompt, device_map=None)
-        #     # Preprocessing for COCOM is all done in the collate_fn function.
-        #     self.generator.model.generation_top_k = self.generation_top_k
-            
-        #     # While we are at it we add the "sep" ! 
-        #     self.generator.model.sep = True
-        #     self.generator.model.config.sep = True # also in the config so that it'll be saved (probably!)
-            
-        #     if  self.training_config.get("freeze_compressor", False):
-        #         kept_adapters = [elt for elt in self.generator.model.adapter_keys if elt != 'encoder_adapter']
-        #         print('Freezing the compressor, keeping only', kept_adapters)
-        #         self.generator.model.decoder.set_adapter(kept_adapters)
-                
-        #     # We need to re-activate the gradients for these tokens if needed
-        #     self.generator.model.prepare_mem_tokens_optimization()
-        
         model = self.generator.model
+        optimizer = None
+        
+        # If we want grouped learning rates, we handle that here:
+        if 'compressor_lr' in self.training_config:
+            print('Setting grouped learning rates')
+            regular_lr = self.training_config.trainer.learning_rate
+            compressor_lr = self.training_config.compressor_lr
+            
+            # Making groups:
+            groups = [
+                {
+                    "params": [p for n, p in model.named_parameters() if "compr" in n and p.requires_grad],
+                    "lr": compressor_lr,  # Learning rate for the first group
+                },
+                {
+                    "params": [p for n, p in model.named_parameters() if "decoder" in n and p.requires_grad],
+                    "lr": regular_lr,  # Learning rate for the second group
+                },
+            ]
+            
+            # Creating optimizer:
+            optimizer = AdamW(groups)
         
         print(model)
 
@@ -626,48 +628,12 @@ class RAG:
             args=args,
             data_collator=self.generator.collate_fn,
             train_dataset=train_test_datasets['train'],
-            eval_dataset=train_test_datasets['test']
+            eval_dataset=train_test_datasets['test'],
+            optimizers=(optimizer, None)
         )
         
         trainer.train(resume_from_checkpoint=None)
-        #trainer.save_model(f"{self.experiment_folder}/last_model_trainer_style")
-
-        # if self.training_config.deepspeed:
-        #     # Model with deepspeed is sharded and there is no way to unshard without saving a checkpoint
-        #     # So we save a checkpoint (deepspeed format) 
-        #     import gc
-        #     print('Saving deepspeed checkpoint...')
-        #     trainer.save_model(f"{self.experiment_folder}/last_model_deepspeed")
-            
-        #     torch.distributed.barrier()
-
-        #     assert False, 'Training done ! all successful in fact, but need to get out of deepspeed context :)'
-            
-        #     # # Cleaning
-        #     # del trainer, model, self.generator.model, self.generator
-        #     # gc.collect()
-        #     # torch.cuda.empty_cache()
-        #     # torch.cuda.synchronize()
-            
-        #     # # At this point we need to wait for all processes to synchronize
-            
-        #     # if torch.distributed.get_rank() == 0:
-        #     #     # Very touchy code, don't modify lightly
-        #     #     print('Loading deepspeed checkpoint...')
-        #     #     # Re-instantiating a model, place holder for loading the ZeRO state dict
-        #     #     generator = instantiate(self.generator_config.init_args, prompt=self.prompt, device_map=None)
-        #     #     print('Extracting state dict from deepspeed ckpt')
-        #     #     state_dict = get_fp32_state_dict_from_zero_checkpoint(f"{self.experiment_folder}/last_model_deepspeed") # already on cpu
-        #     #     print('Loading state dict into new model')
-        #     #     generator.model.load_state_dict(state_dict)
-        #     #     print('Saving with usual checkpoint style')
-        #     #     generator.model.save_pretrained(f"{self.experiment_folder}/last_model")  
-        #     #     print('Done saving, cleaning deepspeed checkpoint...')
-        #     #     shutil.rmtree(f"{self.experiment_folder}/last_model_deepspeed")
-                
-        #     #     self.generator = generator # 
-            
-        # else:
+        
         model = trainer.model
         model.save_pretrained(f"{self.experiment_folder}/last_model")
         self.generator.model = model
