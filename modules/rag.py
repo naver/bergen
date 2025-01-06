@@ -8,7 +8,6 @@ from modules.retrieve import Retrieve
 from modules.rerank import Rerank
 from modules.generate_query import GenerateQueries
 from modules.process_context import ProcessContext
-from modules.dataset_processor import ProcessDatasets
 from modules.metrics import RAGMetrics
 import time 
 import random
@@ -578,7 +577,14 @@ class RAG:
             self.generator.model = get_peft_model(self.generator.model, lora_config)
             self.generator.model.print_trainable_parameters()
             self.generator.model = self.generator.model.bfloat16()
-                                
+                    
+        # TODO: for other models, seems like '.eval' was called, we should do .train()            
+        # if self.training_config.deepspeed:
+        #     print('Using deepspeed, destructing model to instantiate it after distrib init')
+        #     import gc
+        #     del self.generator
+        #     gc.collect()
+            
         print(self.training_config.trainer)
 
         args = TrainingArguments(
@@ -589,7 +595,7 @@ class RAG:
             eval_steps=100,
             save_strategy='steps', # 'no' if self.training_config.deepspeed else 'steps'
             save_steps=500,
-            save_total_limit=10,
+            save_total_limit=20,
             logging_strategy='steps',
             logging_steps=100,
             local_rank=-1,
@@ -618,8 +624,6 @@ class RAG:
         #     self.generator.model.prepare_mem_tokens_optimization()
         
         model = self.generator.model
-        
-        print(model)
 
         trainer = Trainer(
             model=model,
