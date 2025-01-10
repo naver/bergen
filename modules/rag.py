@@ -8,6 +8,7 @@ from modules.retrieve import Retrieve
 from modules.rerank import Rerank
 from modules.generate_query import GenerateQueries
 from modules.process_context import ProcessContext
+from modules.dataset_processor import ProcessDatasets
 from modules.metrics import RAGMetrics
 import time 
 import random
@@ -24,6 +25,7 @@ from utils import (
     get_context_processing_filename,
     get_reranking_filename, format_time, get_ranking_filename, get_finished_experiment_name
 )
+from modules.trainer import JointTrainer
 
 class RAG:
     def __init__(self, 
@@ -495,7 +497,8 @@ class RAG:
             query_ids, doc_ids = None, None
 
         if self.reranker is not None:
-            query_ids, doc_ids, _ = self.rerank(
+            # re-ranking needs to be "on" if joint training (at least for now)
+            query_ids, doc_ids, scores = self.rerank(
                 dataset,
                 query_dataset_name,
                 doc_dataset_name,
@@ -504,16 +507,22 @@ class RAG:
                 doc_ids,
                 self.rerank_top_k,
                 )
+        else:
+            scores = None
             
         # get top-k docs
         doc_ids = [doc_ids_q[:self.generation_top_k] for doc_ids_q in doc_ids] if doc_ids is not None else doc_ids
-        
+        scores = [scores_q[:self.generation_top_k] for scores_q in scores] if scores is not None else scores
+        # ===> TODO
+        # change how to deal w/ top-k? should different between re-ranking and generation (for joint training!)
+        # maybe put two fields in the dict (easier even if redundant?); need to change collate function etc.
         # prepare dataset
         gen_dataset = prepare_dataset_from_ids(
             dataset, 
             query_ids, 
             doc_ids, 
-            multi_doc=True, 
+            multi_doc=True,
+            scores=scores,
             )
 
         # context processing if needed
@@ -594,7 +603,7 @@ class RAG:
             eval_strategy="steps",
             eval_steps=100,
             save_strategy='steps', # 'no' if self.training_config.deepspeed else 'steps'
-            save_steps=500,
+            save_steps=800,
             save_total_limit=20,
             logging_strategy='steps',
             logging_steps=100,
@@ -623,55 +632,41 @@ class RAG:
         #     # We need to re-activate the gradients for these tokens if needed
         #     self.generator.model.prepare_mem_tokens_optimization()
         
+        # ok I think this is what was weird and source of confusion 
         model = self.generator.model
 
-        trainer = Trainer(
+        if self.generator.model.config.to_dict().get("joint_reranking", False):
+            print("~~ JOINT TRAINING OF RERANKER ~~")
+            # HARD-CODED paths, to change... 
+            from utils import load_rr_file
+            # custom_test_dataset = load_rr_file("/home/tformal/bergen/debug_rerank/rerank_small.tsv")
+            # qrel = json.load(open("/home/tformal/bergen/debug_rerank/qrel_small.json"))
+            custom_test_dataset = load_rr_file("/home/tformal/neuralsearch_data/TREC_DL_2019/rerank_file.trecdl19.spladev3.top50.tsv")
+            qrel = json.load(open("/home/tformal/neuralsearch_data/TREC_DL_2019/qrel.json"))
+            trainer = JointTrainer(
+            model=model,
+            args=args,
+            data_collator=self.generator.collate_fn,
+            train_dataset=train_test_datasets['train'],
+            eval_dataset=train_test_datasets['test'],
+            custom_test_dataset=custom_test_dataset,
+            qrel=qrel,
+        )
+        else:
+            print("~~ STANDARD TRAINING ~~")
+            trainer = Trainer(
             model=model,
             args=args,
             data_collator=self.generator.collate_fn,
             train_dataset=train_test_datasets['train'],
             eval_dataset=train_test_datasets['test']
         )
-        
+        metrics_0 = trainer.evaluate()
+        print("\n \n ", metrics_0, "\n \n")
         trainer.train(resume_from_checkpoint=None)
-        #trainer.save_model(f"{self.experiment_folder}/last_model_trainer_style")
-
-        # if self.training_config.deepspeed:
-        #     # Model with deepspeed is sharded and there is no way to unshard without saving a checkpoint
-        #     # So we save a checkpoint (deepspeed format) 
-        #     import gc
-        #     print('Saving deepspeed checkpoint...')
-        #     trainer.save_model(f"{self.experiment_folder}/last_model_deepspeed")
-            
-        #     torch.distributed.barrier()
-
-        #     assert False, 'Training done ! all successful in fact, but need to get out of deepspeed context :)'
-            
-        #     # # Cleaning
-        #     # del trainer, model, self.generator.model, self.generator
-        #     # gc.collect()
-        #     # torch.cuda.empty_cache()
-        #     # torch.cuda.synchronize()
-            
-        #     # # At this point we need to wait for all processes to synchronize
-            
-        #     # if torch.distributed.get_rank() == 0:
-        #     #     # Very touchy code, don't modify lightly
-        #     #     print('Loading deepspeed checkpoint...')
-        #     #     # Re-instantiating a model, place holder for loading the ZeRO state dict
-        #     #     generator = instantiate(self.generator_config.init_args, prompt=self.prompt, device_map=None)
-        #     #     print('Extracting state dict from deepspeed ckpt')
-        #     #     state_dict = get_fp32_state_dict_from_zero_checkpoint(f"{self.experiment_folder}/last_model_deepspeed") # already on cpu
-        #     #     print('Loading state dict into new model')
-        #     #     generator.model.load_state_dict(state_dict)
-        #     #     print('Saving with usual checkpoint style')
-        #     #     generator.model.save_pretrained(f"{self.experiment_folder}/last_model")  
-        #     #     print('Done saving, cleaning deepspeed checkpoint...')
-        #     #     shutil.rmtree(f"{self.experiment_folder}/last_model_deepspeed")
-                
-        #     #     self.generator = generator # 
-            
-        # else:
+        metrics_final = trainer.evaluate()
+        print("\n \n ", metrics_final, "\n \n")
+        
         model = trainer.model
         model.save_pretrained(f"{self.experiment_folder}/last_model")
         self.generator.model = model

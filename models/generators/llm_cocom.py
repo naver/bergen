@@ -29,6 +29,7 @@ class LLMCocom(Generator):
                  compr_base_model_name: str = 'mistralai/Mistral-7B-Instruct-v0.2', # only useful for surgical mistral compressor,
                  compr_rms_norm: bool = False, # only useful for surgical mistral compressor
                  compr_use_mlp: bool = True,
+                 joint_reranking: bool = False,
                  attn_implementation: str = 'flash_attention_2',
                  query_dependent: bool = False,
                  device_map = 'auto',
@@ -62,6 +63,8 @@ class LLMCocom(Generator):
                 compr_base_model_name=compr_base_model_name,
                 compr_rms_norm=compr_rms_norm,
                 compr_use_mlp=compr_use_mlp,
+                joint_reranking=joint_reranking,
+                context_max_length=context_max_length,
                 compr_mlp_hidden_dim=compr_mlp_hidden_dim,
                 lora=True,
                 lora_r_compressor=lora_r_compressor,
@@ -142,11 +145,10 @@ class LLMCocom(Generator):
             torch.save(doc_embeddings, self.save_generated_embeddings_path)
         
         return query_ids, queries, instructions, responses, labels, ranking_labels
-    
+
     def collate_fn(self, examples, eval=False):
         """
-        Collates a batch of examples.
-
+        Collates a batch of examples
         Args:
             examples (list): batch from dataset
             eval (bool): Whether the function is being called for evaluation.
@@ -162,7 +164,11 @@ class LLMCocom(Generator):
         query = [e['query'] for e in examples]
 
         ranking_label = [e['ranking_label'] for e in examples] if 'ranking_label' in examples[0] else [None] * len(examples)
-
+        # this ranking_label thing could be used to train models on original ranking labels? but only have access on some datasets
+        rr_scores = [e['rr_scores'] for e in examples] if 'rr_scores' in examples[0] else None
+        if rr_scores is not None:
+            rr_scores = torch.tensor(rr_scores, dtype=torch.float)
+        
         for ex in examples:
             assert len(ex['doc']) == self.model.generation_top_k, \
                 f"Not all queries of the same number of docs: not supported here: {len(ex['doc'])} vs {self.model.generation_top_k}"
@@ -222,13 +228,14 @@ class LLMCocom(Generator):
 
         data_dict = {}
         if not eval:
-            #data_dict['labels'] =  label_ids
+            # == training
             return {
             'enc_input_ids': enc_input_ids,
             'enc_attention_mask': enc_attention_mask,
             'dec_input_ids': inp_dec['input_ids'],
             'dec_attention_mask': inp_dec['attention_mask'],
-            'labels': label_ids
+            'labels': label_ids,
+            'rr_scores': rr_scores,
         }
 
         model_input = {
@@ -249,17 +256,19 @@ class LLMCocom(Generator):
                         
         return data_dict
 
+    # pretty sure it's useless 
     def prediction_step(self, model, model_input, label_ids=None):
-        # used during training
-        output = model.forward(
-            enc_input_ids=model_input['enc_input_ids'],
-            enc_attention_mask=model_input['enc_attention_mask'],
-            dec_input_ids=model_input['dec_input_ids'],
-            dec_attention_mask=model_input['dec_attention_mask'],
-            labels=label_ids
-        )
+        pass
+        # # used during training
+        # output = model.forward(
+        #     enc_input_ids=model_input['enc_input_ids'],
+        #     enc_attention_mask=model_input['enc_attention_mask'],
+        #     dec_input_ids=model_input['dec_input_ids'],
+        #     dec_attention_mask=model_input['dec_attention_mask'],
+        #     labels=label_ids
+        # )
             
-        return output['logits'], output['loss']
+        # return output['logits'], output['loss']
     
     def blend_prompt_and_memory_tokens(self, tokenizer, mem_tokens: str, query: str, label: str=None):
         """

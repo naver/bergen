@@ -6,7 +6,9 @@ CC BY-NC-SA 4.0 license
 import torch
 import numpy as np
 from transformers import Trainer
-
+from collections import defaultdict
+from torch.utils.data import DataLoader
+from utils import evaluate_retrieval_simple
 
 # def compute_metrics(eval_pred, model):
 #     """
@@ -144,3 +146,112 @@ class RAGTrainer(Trainer):
             loss, logits = self.make_prediction_step(model, inputs)
             
         return loss, logits, inputs['label_ids']
+
+class JointTrainer(Trainer):
+    def __init__(self, *args, custom_test_dataset=None, qrel=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.custom_test_dataset = custom_test_dataset
+        self.qrel = qrel
+        for n, p in self.model.named_parameters():
+            print(n, p.requires_grad)
+        self.additional_losses = {"ranking_loss": list(), "gen_loss": list()}
+        self.num_eval_samples = 0
+
+    def evaluate_ranking(self, custom_test_dataset):
+        test_dataloader = DataLoader(custom_test_dataset,
+                                     collate_fn=self.model.collate_fn_rerank,
+                                     batch_size=72,
+                                     shuffle=False,
+                                     num_workers=0,
+                                     )  
+        self.model.eval()
+        run = defaultdict(dict)
+        with torch.no_grad():
+            for batch in test_dataloader:
+                for k, v in batch.items():
+                    if k not in ["q_id", "d_id"]:
+                        batch[k] = v.to(self.model.device)
+                _, ranking_scores, _ = self.model.compress(**{k: v for k, v in batch.items() if k not in {"q_id", "d_id"}})
+                for q_id, d_id, s in zip(
+                    batch["q_id"], batch["d_id"], ranking_scores.detach().cpu().tolist()
+                ):
+                    run[str(q_id)][str(d_id)] = s
+        metrics = evaluate_retrieval_simple(run, self.qrel, {"ndcg_cut"})
+        ndcg_10 = sum([d["ndcg_cut_10"] for d in metrics.values()]) / len(metrics)
+        ndcg_30 = sum([d["ndcg_cut_30"] for d in metrics.values()]) / len(metrics)
+        ndcg_100 = sum([d["ndcg_cut_100"] for d in metrics.values()]) / len(metrics)
+        return {"ndcg_10": ndcg_10, "ndcg_30": ndcg_30, "ndcg_100": ndcg_100}
+
+
+    def evaluate(self, eval_dataset=None, ignore_keys=None, metric_key_prefix="eval"):
+        """
+        Overrides the default evaluation to include custom test set evaluation at each eval step
+        """
+        # Default evaluation on the provided eval_dataset
+        eval_metrics = super().evaluate(eval_dataset=eval_dataset,
+                                        ignore_keys=ignore_keys, 
+                                        metric_key_prefix=metric_key_prefix)
+
+        # Evaluate on the custom test dataset if provided
+        if self.custom_test_dataset is not None:
+            print("Evaluating on the custom test set...")
+            test_metrics = self.evaluate_ranking(self.custom_test_dataset)
+            for k, v in test_metrics.items():
+                eval_metrics[f"{metric_key_prefix}_{k}"] = v
+        # adding custom losses also
+        eval_metrics[f"{metric_key_prefix}_ranking_loss"] = np.mean(self.additional_losses["ranking_loss"])
+        eval_metrics[f"{metric_key_prefix}_gen_loss"] = np.mean(self.additional_losses["gen_loss"])
+        # re-init losses:
+        self.additional_losses["ranking_loss"] = list()
+        self.additional_losses["gen_loss"] = list()
+        self.log(eval_metrics)
+        return eval_metrics
+    
+    def forward_step(self, model, inputs):
+        enc_input_ids = inputs['enc_input_ids']
+        enc_attention_mask = inputs['enc_attention_mask']
+        dec_input_ids = inputs['dec_input_ids']
+        dec_attention_mask = inputs['dec_attention_mask']
+        label_ids = inputs['labels']
+        rr_scores = inputs['rr_scores']
+        
+        # Check if the model is wrapped in DataParallel or DistributedDataParallel
+        if hasattr(model, "module"):
+            device = model.module.device  # Get device from the underlying model
+        else:
+            device = model.device  # Get device if it's not wrapped in DataParallel
+
+        # Move inputs to the correct device of the model
+        enc_input_ids = enc_input_ids.to(device)
+        enc_attention_mask = enc_attention_mask.to(device)
+        dec_input_ids = dec_input_ids.to(device)
+        dec_attention_mask = dec_attention_mask.to(device)
+        label_ids = label_ids.to(device)
+        rr_scores = rr_scores.to(device)
+
+        # Perform the forward pass
+        output = model.forward(
+            enc_input_ids=enc_input_ids,
+            enc_attention_mask=enc_attention_mask,
+            dec_input_ids=dec_input_ids,
+            dec_attention_mask=dec_attention_mask,
+            label=label_ids,
+            rr_scores=rr_scores,
+        )
+        return output
+
+    def compute_loss(self, model, inputs, return_outputs=False):
+        output = self.forward_step(model, inputs)
+        return output['total_loss']
+    
+    def prediction_step(self, model, inputs, prediction_loss_only=None, ignore_keys=None, **kwargs):
+        
+        with torch.no_grad():
+            output = self.forward_step(model, inputs)
+        # it is not direct to record other losses than the "main" one
+        # see for instance ==> https://github.com/zipzou/hf-multitask-trainer    
+        self.additional_losses["ranking_loss"].append(output['ranking_loss'].cpu().detach().item())
+        self.additional_losses["gen_loss"].append(output['loss'].cpu().detach().item())
+            
+        #return {"total_loss": output['total_loss'], "ranking_loss": output['ranking_loss'], "loss": output["loss"]}, output["logits"], inputs["labels"]
+        return output['total_loss'], output["logits"], inputs["labels"]

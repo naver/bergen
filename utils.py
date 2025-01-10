@@ -19,6 +19,7 @@ import glob
 from tqdm import tqdm
 import warnings
 import numpy as np
+import pytrec_eval
 
 # needed because HF dataset does not allow indexing by id (only index)
 # given a set of ids return field in dataset, if no field provided just return indexes
@@ -88,7 +89,7 @@ def get_doc_embeds_from_dataset(d_ids, embeds_dataset):
 # horrible function :/ needs to be refactored into mult_doc and single doc
 # gets q_ids and d_ids and does a lookup by id to get the content
 # then constructs hf_dataset out of it
-def prepare_dataset_from_ids(dataset, q_ids, d_ids, multi_doc=False, query_embeds_path=None, doc_embeds_path=None, query_field="content"):
+def prepare_dataset_from_ids(dataset, q_ids, d_ids, scores=None, multi_doc=False, query_embeds_path=None, doc_embeds_path=None, query_field="content"):
 
     # if query _ids and doc_ids are None only return queries and optional labels /ranking labels
     if q_ids == d_ids == None:
@@ -126,6 +127,8 @@ def prepare_dataset_from_ids(dataset, q_ids, d_ids, multi_doc=False, query_embed
                 # add ranking_labels if they exist in datset
                 if len(ranking_labels) > 0:
                     dataset_dict['ranking_label'].append(ranking_labels[i])
+                if scores is not None:
+                    dataset_dict['rr_scores'].append(scores[i])  # add the scores corresponding to each doc
             else:
                 # for multi_doc=False, we save every document to a new entry
                     for d_id, doc, d_idx in zip(d_ids[i], docs, doc_idxs):
@@ -224,7 +227,13 @@ def load_trec(fname):
         scores.append(scores_q)
     return q_ids, d_ids, scores
 
-
+def load_rr_file(fname):
+    # load reranking file for evaluation
+    out = []
+    for l in open(fname):
+        q_id, d_id, q, d = l.split('\t')
+        out.append({"q_id": q_id, "d_id": d_id, "query": q, "doc": d})
+    return out
 
 def eval_retrieval_kilt(experiment_folder, qrels_folder, query_dataset_name, doc_dataset_name, split, query_ids, doc_ids, scores, top_k=5, reranking=False, debug=False, write_trec=True):
     #only evaluate if wikipedia ids are in dataset
@@ -417,3 +426,7 @@ def prepare_labels(input_ids, response_token_ids, ignore_index=-100):
             # Make pytorch loss function ignore all tokens up through the end of the response key
             label_ids[i, :response_token_ids_end_idx] = ignore_index
     return label_ids
+
+def evaluate_retrieval_simple(run, qrel, metrics):
+    evaluator = pytrec_eval.RelevanceEvaluator(qrel, metrics)
+    return evaluator.evaluate(run)
