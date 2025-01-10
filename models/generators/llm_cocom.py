@@ -22,7 +22,6 @@ class LLMCocom(Generator):
                  lora_r_compressor: int = None, # rank of lora adapters on compressor (if any)
                  compr_rate: float = None,
                  compr_model_name: str = None,
-                 compr_mode: str = 'last',
                  compr_mlp_hidden_dim: int = 1024,
                  compr_n_layers: int = None, # only useful for surgical mistral compressor,
                  compr_every_n_layer: int = None, # only useful for surgical mistral compressor,
@@ -55,7 +54,6 @@ class LLMCocom(Generator):
                 max_new_tokens=128,
                 quantization=quantization,
                 compr_model_name=compr_model_name,
-                compr_mode=compr_mode,
                 compr_rate=compr_rate,
                 compr_n_layers=compr_n_layers,
                 compr_every_n_layer=compr_every_n_layer,
