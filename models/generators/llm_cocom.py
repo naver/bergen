@@ -28,6 +28,7 @@ class LLMCocom(Generator):
                  compr_base_model_name: str = 'mistralai/Mistral-7B-Instruct-v0.2', # only useful for surgical mistral compressor,
                  compr_rms_norm: bool = False, # only useful for surgical mistral compressor
                  compr_use_mlp: bool = True,
+                 compr_bidirectional: bool = False,
                  attn_implementation: str = 'flash_attention_2',
                  query_dependent: bool = False,
                  device_map = 'auto',
@@ -47,7 +48,7 @@ class LLMCocom(Generator):
         # Loading the cocom model:
         if checkpoint_path is not None:
             self.model = COCOM.from_pretrained(checkpoint_path, device_map=device_map, attn_implementation=attn_implementation)
-                
+            print(f'Loaded cocom from {checkpoint_path} has config {self.model.config}')
         else:
             cfg = COCOMConfig(
                 decoder_model_name=decoder_model_name,
@@ -61,6 +62,7 @@ class LLMCocom(Generator):
                 compr_rms_norm=compr_rms_norm,
                 compr_use_mlp=compr_use_mlp,
                 compr_mlp_hidden_dim=compr_mlp_hidden_dim,
+                compr_bidirectional=compr_bidirectional,
                 lora=True,
                 lora_r_compressor=lora_r_compressor,
                 lora_compressor=lora_compressor,
