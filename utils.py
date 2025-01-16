@@ -22,7 +22,6 @@ from datasets.fingerprint import Hasher
 from omegaconf import OmegaConf
 from tqdm import tqdm
 
-
 def left_pad(sequence: torch.LongTensor, max_length: int, pad_value: int) -> torch.LongTensor:
     """
     Helper function to perform left padding
@@ -272,10 +271,10 @@ def eval_retrieval_kilt(experiment_folder, qrels_folder, query_dataset_name, doc
         for i, (doc_id, score) in enumerate(zip(doc_ids[i], scores[i])):
             # if we have duplicate doc ids (because different passage can map to same wiki page) only write the max scoring passage
             if doc_id not in run[q_id]:
-                run[q_id].update({doc_id: score}) 
+                run[q_id].update({doc_id: float(score)})
             # if there is a higher scoring passage from the same wiki_doc, update the score (maxP)
             elif score >= run[q_id][doc_id]:
-                run[q_id].update({doc_id: score}) 
+                run[q_id].update({doc_id: float(score)})
 
     if write_trec:
         with open(f'{experiment_folder}/eval_{split}_{reranking_str}ranking_run.trec', 'w') as trec_out:

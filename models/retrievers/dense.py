@@ -20,7 +20,6 @@ class Dense(Retriever):
             self.query_encoder = self.model  # otherwise symmetric
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.model = self.model.to(self.device)
         self.model.eval()
         if query_encoder_name:
             self.query_encoder = self.query_encoder.to(self.device)

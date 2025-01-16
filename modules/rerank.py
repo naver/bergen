@@ -19,10 +19,13 @@ class Rerank():
         self.batch_size = batch_size
         self.init_args = init_args
         self.model = instantiate(self.init_args)
+        self.model_name=self.model.model_name.replace('/', '_')
+        
     @torch.no_grad()
     def eval(self, dataset):
         # get dataloader
-        self.model.model.to('cuda')
+        #self.model.model.to('cuda')
+        self.model.model = self.model.model.to('cuda')
         dataloader = DataLoader(dataset, batch_size=self.batch_size, collate_fn=self.model.collate_fn)
         q_ids, d_ids, scores, embs_list = list(), list(), list(), list()
         # run inference on the dataset
@@ -30,7 +33,8 @@ class Rerank():
             q_ids += batch.pop('q_id')
             d_ids += batch.pop('d_id')
             outputs = self.model(batch)
-            score = outputs['score']
+            score = outputs['score'].detach().cpu()
+            
             scores.append(score)
             
         # get flat tensor of scores        
@@ -64,4 +68,4 @@ class Rerank():
         return q_ids_sorted, doc_ids_sorted, scores_sorted
 
     def get_clean_model_name(self):
-        return self.model.model_name.replace('/', '_')
+        return self.model_name
