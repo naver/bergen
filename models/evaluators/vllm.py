@@ -39,7 +39,7 @@ class VLLMeval:
         if not batch_size == None:
             self.llm.batch_size = batch_size
         self.llm.max_new_tokens = eval_config['max_new_tokens']
-        self.system_prompt = eval(self.prompt.system).replace(':\ ', ': ')
+        self.system_prompt = self.prompt.system.format(rubrik_section=self.rubrik_section)
         self.output_ids = [self.llm.tokenizer.encode(opt, add_special_tokens=False)[-1] for opt in sorted(self.options)]
         self.output_values = torch.tensor([self.options[opt] for opt in sorted(self.options)]).float()
         
@@ -57,16 +57,22 @@ class VLLMeval:
             prefix =  [{'role': 'system',
                 'content': self.system_prompt}]
             prefix.extend([{'role': 'user',
-                'content': eval(self.prompt.user).replace(':\ ', ': ')}]
+                'content': self.prompt.user.format(rubrik_section=self.rubrik_section,
+                                                    question=question,
+                                                    answer=answer,
+                                                    prediction=prediction)}]
             )
         
         else:
             prefix = ([{'role': 'user',
-                'content': eval(self.prompt.user_without_system).replace(':\ ', ': ')}]
+                'content': self.prompt.user_without_system.format(rubrik_section=self.rubrik_section,
+                                                    question=question,
+                                                    answer=answer,
+                                                    prediction=prediction)}]
             )
         if 'assistant' in self.prompt:
             prefix.extend([{'role': 'assistant',
-                'content': eval(self.prompt.assistant).replace(':\ ', ': ')}]
+                'content': self.prompt.assistant}]
                 )
         if not response is None:
             prefix.extend([{'role': 'assistant',

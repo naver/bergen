@@ -40,7 +40,8 @@ class LLMeval():
         self.llm.max_new_tokens = eval_config['max_new_tokens']
         if not batch_size == None:
             self.llm.batch_size = batch_size
-        self.system_prompt = eval(self.prompt.system).replace(':\ ', ': ')
+        self.system_prompt = self.prompt.system.format(rubrik_section=self.rubrik_section)
+
         #FIXME: what shall we do if label corrsponds to multiple tokens?
         self.output_ids = [self.llm.tokenizer.encode(opt, add_special_tokens=False) for opt in sorted(self.options)]
         self.output_values = torch.tensor([self.options[opt] for opt in sorted(self.options)]).float()
@@ -62,28 +63,38 @@ class LLMeval():
 
     def create_instruction(self,sample):
         answer = sample['reference']
-        question=sample['question']
-        prediction=sample['candidate']
+        question = sample['question']
+        prediction = sample['candidate']
         if 'response' in sample:
             response = sample['response']
         else:
             response = None
         prefix = []
         if getattr(self.llm.tokenizer, "chat_template") is not None and  'system' in self.llm.tokenizer.chat_template:
-            prefix =  [{'role': 'system',
-                'content': self.system_prompt}]
-            prefix.extend([{'role': 'user',
-                'content': eval(self.prompt.user).replace(':\ ', ': ')}]
+            prefix =  [{
+                'role': 'system',
+                'content': self.system_prompt
+            }]
+            prefix.extend([{
+                'role': 'user',
+                'content': self.prompt.user.format(rubrik_section=self.rubrik_section,
+                                                    question=question,
+                                                    answer=answer,
+                                                    prediction=prediction)}]
             )
         
         else:
-            prefix = ([{'role': 'user',
-                'content': eval(self.prompt.user_without_system).replace(':\ ', ': ')}]
-            )
+            prefix = ([{
+                'role': 'user',
+                'content': self.prompt.user_without_system.format(rubrik_section=self.rubrik_section,
+                                                    question=question,
+                                                    answer=answer,
+                                                    prediction=prediction)
+            }])
         if 'assistant' in self.prompt:
             prefix.extend([{'role': 'assistant',
-                'content': eval(self.prompt.assistant).replace(':\ ', ': ')}]
-                )
+                'content': self.prompt.assistant}]
+            )
         if not response is None:
             prefix.extend([{'role': 'assistant',
                 'content': response}]

@@ -5,6 +5,6 @@ output_options:
     'Partially correct': 0.5
     'Wrong': 0
 prompt:   
-  system: f"You are an evaluation tool. Answer with one of \n {self.rubrik_section}."
-  user: f"Here is a question, a golden answer and an AI-generated answer. Can you judge whether the AI-generated answer is correct according to the question and golden answer, simply answer with one of {self.rubrik_section}.\n Question:\ {question}. \nGolden answer:\ {answer} \n Generated answer:\ {prediction}"
-  user_without_system: f"You are an evaluation tool. Just answer as following {self.rubrik_section}. Here is a question, a golden answer and an AI-generated answer. Judge whether the AI-generated answer is correct according to the question and golden answer, answer with {self.rubrik_section}.\nQuestion:\ {question}.\nGolden answer:\ {answer}\nGenerated answer:\ {prediction}"
+  system: "You are an evaluation tool. Answer with one of \n {rubrik_section}."
+  user: "Here is a question, a golden answer and an AI-generated answer. Can you judge whether the AI-generated answer is correct according to the question and golden answer, simply answer with one of {rubrik_section}.\n Question {question}. \nGolden answer: {answer} \n Generated answer {preddiction}"
+  user_without_system: "You are an evaluation tool. Just answer as following {rubrik_section}. Here is a question, a golden answer and an AI-generated answer. Judge whether the AI-generated answer is correct according to the question and golden answer, answer with {rubrik_section}.\nQuestion {question}.\nGolden answer {answer}\nGenerated answer {prediction}"

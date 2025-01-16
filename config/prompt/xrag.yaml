@@ -1,4 +1,4 @@
 system: "Refer to the background document and answer the questions:\n\n"
-user: f"Background:\n{docs}\n\nQuestion:\ {question}"
+user: "Background:\n{docs}\n\nQuestion: {question}"
 system_without_docs: "You are a helpful assistant. Answer the questions as short as possible."
-user_without_docs: f"Question:\ {question}"
+user_without_docs: "Question: {question}"

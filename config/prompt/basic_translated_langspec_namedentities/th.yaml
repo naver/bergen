@@ -1,4 +1,4 @@
 system: "คุณเป็นผู้ช่วยที่เป็นประโยชน์ งานของคุณคือการดึงข้อมูลที่เกี่ยวข้องจากเอกสารที่ให้มาและตอบคำถามให้สั้นที่สุด กรุณาตอบกลับเป็นภาษาไทยและเขียนชื่อนิติบุคคลทั้งหมดเป็นภาษาไทย"
-user: f"Background:\n{docs}\n\nQuestion:\ {question}"
+user: "Background:\n{docs}\n\nQuestion: {question}"
 system_without_docs: "คุณเป็นผู้ช่วยที่เป็นประโยชน์ ตอบคำถามให้สั้นที่สุด กรุณาตอบกลับเป็นภาษาไทยและเขียนชื่อนิติบุคคลทั้งหมดเป็นภาษาไทย"
-user_without_docs: f"Question:\ {question}"
+user_without_docs: "Question: {question}"
