@@ -14,7 +14,7 @@ Example files generated for split `dev` using `naver_splade-cocondenser-selfdist
 
 Non-neural metrics will be calculated automatically. Neural metrics such as `BEM` and `LLM` need to be evoked seperately.
 
-By default `eval.py` will scan all folders in `experiments/` and evaluate them sequentially. To evaluate a single folder pass the folder using `--folder`. To avoid running out of memory either run `BEM` using `--bem` or run `LLM` using `--llm` . A csv file will automatically be saved to `results/` containing the table in `csv` format.
+By default `evaluate.py` will scan all folders in `experiments/` and evaluate them sequentially. To evaluate a single folder pass the folder using `--folder`. To avoid running out of memory either run `BEM` using `--bem` or run `LLM` using `--llm` . A csv file will automatically be saved to `results/` containing the table in `csv` format.
 
 When using `--llm` you have a choice on how you transform LLM predictions in the final score:
 - directly check in the generated answer for the expepected label occurence (default Yes/No), and assign corresponding score (default 1/0), when no expected label is found, or more than one expected label is matched, we assign score -100 to the corresponding sample, such samples are excluded from the mean score computation
@@ -23,17 +23,17 @@ The choice of score interpretation is done via `use_logits` parameter specified 
 
 
 ```bash
-python3 eval.py --experiments_folder experiments/ --llm_batch_size 16 --split 'dev' --llm
+python3 evaluate.py --experiments_folder experiments/ --llm_batch_size 16 --split 'dev' --llm
 ```
 Similarly to  `--generator` you can specify which LLM you are willing as first options of `--llm`, as well as short name at metrics naming (use the name of the configuration file as the name of the llm). 
  
 
 ```bash
 # use llama2-7b-chat to run evaluation, output metric will be named VLLMeval_l2_7b
-python3 eval.py --experiments_folder experiments/ --llm_batch_size 16 --split 'dev' --llm  "vllm_llama-2-7b-chat" "l2_7b"
+python3 evaluate.py --experiments_folder experiments/ --llm_batch_size 16 --split 'dev' --llm  "vllm_llama-2-7b-chat" "l2_7b"
 
 # use tinyllama to run evaluation, output metric will be named LLMeval_tinyllama
-python3 eval.py --experiments_folder experiments/ --llm_batch_size 16 --split 'dev' --llm  "tinyllama-chat" "tinyllama"
+python3 evaluate.py --experiments_folder experiments/ --llm_batch_size 16 --split 'dev' --llm  "tinyllama-chat" "tinyllama"
 
 # in default settings (with no arguments specified) we use SOLAR-107B for evaluation and output metric is named LLMeval
 python3 eval.py --experiments_folder experiments/ --llm_batch_size 16 --split 'dev' --llm  
@@ -53,3 +53,17 @@ If you have local ollama server running, you can call models installed on this s
 python3 eval.py --experiments_folder experiments/ --llm_ollama "phi3:latest" --ollama_url "http://localhost:11434"   --llm_prompt default_multi_qa
 ```
 
+### Pairwise comparisons
+
+Instead of computing an LLM eval score for a given run, you can compare two outputs using the same script and some additional arguments e.g.
+````
+python3 evaluate.py --llm --folder mistral_preds --opponent_folder llama_preds  --opponent_name llama
+```
+where both `mistral_preds` and `llama_preds` are output folders of bergen inferences.
+This scripts uses an LLM (can be any LLM supported in bergen or gpt-4o) to compare the two sets of predictions and compute win/tie/lose rates against the opponent. Results are stored in the metrics file of the folder. The prompt used is the pairwise prompt in `config/default_qa.yaml`.
+
+This approach does not use logits but rather the raw prediction of the LLMs (win, tie or lose).
+
+In this setup note that:
+    - A single experiment folder must be specified for `--folder` and `--opponent_folder`
+    - the `opponent_name` is required 
