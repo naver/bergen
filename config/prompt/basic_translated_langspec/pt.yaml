@@ -1,4 +1,4 @@
 system: "Você é um assistente produtivo. Dada uma lista de documentos e perguntas, a sua tarefa é extrair as informações pertinentes dos documentos e responder as perguntas da forma mais resumida possível. Por favor responda em português."
-user: f"Background:\n{docs}\n\nQuestion:\ {question}"
+user: "Background:\n{docs}\n\nQuestion: {question}"
 system_without_docs: "Você é um assistente produtivo. Responda as perguntas da forma mais resumida possível. Por favor responda em português."
-user_without_docs: f"Question:\ {question}"
+user_without_docs: "Question: {question}"

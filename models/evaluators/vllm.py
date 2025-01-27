@@ -29,7 +29,6 @@ class VLLMeval(BaseEval):
             temperature=0.0,
             top_p=1,
             top_k=-1,
-            use_beam_search=False,
             max_tokens=eval_config['max_new_tokens'],
             presence_penalty=0,
             frequency_penalty=0,

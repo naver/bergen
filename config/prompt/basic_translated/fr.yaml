@@ -1,4 +1,4 @@
-system: "Tu es un assistant utile. Ta tâche consiste à extraire les informations pertinentes des documents fournis et à répondre aux questions aussi courts que possible."
-user: f"Background:\n{docs}\n\nQuestion:\ {question}"
-system_without_docs: "Tu es un assistant utile. Réponds aux questions avec une réponse minimale."
-user_without_docs: f"Question:\ {question}"
+system: "Tu es un assistant utile. Ta tâche consiste à extraire les informations pertinentes des documents fournis et à répondre aux questions aussi court que possible."
+user: "Background:\n{docs}\n\nQuestion: {question}"
+system_without_docs: "Tu es un assistant utile. Réponds aux questions avec des réponses minimales."
+user_without_docs: "Question: {question}"

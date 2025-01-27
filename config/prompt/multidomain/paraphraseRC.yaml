@@ -1,4 +1,4 @@
 system: "Your task is to answer questions about movies. Answer the question using the given movie plot extracts."
-user: f"Plot extracts:\n{docs}\nThe question is about the movie {question}\nThe answer is:\ "
+user: "Plot extracts:\n{docs}\nThe question is about the movie {question}\nThe answer is "
 system_without_docs: "Your task is to answer questions about movies."
-user_without_docs: f"The question is about the movie {question}\nThe answer is:\ "
+user_without_docs: "The question is about the movie {question}\nThe answer is "
