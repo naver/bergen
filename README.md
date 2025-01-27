@@ -61,13 +61,13 @@ To fully configure BERGEN, please read our [configuration guide](documentation/c
 Run the evaluation script to calculate LLMEval metrics and print the results:
 
 ```bash
-python3 eval.py --experiments_folder experiments/ --llm_batch_size 16 --split 'dev' --llm vllm_SOLAR-107B
+python3 evaluate.py --experiments_folder experiments/ --llm_batch_size 16 --split 'dev' --llm vllm_SOLAR-107B
 
 #parse all the experiments files into a panda dataframe
 python print_results.py --folder experiments/ --format=tiny
 ```
 
-For more evaluation options and details, refer to the [Evaluation section](documentation/evaluations.md) in the complete documentation.
+Bergen also offers the possiblity to run pairwise comparisons using an LLM as judge. For more evaluation options and details, refer to the [Evaluation section](documentation/evaluations.md) in the complete documentation.
 
 ## RAG Baselines
 Bergen provides results for several models and many datasets aiming to **provide strong baselines**. On the important datasets for RAG, the match metric is given by this table (see more in our paper): 
