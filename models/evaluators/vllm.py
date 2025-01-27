@@ -29,15 +29,15 @@ class VLLMeval(BaseEval):
             temperature=0.0,
             top_p=1,
             top_k=-1,
-            use_beam_search=False,
             max_tokens=eval_config['max_new_tokens'],
             presence_penalty=0,
             frequency_penalty=0,
             )
+        
         self.llm.sampling_params.max_new_token = eval_config['max_new_tokens']
         self.batch_size = batch_size or self.llm.batch_size
         self.llm.max_new_tokens = eval_config['max_new_tokens']
-    
+
     @torch.no_grad()
     def __call__(self, predictions, references, questions, opponent_predictions=None):
         assert len(predictions) == len(references) == len(questions)

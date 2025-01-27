@@ -60,16 +60,7 @@ class BaseEval:
         torch.cuda.empty_cache()
         gc.collect()        
 
-    def create_instruction(self,sample):
-        answer = sample['reference']
-        question = sample['question']
-        prediction = sample['candidate']
-        
-        if 'response' in sample:
-            response = sample['response']
-        else:
-            response = None
-            
+    def create_instruction(self, question, answer, prediction):
         prefix = []
         if getattr(self.llm.tokenizer, "chat_template") is not None and  'system' in self.llm.tokenizer.chat_template:
             prefix =  [{
@@ -95,10 +86,6 @@ class BaseEval:
         if 'assistant' in self.prompt:
             prefix.extend([{'role': 'assistant',
                 'content': self.prompt.assistant}]
-            )
-        if response is not None:
-            prefix.extend([{'role': 'assistant',
-                'content': response}]
             )
         return self.llm.tokenizer.apply_chat_template(prefix,  add_generation_prompt=True, tokenize=False) 
     

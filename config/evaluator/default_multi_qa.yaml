@@ -8,7 +8,7 @@ prompt:
   system: "You are an evaluation tool. Answer with one of \n {rubrik_section}."
   user: "Here is a question, a golden answer and an AI-generated answer. Can you judge whether the AI-generated answer is correct according to the question and golden answer, simply answer with one of {rubrik_section}.\n Question {question}. \nGolden answer: {answer} \n Generated answer {prediction}"
   user_without_system: "You are an evaluation tool. Just answer as following {rubrik_section}. Here is a question, a golden answer and an AI-generated answer. Judge whether the AI-generated answer is correct according to the question and golden answer, answer with {rubrik_section}.\nQuestion {question}.\nGolden answer {answer}\nGenerated answer {prediction}"
-  output_options_pairwise:
+output_options_pairwise:
   '1': 1.
   '2': 0.
   '3': 0.5
