@@ -17,6 +17,8 @@ class CrossEncoder(Reranker):
         self.model = AutoModelForSequenceClassification.from_pretrained(self.model_name, low_cpu_mem_usage=True, torch_dtype=torch.float16)
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name, max_length=self.max_len)
         self.model.eval()
+        if torch.cuda.device_count() > 1 and torch.cuda.is_available():
+            self.model = torch.nn.DataParallel(self.model)
 
     def collate_fn(self, examples):
         question = [e['query'] for e in examples]
