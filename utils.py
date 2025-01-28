@@ -486,11 +486,13 @@ def get_reranking_filename(
     reranker_name,
     rerank_top_k,
     query_generator_name,
-    use_instruction,
+    use_instruction_r,
+    use_instruction_rr,
 ):
     query_gen_add = "" if query_generator_name == "copy" else f".{query_generator_name}"
-    use_instruction_add = ".instruct_rerank" if use_instruction else ""
-    return f"{runs_folder}/run.rerank.retriever.top_{retrieve_top_k}.{retriever_name}.rerank.top_{rerank_top_k}.{query_dataset}.{doc_dataset}.{dataset_split}.{reranker_name}{query_gen_add}{use_instruction_add}.trec"
+    use_instruction_add_r = ".instruct_retrieve" if use_instruction_r else ""
+    use_instruction_add_rr = ".instruct_rerank" if use_instruction_rr else ""
+    return f"{runs_folder}/run.rerank.retriever.top_{retrieve_top_k}.{retriever_name}{use_instruction_add_r}.rerank.top_{rerank_top_k}.{query_dataset}.{doc_dataset}.{dataset_split}.{reranker_name}{query_gen_add}{use_instruction_add_rr}.trec"
 
 
 def get_ranking_filename(

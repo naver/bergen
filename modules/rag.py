@@ -475,6 +475,7 @@ class RAG:
             self.reranker.get_clean_model_name(),
             self.rerank_top_k,
             self.query_generator.get_clean_model_name(),
+            self.retriever_use_query_instruction,
             self.reranker_use_query_instruction,
         )
 
