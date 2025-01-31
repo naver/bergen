@@ -1,0 +1,19 @@
+train:
+    doc: null  
+    query: null
+  
+dev:
+    doc: 
+        init_args:
+            _target_: modules.dataset_processor.IRDSDocProcessor
+            irds_name: "beir/fever/test"
+            split: "full"
+    
+    query: 
+        init_args:
+            _target_: modules.dataset_processor.IRDSQueryProcessor
+            irds_name: "beir/fever/test"
+            split: "full"
+test:
+    doc: null
+    query: null

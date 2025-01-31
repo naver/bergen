@@ -492,6 +492,51 @@ class MsMarcoCollection(Processor):
 # processes query and doc with different processors
 
 
+class IRDSDocProcessor(Processor):
+    def __init__(self, irds_name,*args, **kwargs):
+        dataset_name = irds_name.replace('/','_')+'_doc'
+        super().__init__(*args, **kwargs, dataset_name=dataset_name)
+        self.irds_name=irds_name
+
+    def process(self):
+        import ir_datasets
+        dataset = ir_datasets.load(self.irds_name)
+        print(dataset)
+        def dataset_generator():
+            for doc in dataset.docs_iter():
+                    doc # namedtuple<doc_id, text, title>
+                    doc_text=''
+                    if hasattr(doc,'title'):
+                        doc_text+=doc.title+ ' ' +doc.text
+                    else:
+                        doc_text+=doc.text
+                    yield {'id':doc.doc_id, 'content':doc_text}
+        
+        hf_dataset= datasets.Dataset.from_generator(dataset_generator)
+        return hf_dataset
+
+
+class IRDSQueryProcessor(Processor):
+    def __init__(self, irds_name,*args, **kwargs):
+        dataset_name = irds_name.replace('/','_')+'_query'
+        self.irds_name=irds_name
+        super().__init__(*args, **kwargs, dataset_name=dataset_name)
+
+    def process(self):
+        import ir_datasets
+        dataset = ir_datasets.load(self.irds_name)
+        print(dataset)
+        def dataset_generator():
+            for doc in dataset.queries_iter():
+                    ## namedtuple<query_id, text>
+                    yield {'id':doc.query_id, 'content':doc.text}
+
+        hf_dataset= datasets.Dataset.from_generator(dataset_generator)
+        return hf_dataset
+
+
+    
+
 class UT1Queries(Processor):
     def __init__(self, *args, **kwargs):
         dataset_name = 'ut1queries'
