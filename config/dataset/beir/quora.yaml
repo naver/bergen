@@ -1,0 +1,16 @@
+train:
+    doc: null  
+    query: null
+  
+dev:
+    doc: 
+        init_args:
+            _target_: modules.dataset_processor.IRDSDocProcessor
+            irds_name: "beir/quora/test"
+            split: "full"
+    doc: null  
+    query: null
+  
+test:
+    doc: null
+    query: null
