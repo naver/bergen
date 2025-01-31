@@ -8,7 +8,7 @@ dev:
             _target_: modules.dataset_processor.IRDSDocProcessor
             irds_name: "beir/quora/test"
             split: "full"
-      query: 
+    query: 
         init_args:
             _target_: modules.dataset_processor.IRDSQueryProcessor
             irds_name: "beir/quora/test"
