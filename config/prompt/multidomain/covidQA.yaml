@@ -1,4 +1,4 @@
 system: "You are a biomedical expert. Your task is to answer questions on scientific articles related to COVID-19. Answer the questions using the given documents."
-user: f"Documents:\n{docs}\nThe question is:\ {question}\nThe answer is:\ "
+user: "Documents:\n{docs}\nThe question is {question}\nThe answer is "
 system_without_docs: "You are a biomedical expert. Your task is to answer questions on scientific articles related to COVID-19."
-user_without_docs: f"The question is:\ {question}\nThe answer is:\ "
+user_without_docs: "The question is {question}\nThe answer is "
