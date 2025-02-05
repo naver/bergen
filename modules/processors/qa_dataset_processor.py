@@ -1,5 +1,6 @@
 from ..dataset_processor import *
 import datasets
+from datasets import load_dataset
 import requests  
 
 
@@ -257,4 +258,19 @@ class wikimultihopqa(Processor):
         dataset = dataset.add_column("id", cid)
         
         return dataset
-   
+
+class SimpleQA(Processor):
+    def __init__(self, *args, **kwargs):
+        dataset_name = 'openai_simpleqa'
+        super().__init__(*args, **kwargs, dataset_name=dataset_name)
+
+    def process(self):
+        
+        dataset = load_dataset("basicv8vc/SimpleQA")['test']
+        dataset = dataset.rename_column("problem", "content")
+        dataset = dataset.map(lambda example: {'label': [example['answer']]})
+        #dataset = dataset.rename_column("answer", "label")
+        dataset = dataset.remove_columns(["metadata",'answer'])
+        cid= ['test_sqa_'+str(i) for i in range(len(dataset))]
+        dataset = dataset.add_column("id", cid)
+        return dataset
