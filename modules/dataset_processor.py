@@ -483,10 +483,24 @@ class MsMarcoCollection(Processor):
     def process(self):
         # load from the ir-dataset HF repo
         hf_name = "irds/msmarco-passage"
-        dataset = datasets.load_dataset(hf_name, 'docs', num_proc=self.num_proc)  # no need for split?
+        dataset = datasets.load_dataset(hf_name, 'docs', num_proc=self.num_proc,trust_remote_code=True)  # no need for split?
         dataset = dataset.rename_column("doc_id", "id")
         dataset = dataset.rename_column("text", "content")
         return dataset
+
+class MsMarcoTrainQueries(Processor):
+
+    def __init__(self, *args, **kwargs):
+        dataset_name = 'ms-marco-train-queries'
+        super().__init__(*args, **kwargs, dataset_name=dataset_name)
+
+    def process(self):
+        import ir_datasets
+        ird = ir_datasets.load("msmarco-passage/train/judged")
+        Qid= [q.query_id for q in ird.queries_iter()]
+        Qtext= [q.text for q in ird.queries_iter()]
+        hf_dataset= datasets.Dataset.from_dict({'id':Qid, 'content':Qtext})
+        return hf_dataset
 
 # applies processing to dataset names
 # processes query and doc with different processors

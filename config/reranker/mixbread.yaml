@@ -1,0 +1,5 @@
+init_args: 
+  _target_: models.rerankers.crossencoder.CrossEncoder
+  model_name: "mixedbread-ai/mxbai-rerank-large-v1"
+  max_len: 256
+batch_size: 64
