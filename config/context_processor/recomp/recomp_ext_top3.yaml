@@ -1,0 +1,5 @@
+init_args: 
+  _target_: models.context_processors.recomp.RecompExtractiveCompressor
+  batch_size: 64
+  alway_select_title: True
+  

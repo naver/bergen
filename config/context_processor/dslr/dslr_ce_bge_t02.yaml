@@ -1,0 +1,7 @@
+init_args: 
+  _target_: models.context_processors.dslr_ce.DSLR_CE
+  model_name: "BAAI/bge-reranker-v2-m3"
+  batch_size: 32
+  threshold: 0.2
+  always_select_title: True
+  

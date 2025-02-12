@@ -144,7 +144,9 @@ class Generator(ABC):
         if 'doc' in sample:
             # We have retrieved documents:
             docs = ''
-            for i, doc in enumerate(sample['doc']):
+            docs = sample['doc']
+            docs = [doc for doc in docs if len(doc.strip()) > 0]
+            for i, doc in enumerate(docs):
                 doc = ' '.join(doc.split()[:self.max_doc_len])
                 docs += f"Document {i+1}: {doc}\n"
             return self.compile_prompt(self.prompt.system, self.prompt.user, question, docs, label=label)

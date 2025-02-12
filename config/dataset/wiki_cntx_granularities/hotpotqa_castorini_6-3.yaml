@@ -1,0 +1,13 @@
+dev:
+    doc: 
+        init_args:
+            _target_: modules.dataset_processor.ODQAWikiCorpora63tamberALL
+            split: "train"
+    
+    query: 
+        init_args:
+            _target_: modules.processors.kilt_dataset_processor.KILTHotpotqa
+            split: "validation"
+test:
+    doc: null
+    query: null
