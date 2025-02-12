@@ -91,7 +91,7 @@ class Processor(object):
         else:
             dataset = self.process()
             dataset.save_to_disk(out_folder)
-            id2index = self.get_index_to_id(dataset) 
+            id2index = self.get_index_to_id(dataset)
             pickle.dump(id2index, open(f'{out_folder}/id2index.p', 'wb'))
             if self.debug:
                 dataset = dataset.select(range(min(len(dataset), 50)))
