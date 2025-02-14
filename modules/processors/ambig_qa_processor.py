@@ -77,6 +77,86 @@ class AmbigQAInstructFromDict(Processor):
         return datasets.Dataset.from_generator(my_gen)
 
 
+class AmbigQAInstructFromDictCat2(Processor):
+
+    def __init__(self, *args, **kwargs):
+        dataset_name = "ambigqa-cat2-full"
+        super().__init__(*args, **kwargs, dataset_name=dataset_name)
+
+    def process(self):
+        def my_gen():
+            data = json.load(
+                open(
+                    "/beegfs/scratch/user/tformal/evian/save/generated_instructions_full_categ2_gpt4.json"
+                )
+            )
+            hf_name = "naver/ambigqa-queries"
+            dataset = load_dataset(hf_name, num_proc=self.num_proc)[self.split]
+            d = {}
+            for item in data:
+                key_ = list(item.keys())[0]
+                d[key_] = item[key_]
+            for sample in dataset:
+                id_ = sample["id"]
+                if id_ in d:
+                    # q = sample["question"]
+                    q = sample["nq_question"]
+                    answer = sample["answer"]
+                    try:
+                        instruction = d[id_]["instruction"]
+                    except KeyError:
+                        print(id_)
+                        print(d[id_])
+                    yield {
+                        "id": id_,
+                        "content": q.strip(),
+                        "instruction": instruction.strip(),
+                        "label": [answer],
+                    }
+
+        return datasets.Dataset.from_generator(my_gen)
+
+
+class AmbigQAInstructFromDictCat3(Processor):
+
+    def __init__(self, *args, **kwargs):
+        dataset_name = "ambigqa-cat3-full"
+        super().__init__(*args, **kwargs, dataset_name=dataset_name)
+
+    def process(self):
+        def my_gen():
+            data = json.load(
+                open(
+                    "/beegfs/scratch/user/tformal/evian/save/generated_instructions_full_categ3_gpt4.json"
+                )
+            )
+            hf_name = "naver/ambigqa-queries"
+            dataset = load_dataset(hf_name, num_proc=self.num_proc)[self.split]
+            d = {}
+            for item in data:
+                key_ = list(item.keys())[0]
+                d[key_] = item[key_]
+            for sample in dataset:
+                id_ = sample["id"]
+                if id_ in d:
+                    # q = sample["question"]
+                    q = sample["nq_question"]
+                    answer = sample["answer"]
+                    try:
+                        instruction = d[id_]["instruction"]
+                    except KeyError:
+                        print(id_)
+                        print(d[id_])
+                    yield {
+                        "id": id_,
+                        "content": q.strip(),
+                        "instruction": instruction.strip(),
+                        "label": [answer],
+                    }
+
+        return datasets.Dataset.from_generator(my_gen)
+
+
 class AmbigQAFromDict(Processor):
     """temp, to remove"""
 

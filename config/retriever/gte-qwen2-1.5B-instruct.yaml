@@ -1,0 +1,10 @@
+init_args: 
+  _target_: models.retrievers.dense_llm.DenseLLM
+  model_name: "Alibaba-NLP/gte-Qwen2-1.5B-instruct"
+  max_len: 256
+  similarity: 
+    _target_: models.retrievers.dense.CosineSim
+  prompt_q: "Instruct: Given a web search query, retrieve relevant passages that answer the query\nQuery: "
+  adapters: False
+batch_size: 154
+batch_size_sim: 1048
