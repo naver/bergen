@@ -19,7 +19,7 @@ class Generator(ABC):
                  model_name: str =None,
                  batch_size: int = 1,
                  max_new_tokens: int = 1,
-                 max_doc_len: int = 100,
+                 max_doc_len: int = 10**10,
                  max_length: int = None):
         self.model_name = model_name
         self.batch_size = batch_size
@@ -144,9 +144,9 @@ class Generator(ABC):
         if 'doc' in sample:
             # We have retrieved documents:
             docs = ''
-            docs = sample['doc']
-            docs = [doc for doc in docs if len(doc.strip()) > 0]
-            for i, doc in enumerate(docs):
+            input_docs = sample['doc']
+            input_docs = [doc for doc in input_docs if len(doc.strip()) > 0]
+            for i, doc in enumerate(input_docs):
                 doc = ' '.join(doc.split()[:self.max_doc_len])
                 docs += f"Document {i+1}: {doc}\n"
             return self.compile_prompt(self.prompt.system, self.prompt.user, question, docs, label=label)
