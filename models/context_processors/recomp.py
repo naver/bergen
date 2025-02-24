@@ -90,7 +90,7 @@ class RecompExtractiveCompressor(ContextProcessor):
                     selected_idxs = np.argsort(np.array([scores_[t+1] for t in range(len(scores_))]))[-self.top_k:]
                 else:
                     selected_idxs = [t for t in range(len(scores_)) if scores_[t+1]>self.threshold]
-                selected_cntx = " ".join([(titles[(qi, ci)]] if self.alway_select_title else [] \
+                selected_cntx = " ".join(([titles[(qi, ci)]] if self.alway_select_title else []) \
                                           +[sents[(qi, ci)][idx] for idx in selected_idxs])
                 selected_contexts_.append(selected_cntx)
             selected_contexts.append(selected_contexts_)
