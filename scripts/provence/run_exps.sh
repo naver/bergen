@@ -19,7 +19,10 @@ SBATCH_PARAMS=""
 
 for dataset in wiki_cntx_granularities/nq_castorini_6-3; do
 #for dataset in wiki_cntx_granularities/nq_castorini_6-3 wiki_cntx_granularities/hotpotqa_castorini_6-3 wiki_cntx_granularities/tydiqa_castorini_6-3 wiki_cntx_granularities/popqa_castorini_6-3 multidomain/syllabusQA multidomain/pubmed_bioasq11b_ragged multidomain/rgb; do
-# full version with all datasets from Provence paper
+# full version with all datasets from Provence paper -- uses contexts of 6 sents with 3-sent overlap for wiki
+
+# alternatively, you can use 100-words contexts for wiki, to reuse standard Bergen indexes
+#for dataset in kilt_nq kilt_hotpotqa tydiqa_en popqa multidomain/syllabusQA multidomain/pubmed_bioasq11b_ragged multidomain/rgb; do
 
     for method in full provence/provence_rerank_0.5; do
     #for method in full provence/provence_rerank_0.5 provence/provence_rerank_0.1 provence/provence_standalone_0.5 provence/provence_standalone_0.1 recomp/recomp_ext_top1 recomp/recomp_ext_top2 recomp/recomp_ext_top3 llmlingua2/llmlingua2_0.25 llmlingua2/llmlingua2_0.5 llmlingua2/llmlingua2_0.7 longllmlingua/longllmlingua_0.25 longllmlingua/longllmlingua_0.5 longllmlingua/longllmlingua_0.75 dslr/dslr_ce_bge_t01 dslr/dslr_ce_bge_t02 dslr/dslr_ce_bge_t05; do
