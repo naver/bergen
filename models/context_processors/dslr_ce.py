@@ -11,6 +11,7 @@ import numpy as np
 
 
 class DSLR_CE(ContextProcessor):
+    # paper: https://arxiv.org/abs/2407.03627
     def __init__(self, model_name="BAAI/bge-reranker-v2-m3", batch_size=32, max_len=512, threshold=None, always_select_title=True):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -29,8 +30,9 @@ class DSLR_CE(ContextProcessor):
         self.batch_size = batch_size
         self.always_select_title = always_select_title
         self.threshold = threshold
+        self.predefined_context_processing_metrics = ["context_compression"]
         
-    def process(self, contexts: List[List[str]], queries: List[List[str]]):
+    def _process(self, contexts: List[List[str]], queries: List[List[str]]):
         context_sents_withtitle = []
         sents = {}
         titles = {}
@@ -76,4 +78,4 @@ class DSLR_CE(ContextProcessor):
                                           +[sents[(qi, ci)][idx] for idx in selected_idxs])
                 selected_contexts_.append(selected_cntx)
             selected_contexts.append(selected_contexts_)
-        return selected_contexts
+        return selected_contexts, {}

@@ -5,14 +5,16 @@ from tqdm import tqdm
 
 
 class LLMLingua2(ContextProcessor):
+    # https://llmlingua.com/llmlingua2.html
     def __init__(self, model_name, rate, force_tokens=["\n", "?"]):
         self.model = PromptCompressor(model_name, use_llmlingua2=True)
         self.name = f"llmlingua2_rate{rate}"
         self.model_name = model_name
         self.rate = rate
         self.force_tokens = force_tokens
+        self.predefined_context_processing_metrics = ["context_compression"]
 
-    def process(self, contexts: List[List[str]], queries: List[List[str]]):
+    def _process(self, contexts: List[List[str]], queries: List[List[str]]):
         # llmlingua2 does not use queries
         return [
             [
@@ -22,4 +24,4 @@ class LLMLingua2(ContextProcessor):
                 for context_item in context
             ]
             for context in tqdm(contexts, desc="Compressing prompts with LLMLingua2...")
-        ]
+        ], {}

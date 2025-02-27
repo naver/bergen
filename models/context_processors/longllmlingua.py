@@ -4,14 +4,16 @@ from llmlingua import PromptCompressor
 from tqdm import tqdm
 
 class LongLLMLingua(ContextProcessor):
+    # https://llmlingua.com/llmlingua2.html
     def __init__(self, rate):
         # FIXME this next line should be commented when doing generation to avoid OOM
         self.model = PromptCompressor()
         self.name = f"longllmlingua_{rate}"
         self.model_name = self.name
         self.rate = rate
+        self.predefined_context_processing_metrics = ["context_compression"]
         
-    def process(self, contexts: List[List[str]], queries: List[List[str]]):
+    def _process(self, contexts: List[List[str]], queries: List[List[str]]):
         return [[self.model.compress_prompt(
                                             context,
                                             question=question,
@@ -30,4 +32,4 @@ class LongLLMLingua(ContextProcessor):
                                         )["compressed_prompt"]]
                               for question, context in tqdm(zip(queries, contexts), 
                                                             desc='Compressing prompts with LongLLMLingua...', 
-                                                            total=len(queries))] 
+                                                            total=len(queries))], {}

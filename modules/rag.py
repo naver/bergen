@@ -19,7 +19,7 @@ from utils import (
     write_trec, prepare_dataset_from_ids, load_trec,
     print_generate_out, print_rag_model,
     write_generated, write_dict, get_by_id, get_index_path, get_query_generation_filename,
-    get_context_processing_filename, eval_context_compression,
+    get_context_processing_filename,
     get_reranking_filename, format_time, get_ranking_filename, get_finished_experiment_name
 )
 from modules.retrieve import Retrieve
@@ -426,20 +426,25 @@ class RAG:
             self.context_processor.get_clean_model_name(),
         )
         if not os.path.exists(process_context_file) or self.overwrite_exp or self.overwrite_index:
-            processed_contexts = self.context_processor.eval(gen_dataset['doc'], gen_dataset['query'])
+            processed_contexts, context_metrics = self.context_processor.eval(gen_dataset['doc'], 
+                                                                              gen_dataset['query'])
             os.makedirs(self.processed_context_folder, exist_ok=True)
             with open(process_context_file, 'w') as fp: 
                 json.dump({"processed_contexts": processed_contexts,
-                          "original_contexts": gen_dataset['doc'],
-                          "queries": gen_dataset['query']}, fp)
+                           "context_metrics": context_metrics,
+                           "original_contexts": gen_dataset['doc'],
+                           "queries": gen_dataset['query']}, 
+                          fp)
         else:
             with open(process_context_file, 'r') as fp: 
-                processed_contexts = json.load(fp)["processed_contexts"]
-        #gen_dataset_new = gen_dataset.map(lambda ex: {"doc": processed_contexts}, batched=True)
+                save = json.load(fp)
+                processed_contexts = save["processed_contexts"]
+                context_metrics = save["context_metrics"]
         gen_dataset = gen_dataset.remove_columns('doc')
         gen_dataset = gen_dataset.add_column('doc', processed_contexts)
         shutil.copyfile(process_context_file, f'{self.experiment_folder}/{process_context_file.split("/")[-1]}')
-        eval_context_compression(process_context_file, self.experiment_folder, dataset_split)
+        with open(f'{self.experiment_folder}/eval_{dataset_split}_context_metrics.json', 'w') as fout:
+            json.dump(context_metrics, fout)
         return gen_dataset
     
     def generate(self, 

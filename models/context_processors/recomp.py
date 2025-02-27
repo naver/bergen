@@ -15,6 +15,7 @@ def mean_pooling(token_embeddings, mask):
     return sentence_embeddings
 
 class RecompExtractiveCompressor(ContextProcessor):
+    # https://arxiv.org/abs/2310.04408
     def __init__(self, model_name="fangyuan/nq_extractive_compressor", batch_size=32, max_len=512, top_k=3, threshold=None, alway_select_title=True):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -29,8 +30,9 @@ class RecompExtractiveCompressor(ContextProcessor):
         self.batch_size = batch_size
         self.alway_select_title = alway_select_title
         self.threshold = threshold
+        self.predefined_context_processing_metrics = ["context_compression"]
         
-    def process(self, contexts: List[List[str]], queries: List[List[str]]):
+    def _process(self, contexts: List[List[str]], queries: List[List[str]]):
         context_sents_withtitle = []
         sents = {}
         titles = {}
@@ -92,7 +94,8 @@ class RecompExtractiveCompressor(ContextProcessor):
                                           +[sents[(qi, ci)][idx] for idx in selected_idxs])
                 selected_contexts_.append(selected_cntx)
             selected_contexts.append(selected_contexts_)
-        return selected_contexts
+        return selected_contexts, {}
+
 
 class RecompAbstractiveCompressor(ContextProcessor):
     def __init__(self, model_name="fangyuan/nq_abstractive_compressor", batch_size=32, max_len=512, max_new_tokens=512):
@@ -104,8 +107,9 @@ class RecompAbstractiveCompressor(ContextProcessor):
         self.max_len = max_len
         self.max_new_tokens = max_new_tokens
         self.batch_size = batch_size
+        self.predefined_context_processing_metrics = ["context_compression"]
         
-    def process(self, contexts: List[List[str]], queries: List[List[str]]):
+    def _process(self, contexts: List[List[str]], queries: List[List[str]]):
         inputs = []
         for q, cntxs in zip(queries, contexts):
             input_txt = "Question: {}\n Document: {}\n Summary: ".format(
@@ -124,4 +128,4 @@ class RecompAbstractiveCompressor(ContextProcessor):
                                            attention_mask=attention_mask,
                                            max_new_tokens=self.max_new_tokens)
                 selected_contexts += [[self.tokenizer.decode(row, skip_special_tokens=True)] for row in pred]
-        return selected_contexts
+        return selected_contexts, {}

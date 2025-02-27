@@ -476,23 +476,3 @@ def print_gpu_memory():
 
     else:
         print("GPU is not available.")
-
-def eval_context_compression(processed_cntxs_fn, experiment_folder, split):
-    processed_cntxs = json.load(open(processed_cntxs_fn))
-    comps = []
-    for query, original, compressed in zip(processed_cntxs['queries'],
-                                           processed_cntxs['original_contexts'],
-                                           processed_cntxs['processed_contexts']
-                                          ):
-        if len(compressed) > 1:
-            for cntx_original, cntx_compressed in zip(original, compressed):
-                len_original = len(cntx_original)
-                len_compressed = len(cntx_compressed)
-                comps.append((len_original-len_compressed)/len_original * 100)
-        else:
-            len_original = sum([len(cntx_original) for cntx_original in original])
-            len_compressed = len(compressed[0])
-            comps.append((len_original-len_compressed)/len_original * 100)
-    compression = np.mean(comps)
-    with open(f'{experiment_folder}/eval_{split}_context_compression.json', 'w') as fout:
-        json.dump({"compression": compression}, fout)
