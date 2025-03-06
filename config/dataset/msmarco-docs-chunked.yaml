@@ -1,0 +1,16 @@
+train:
+    doc: 
+        init_args:
+            _target_: modules.dataset_processor.msmarco_dataset_processor.MsMarcoFullDocChunkCollection
+            split: "full"
+    
+    query: 
+        init_args:
+            _target_: modules.dataset_processor.msmarco_dataset_processor.MsMarcoFullDocQueries
+            split: "full"
+dev:
+    doc: null
+    query: null
+test:
+    doc: null
+    query: null
