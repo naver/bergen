@@ -2,7 +2,7 @@
 
 This page contains code and experimental data for [Provence: efficient and robust context pruning for retrieval-augmented generation](https://openreview.net/forum?id=TDy5Ih78b4) (ICLR'25)
 
-[[HF model](https://huggingface.co/naver/provence-reranker-debertav3-v1)] [[blogpost](https://huggingface.co/blog/nadiinchi/provence)] [[paper](https://openreview.net/forum?id=TDy5Ih78b4&noteId=TDy5Ih78b4)] [[arxiv](https://arxiv.org/abs/2501.16214)]
+[HF model](https://huggingface.co/naver/provence-reranker-debertav3-v1) | [blogpost](https://huggingface.co/blog/nadiinchi/provence) | [paper](https://openreview.net/forum?id=TDy5Ih78b4&noteId=TDy5Ih78b4) | [arxiv](https://arxiv.org/abs/2501.16214)
 
 _Provence_ is a method for training a lightweight __context pruning model__ for retrieval-augmented generation, particularly optimized for question answering. Given a user question and a retrieved passage, Provence __removes sentences from the passage that are not relevant to the user question__. This __speeds up generation__ and __reduces context noise__, in a plug-and-play manner __for any LLM or retriever__. 
 
@@ -100,7 +100,7 @@ To train Provence, we label data using LLama-3-b8 (we used the 3.1 version, we d
 python3 gen_silver_labeling_provence.py --queries "../../datasets/ms-marco-docs-v1-queries-dev_full" --datastore "../../datasets/ms-marco-docs-v1-chunked-v1_full" --trec "../../runs/run.rerank.retriever.top_50.naver_splade-v3.rerank.top_50.ms-marco-docs-v1-queries-dev.ms-marco-docs-v1-chunked-v1.dev.naver_trecdl22-crossencoder-debertav3.trec" --outdir PATH_TO_DATA
 ```
 
-Specify your `PATH_TO_DATA` where to save the results of the labeling. The script will create a separate `.json` file per a query-context pair in this `PATH_TO_DATA` folder (total size several Gb).
+Specify your `PATH_TO_DATA` where to save the results of the labeling. The script will create a separate `.json` file per a query-context pair in this `PATH_TO_DATA` folder (total size several Gb). Other files specified in arguments should have been saved by Bergen in step 1.
 
 Warning: this step can also take 2-3 days on a Tesla A100 GPU. Do not forget your CUDA / sbatch settings!
 
@@ -126,7 +126,7 @@ The script for training `train_provence.py` is provided in the same folder as th
 
 * `PATH_TO_DATA`: the data folder generated in step 2
 * `TRAINING_TYPE`: "joint" for joint reranking+context compression model, "compression" for compression-only (standlone) model, "ranking" for reranking only
-* `PATH_TO_RUN`: `.trec` file generated in step 1. If you use the same setting as ours, it's `../../runs/run.rerank.retriever.top_50.naver_splade-v3.rerank.top_50.ms-marco-docs-v1-queries-dev.ms-marco-docs-v1-chunked-v1.dev.naver_trecdl22-crossencoder-debertav3.trec`
+* `PATH_TO_RUN`: `.trec` file generated in step 1 (only needed to train the reranking head). If you use the same setting as ours, it's `../../runs/run.rerank.retriever.top_50.naver_splade-v3.rerank.top_50.ms-marco-docs-v1-queries-dev.ms-marco-docs-v1-chunked-v1.dev.naver_trecdl22-crossencoder-debertav3.trec`
 * `EXP_FOLDER`: your custom folder where to save the checkpoints and the logs
 
 Do not forget your CUDA / sbatch settings! One epoch on the full MS Marco data takes several days, but you can get good results with smaller data, e.g. 1/10 of the whole set.
