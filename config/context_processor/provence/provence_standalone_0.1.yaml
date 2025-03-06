@@ -1,0 +1,8 @@
+init_args: 
+  _target_: models.context_processors.provence.ProvenceCompressor
+  model_name: "naver/provence-reranker-debertav3-v1"
+  name: provence_standalone_t0.1
+  threshold: 0.1
+  batch_size: 8
+  always_select_title: True
+  reorder: False

@@ -1,0 +1,4 @@
+init_args: 
+  _target_: models.context_processors.recomp.RecompAbstractiveCompressor
+  batch_size: 4
+  

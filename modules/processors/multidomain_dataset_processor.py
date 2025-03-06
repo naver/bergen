@@ -858,3 +858,30 @@ class SearchQA_corpus(Processor):
             all_urls = [f"{i}" for i in range(len(all_search_results))]
         dataset = datasets.Dataset.from_pandas(pd.DataFrame({"content": all_search_results, "id": all_urls})).filter(lambda x: x['content'] is not None)
         return dataset
+
+
+class RGB(Processor):
+
+    def __init__(self, num_pos=3, num_neg=2, *args, **kwargs):
+        self.dataset_name = "RGB"
+        super().__init__(*args, **kwargs, dataset_name=self.dataset_name)
+        self.num_pos = num_pos
+        self.num_neg = num_neg
+    
+    def process(self):
+        os.system("wget https://github.com/chen700564/RGB/raw/refs/heads/master/data/en_refine.json")
+        rgb = []
+        with open("en_refine.json") as fin:
+            for line in fin:
+                rgb.append(json.loads(line))
+        os.system("rm en_refine.json")
+        ds = datasets.Dataset.from_dict({
+                       "content": [item["query"] for item in rgb],
+                       "id": [str(item["id"]) for item in rgb],
+                       "label": [item["answer"] if type(item["answer"][0])==str else item["answer"][0] for item in rgb],
+                       "doc": [(item["positive"][:self.num_pos] + item["negative"][:self.num_neg]) for item in rgb],
+                       "doc_id": [[f"{i}_{j}" for j in \
+                                  range(len(item["positive"][:self.num_pos])+len(item["negative"][:self.num_neg]))] \
+                                  for i, item in enumerate(rgb)],
+                       })
+        return ds

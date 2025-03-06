@@ -1,0 +1,9 @@
+dev:
+    query: 
+        init_args:
+            _target_: modules.processors.multidomain_dataset_processor.RGB
+            split: "test"
+            
+test:
+    doc: null
+    query: null

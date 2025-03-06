@@ -113,7 +113,7 @@ def get_doc_embeds_from_dataset(d_ids, embeds_dataset):
 # horrible function :/ needs to be refactored into mult_doc and single doc
 # gets q_ids and d_ids and does a lookup by id to get the content
 # then constructs hf_dataset out of it
-def prepare_dataset_from_ids(dataset, q_ids, d_ids, multi_doc=False, query_field="content"):
+def prepare_dataset_from_ids(dataset, q_ids, d_ids, multi_doc=False, query_field="content", oracle_provenance=False):
 
     # if query _ids and doc_ids are None only return queries and optional labels /ranking labels
     if q_ids == d_ids == None:
@@ -127,8 +127,9 @@ def prepare_dataset_from_ids(dataset, q_ids, d_ids, multi_doc=False, query_field
         dataset_dict.update({'ranking_label': dataset['query']['ranking_label']} if 'ranking_label' in dataset['query'].features else {})
         return datasets.Dataset.from_dict(dataset_dict)
     else:
-        assert isinstance(d_ids[0][0], str), f"{d_ids[0]}"
-        assert isinstance(list(dataset['doc'].id2index.keys())[0], str), "Dataset id type is not string, real index retrieval will fail and retrieve nothing. Please convert to string in dataset_processor!"
+        if not (oracle_provenance and "doc" in dataset['query'].features): 
+            assert isinstance(d_ids[0][0], str), f"{d_ids[0]}"
+            assert isinstance(list(dataset['doc'].id2index.keys())[0], str), "Dataset id type is not string, real index retrieval will fail and retrieve nothing. Please convert to string in dataset_processor!"
         dataset_dict = defaultdict(list)
         # get labels
         labels = get_by_id(dataset['query'], q_ids, 'label')
@@ -139,12 +140,18 @@ def prepare_dataset_from_ids(dataset, q_ids, d_ids, multi_doc=False, query_field
         # put together dataset_dict for each query
         def mygen():
             for i, q_id in tqdm(enumerate(q_ids), desc='Fetching data from dataset...', total=len(q_ids)):
-                docs = get_by_id(dataset['doc'], d_ids[i], 'content') 
-                doc_idxs = get_by_id(dataset['doc'], d_ids[i])
+                if oracle_provenance and "doc" in dataset['query'].features:
+                    docs = get_by_id(dataset['query'], q_id, 'doc')[0]
+                    d_ids_ = get_by_id(dataset['query'], q_id, 'doc_id')[0]
+                    doc_idxs = [None for _ in d_ids_]
+                else:
+                    docs = get_by_id(dataset['doc'], d_ids[i], 'content') 
+                    d_ids_ = d_ids[i]
+                    doc_idxs = get_by_id(dataset['doc'], d_ids[i])
                 # for multi_doc=True, all documents are saved to the 'doc' entry
 
                 if multi_doc:
-                    x={'doc':docs, 'query': queries[i],'q_id':q_id,'d_id':d_ids[i],'d_idx':doc_idxs}
+                    x={'doc':docs, 'query': queries[i],'q_id':q_id, 'd_id':d_ids_, 'd_idx':doc_idxs}
                     # add labels if they exist in datset
                     if len(labels) > 0:
                         #dataset_dict['label'].append(labels[i])
@@ -156,8 +163,8 @@ def prepare_dataset_from_ids(dataset, q_ids, d_ids, multi_doc=False, query_field
                     yield x
                 else:
                     # for multi_doc=False, we save every document to a new entry
-                        for d_id, doc, d_idx in zip(d_ids[i], docs, doc_idxs):
-                            x= {'d_id': d_id, 'd_idx':d_idx,'doc': doc, 'query':queries[i],'q_id':q_id} 
+                        for d_id, doc, d_idx in zip(d_ids_, docs, doc_idxs):
+                            x= {'d_id': d_id, 'd_idx': d_idx, 'doc': doc, 'query':queries[i], 'q_id':q_id}
                             # add labels if they exist in datset
                             if len(labels) > 0 :
                                 dataset_dict['label'].append(labels[i])
@@ -292,7 +299,6 @@ def eval_retrieval_kilt(experiment_folder, qrels_folder, query_dataset_name, doc
     fname = f"eval_{split}_{reranking_str}ranking_metrics.json"
     write_dict(experiment_folder,  fname, mean_metrics)
 
-
 def init_experiment(config, experiments_folder, index_folder, runs_folder, run_name, overwrite_exp=False, continue_batch=None):
     # if run_name != None hash self to get run_name to avoid overwriting and exp. folder mess
     run_name = f'tmp_{Hasher.hash(str(config))}' if run_name == None else f'tmp_{run_name}'
@@ -359,10 +365,10 @@ def get_ranking_filename(runs_folder, query_dataset, doc_dataset, retriever_name
 def get_query_generation_filename(query_generation_folder, query_dataset, query_generator_name, split):
     return f'{query_generation_folder}/generated_queries.{query_dataset}.{split}.{query_generator_name}.json'
 
-def get_context_processing_filename(context_processing_folder, query_dataset, doc_dataset, dataset_split, retriever_name, retrieve_top_k, reranker_name, rerank_top_k, query_generator_name, context_processor_name):
+def get_context_processing_filename(context_processing_folder, query_dataset, doc_dataset, dataset_split, retriever_name, retrieve_top_k, reranker_name, rerank_top_k, generation_top_k, query_generator_name, context_processor_name):
     query_gen_add = "" if query_generator_name == "copy" else f".{query_generator_name}"
     rerank_name = f"rerank.top_{rerank_top_k}.{reranker_name}" if reranker_name is not None else "no_rerank"
-    return f'{context_processing_folder}/processed_contexts.{context_processor_name}.retriever.top_{retrieve_top_k}.{retriever_name}.{rerank_name}.{query_dataset}.{doc_dataset}.{dataset_split}{query_gen_add}.json'
+    return f'{context_processing_folder}/processed_contexts.{context_processor_name}.retriever.top_{retrieve_top_k}.{retriever_name}.{rerank_name}.generate_top_{generation_top_k}.{query_dataset}.{doc_dataset}.{dataset_split}{query_gen_add}.json'
         
 def get_embedding_datasets_path(embeddings_path):
     embeddings_path = embeddings_path.rstrip('/')
