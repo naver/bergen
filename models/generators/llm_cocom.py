@@ -12,14 +12,12 @@ class LLMCocom(Generator):
     def __init__(self,
                  model_name: str, # in practice this is checkpoint path
                  batch_size: int,
-                 max_new_tokens: int = 128, # TODO ?
-                 max_doc_len: int = 100,
+                 max_new_tokens: int = 128, # max nb tokens for generation
                  max_length: int = None,
-                 context_max_length: int = 128, #TODO ?
                  attn_implementation: str = 'flash_attention_2',
                  query_dependent: bool = False,
                  decoder_model_name: str = 'mistralai/Mistral-7B-Instruct-v0.2',
-                 model_max_length: int = 1280,
+                 model_max_length: int = 1280, # maximum number of supported tokens in prompts
                  prompt: str = None,
                  device_map = 'auto',
                  **kwargs  # see COCOMConfig for choice of kwargs
@@ -27,7 +25,6 @@ class LLMCocom(Generator):
         """
         Class to use cocom with compression
         checkpoint_path: path to a COCOM checkpoint
-        context_max_length: maximum length for encoding documents
         max_new_tokens: maximum number of tokens for generation
         model_max_length: maximum length used in the final query (should be large enough)
         """
@@ -39,7 +36,6 @@ class LLMCocom(Generator):
                            model_name=model_name,
                            batch_size=batch_size,
                            max_new_tokens=max_new_tokens,
-                           max_doc_len=max_doc_len,
                            max_length=max_length)
 
         # Loading the cocom model:
@@ -49,7 +45,6 @@ class LLMCocom(Generator):
         else:
             cfg = COCOMConfig(
                 decoder_model_name=decoder_model_name,
-                max_new_tokens=128,
                 lora=True,
                 training_form='both_separately',
                 lora_r=16,
@@ -66,23 +61,24 @@ class LLMCocom(Generator):
         #self.model.eval() 
         
         self.prompt = prompt
-        self.context_max_length = context_max_length
+        self.doc_max_length = self.model.doc_max_length # maximum number of tokens usable for compression !
         
         self.query_dependent = query_dependent
+        
         if self.query_dependent:
-            self.context_max_length += 64  # hard-coded at the moment TODO
+            self.doc_max_length += 64  # Hard-coded: oscar models assume query + doc shorter than 64 + 128 tokens. (TODO: improve)
             
         self.max_new_tokens = max_new_tokens
         self.model_max_length = model_max_length
         self.tokenizer = self.model.decoder_tokenizer
         
-    def generate(self, instr_tokenized, return_doc_embeddings: bool = False):
+    def generate(self, instr_tokenized):
         """
         Nothing to do here, just convey to cocom since instr_tokenized went throught the collate_fn
         """
         device = next(self.model.parameters()).device
         instr_tokenized = {k: v.to(device) for k,v in instr_tokenized.items() if isinstance(v, torch.Tensor)}
-        return self.model.generate(instr_tokenized, max_new_tokens=self.max_new_tokens, return_doc_embeddings=return_doc_embeddings)
+        return self.model.generate(instr_tokenized, max_new_tokens=self.max_new_tokens)
 
     def eval(self, dataset):
         """
@@ -148,9 +144,9 @@ class LLMCocom(Generator):
         if self.query_dependent:
             # also add the flattened query to the input for the encoder
             flattened_query = sum([[q] * self.model.generation_top_k for q in query], [])
-            inp_enc = self.model.prepare_encoder_inputs(texts=docs, q_texts=flattened_query, max_length=self.context_max_length)
+            inp_enc = self.model.prepare_encoder_inputs(texts=docs, q_texts=flattened_query, max_length=self.doc_max_length)
         else:
-            inp_enc = self.model.prepare_encoder_inputs(texts=docs, max_length=self.context_max_length, q_texts=None)
+            inp_enc = self.model.prepare_encoder_inputs(texts=docs, max_length=self.doc_max_length, q_texts=None)
             
         enc_input_ids, enc_attention_mask = inp_enc['input_ids'], inp_enc['attention_mask']
         
@@ -181,7 +177,7 @@ class LLMCocom(Generator):
                                          )[0] for q in query]
 
             inp_dec = self.model.decoder_tokenizer(instr, return_tensors='pt', padding="longest", add_special_tokens=False,
-                                        truncation=True,  max_length=self.model_max_length) # TODO what is this length ?
+                                        truncation=True,  max_length=self.model_max_length)
         else:
             label = [e['label'] if isinstance(e['label'], str) else random.choice(e['label']) for e in examples]
                         

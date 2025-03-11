@@ -9,4 +9,5 @@ tests/index/
 tests/exp/
 tests/run/
 outputs/
+results/
 wandb/
