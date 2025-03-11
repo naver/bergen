@@ -1,12 +1,14 @@
-from ..dataset_processor import *
 import datasets
 import os
-from collections import defaultdict
 import urllib.request
 import json
+import pickle
+
+from ..dataset_processor import Processor
+from collections import defaultdict
+
 
 class KILTNQ(Processor):
-
     def __init__(self, *args, **kwargs):
         dataset_name = 'kilt_nq'
         super().__init__(*args, **kwargs, dataset_name=dataset_name)
@@ -26,7 +28,6 @@ class KILTNQ(Processor):
 
 
 class KILTTriviaqa(Processor):
-
     def __init__(self, *args, **kwargs):
         dataset_name = 'kilt_triviaqa'
         super().__init__(*args, **kwargs, dataset_name=dataset_name)
@@ -62,8 +63,8 @@ class KILTTriviaqa(Processor):
         dataset = dataset.remove_columns(['meta', 'output'])
         return dataset
 
-class KILTHotpotqa(Processor):
 
+class KILTHotpotqa(Processor):
     def __init__(self, *args, **kwargs):
         dataset_name = 'kilt_hotpotqa'
         super().__init__(*args, **kwargs, dataset_name=dataset_name)
@@ -80,8 +81,8 @@ class KILTHotpotqa(Processor):
         dataset = dataset.remove_columns(['meta', 'output'])
         return dataset
     
+    
 class KILTAidayago2(Processor):
-
     def __init__(self, *args, **kwargs):
         dataset_name = 'kilt_aidayago2'
         super().__init__(*args, **kwargs, dataset_name=dataset_name)
@@ -98,8 +99,8 @@ class KILTAidayago2(Processor):
         dataset = dataset.remove_columns(['meta', 'output'])
         return dataset
     
+    
 class KILTCweb(Processor):
-
     def __init__(self, *args, **kwargs):
         dataset_name = 'kilt_cweb'
         super().__init__(*args, **kwargs, dataset_name=dataset_name)
@@ -116,8 +117,8 @@ class KILTCweb(Processor):
         dataset = dataset.remove_columns(['meta', 'output'])
         return dataset
     
+    
 class KILTEli5(Processor):
-
     def __init__(self, *args, **kwargs):
         dataset_name = 'kilt_eli5'
         super().__init__(*args, **kwargs, dataset_name=dataset_name)
@@ -157,8 +158,8 @@ class KILTEli5(Processor):
         dataset = dataset.remove_columns(['meta', 'output'])
         return dataset
     
+    
 class KILTFever(Processor):
-
     def __init__(self, *args, **kwargs):
         dataset_name = 'kilt_fever'
         super().__init__(*args, **kwargs, dataset_name=dataset_name)
@@ -175,8 +176,8 @@ class KILTFever(Processor):
         dataset = dataset.remove_columns(['meta', 'output'])
         return dataset
     
+    
 class KILTStructuredZeroshot(Processor):
-
     def __init__(self, *args, **kwargs):
         dataset_name = 'kilt_structured_zeroshot'
         super().__init__(*args, **kwargs, dataset_name=dataset_name)
@@ -195,7 +196,6 @@ class KILTStructuredZeroshot(Processor):
 
 
 class KILTSTrex(Processor):
-
     def __init__(self, *args, **kwargs):
         dataset_name = 'kilt_trex'
         super().__init__(*args, **kwargs, dataset_name=dataset_name)
@@ -212,8 +212,8 @@ class KILTSTrex(Processor):
         dataset = dataset.remove_columns(['meta', 'output'])
         return dataset
     
+    
 class KILTWned(Processor):
-
     def __init__(self, *args, **kwargs):
         dataset_name = 'kilt_wned'
         super().__init__(*args, **kwargs, dataset_name=dataset_name)
@@ -230,8 +230,8 @@ class KILTWned(Processor):
         dataset = dataset.remove_columns(['meta', 'output'])
         return dataset
 
-class KILTWow(Processor):
 
+class KILTWow(Processor):
     def __init__(self, *args, **kwargs):
         dataset_name = 'kilt_wow'
         super().__init__(*args, **kwargs, dataset_name=dataset_name)
@@ -251,9 +251,123 @@ class KILTWow(Processor):
 
 class KILTMULTIQA(Processor):
     def __init__(self, response_files: list = None, *args, **kwargs):
+        """
+        response_files is a list of json files containing answers (TODO: make this cleaner.)
+        """
         dataset_name = 'kilt_combined_qa'
         super().__init__(*args, **kwargs, dataset_name=dataset_name)
-            
+        self.response_files = response_files
+        if response_files is not None:
+            self.response_files = response_files
+            self.use_cache = False # we'll use labels coming from some input file: we don't want to overwrite anything in this case.
+
     def process(self):
-        return datasets.load_dataset("dmrau/combined_qa")[self.split]
-        
+        dataset = datasets.load_dataset("dmrau/combined_qa")[self.split]
+        if self.response_files is not None:
+            new_data = {}
+            # We load the files, they are output files from bergen runs.
+            for response_file in self.response_files:
+                print('Reading response file', response_file)
+                with open(response_file, 'r') as f:
+                    data = json.load(f)
+                for elt in data:
+                    new_data[elt['q_id']] = elt['response']
+
+            # We assert that we obtained all ids:
+            original_ids = set(dataset['id'])
+            new_ids = set(new_data.keys())
+            assert  original_ids == new_ids , f"{len(original_ids)} vs {len(new_ids)}"
+
+            # Ans we replace
+            def replace_label(example, idx):
+                new_label = new_data[example['id']] # This is a str
+
+                example['label'] = [new_label]
+                return example
+
+            dataset = dataset.map(replace_label, with_indices=True, desc='Replacing labels in dataset with read responses...')
+
+        return dataset
+
+    def get_dataset(self):
+        print(f"Processing dataset {self.dataset_name} in {self.split} split ")
+        debug_str = '_debug' if self.debug else ''
+        assert self.dataset_name is not None # dataset name needs to be set in processor class
+        # if self.dataset_name == 'kilt_combined_qa':
+        #     print('Overrinding oracle for dataset loading ')
+        #     oracle_provenance_str = ''
+        # else:
+        oracle_provenance_str = '_oracle_provenance' if self.oracle_provenance else ''
+        # oracle_provenance_str = ''
+        out_folder = os.path.join(f'{self.out_folder}', f'{self.dataset_name}_{self.split}{oracle_provenance_str}')
+        if os.path.exists(out_folder) and not self.overwrite and self.use_cache:
+            dataset = datasets.load_from_disk(out_folder)
+            if self.debug:
+                dataset = dataset.select(range(min(50, len(dataset))))
+            if self.shuffle_labels:
+                dataset = self.shuffled_labels_as_content(dataset)
+            #id2index = self.tsv_to_dict(f'{out_folder}/id2index.csv')
+            id2index = pickle.load(open(f'{out_folder}/id2index.p', 'rb'))
+        else:
+            dataset = self.process()
+            id2index = self.get_index_to_id(dataset) 
+            if self.use_cache: # saving only if use_cache set (true most of the time)
+                dataset.save_to_disk(out_folder)
+                pickle.dump(id2index, open(f'{out_folder}/id2index.p', 'wb'))
+            if self.debug:
+                dataset = dataset.select(range(15))
+            if self.shuffle_labels:
+                dataset = self.shuffled_labels_as_content(dataset)
+                
+        dataset.id2index = id2index
+        dataset.name = self.dataset_name + debug_str + oracle_provenance_str
+
+        return dataset
+
+
+class KiltMultiQAMSMarco(Processor):
+    """
+    Dataset combining multi QA and MS MArco data, mostly used for FT of OSCAR models.
+    """
+    def __init__(self,  *args, **kwargs):
+        dataset_name = 'kilt_combined_qa_ms_marco'
+        super().__init__(*args, **kwargs, dataset_name=dataset_name)
+        # No response file: it's purely Solar here.
+
+    def process(self):
+        return datasets.load_from_disk("/scratch/1/user/mlouis/calmar/data/kilt_combined_qa_ms_marco")
+    
+    def get_dataset(self):
+        print(f"Processing dataset {self.dataset_name} in {self.split} split ")
+        debug_str = '_debug' if self.debug else ''
+        assert self.dataset_name is not None # dataset name needs to be set in processor class
+        # if self.dataset_name == 'kilt_combined_qa':
+        #     print('Overrinding oracle for dataset loading ')
+        #     oracle_provenance_str = ''
+        # else:
+        oracle_provenance_str = '_oracle_provenance' if self.oracle_provenance else ''
+        # oracle_provenance_str = ''
+        out_folder = os.path.join(f'{self.out_folder}', f'{self.dataset_name}_{self.split}{oracle_provenance_str}')
+        if os.path.exists(out_folder) and not self.overwrite and self.use_cache:
+            dataset = datasets.load_from_disk(out_folder)
+            if self.debug:
+                dataset = dataset.select(range(min(50, len(dataset))))
+            if self.shuffle_labels:
+                dataset = self.shuffled_labels_as_content(dataset)
+            #id2index = self.tsv_to_dict(f'{out_folder}/id2index.csv')
+            id2index = pickle.load(open(f'{out_folder}/id2index.p', 'rb'))
+        else:
+            dataset = self.process()
+            id2index = self.get_index_to_id(dataset) 
+            if self.use_cache: # saving only if use_cache set (true most of the time)
+                dataset.save_to_disk(out_folder)
+                pickle.dump(id2index, open(f'{out_folder}/id2index.p', 'wb'))
+            if self.debug:
+                dataset = dataset.select(range(15))
+            if self.shuffle_labels:
+                dataset = self.shuffled_labels_as_content(dataset)
+
+        dataset.id2index = id2index
+        dataset.name = self.dataset_name + debug_str + oracle_provenance_str
+
+        return dataset
