@@ -1,7 +1,7 @@
 init_args: 
   _target_: models.generators.vllm.LLM
-  model_name: "mistralai/Mistral-7B-Instruct-v0.2"
+  model_name: Qwen/Qwen2-7B-Instruct
   max_new_tokens: 128
-  max_length: 32000
+  max_length: 16384
   batch_size: 32
 

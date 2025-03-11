@@ -1,0 +1,4 @@
+system: "You are an assistant that summarizes news article."
+user: f"Article:\n{docs}\n\n {question}"
+system_without_docs: ""
+user_without_docs: ""

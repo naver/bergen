@@ -27,7 +27,7 @@ class Evaluate:
                 input_file = f'{experiment_folder}/eval_{split}_out.json'
                 if os.path.exists(input_file):
                     data = load_data(input_file)
-                    metrics_file = f'{experiment_folder}/eval_{split}_metrics.json'
+                    metrics_file = f'{experiment_folder}/eval_{split}_metrics.json' 
                     try:
                        metrics_dict = json.load(open(metrics_file))
                     except: continue

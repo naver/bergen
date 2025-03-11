@@ -1,0 +1,18 @@
+train:
+    doc: null    
+    query: null
+dev:
+    doc: 
+        init_args:
+            _target_: modules.dataset_processor.CNNDailyMail
+            split: "dev"
+            is_query: False
+    
+    query: 
+        init_args:
+            _target_: modules.dataset_processor.CNNDailyMail
+            split: "dev"
+            is_query: True
+test:
+    doc: null
+    query: null

@@ -165,7 +165,7 @@ class LLMCocom(Generator):
 
         for ex in examples:
             assert len(ex['doc']) == self.model.generation_top_k, \
-                f"Not all queries of the same number of docs: not supported here: {len(ex['doc'])} vs {self.model.generation_top_k}"
+                f"Not all queries (e.g. {ex['q_id']}) have the same number of docs: not supported here: {len(ex['doc'])} vs {self.model.generation_top_k}"
 
         #### BULIDING ENCODER INPUTS ####
         docs = sum([example['doc'] for example in examples], []) # flatten all the docs for encoder input

@@ -1,0 +1,26 @@
+# train:
+    # doc:
+    #     init_args:
+    #         _target_: modules.dataset_processor.PubMed2023
+    #         split: "train"
+    #         data_path: "/beegfs/scratch/project/calmar/data/pubmed2023/*.tsv"
+    # query: 
+    #     init_args:
+    #         _target_: modules.dataset_processor.BIOASQ11B
+    #         split: "train"
+    #         data_path: '/beegfs/scratch/project/calmar/data/bioasq11btrain/bioasq11btrain.tsv'
+dev:
+    doc: 
+        init_args:
+            _target_: modules.dataset_processor.PubMed2023_Ragged
+            split: "train"
+    query: 
+        init_args:
+            _target_: modules.dataset_processor.BIOASQ12B
+            hf_path: "naver/bergen_bioasq12b"
+            train_zip_path: null
+            dev_zip_path: null
+            split: "dev"
+test:
+    doc: null
+    query: null

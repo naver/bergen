@@ -15,6 +15,8 @@ import urllib.request
 import json
 import requests  
 from functools import partial
+import zipfile
+import random
 
 
 # Base class that every processor interhits from 
@@ -162,6 +164,98 @@ class BIOASQ11B(Processor):
         #dataset = dataset.map(lambda example: {'ranking_label': [[provenance['wikipedia_id'] for provenance in el['provenance']] if len(el['answer']) > 0 and len(el['provenance']) > 0 else [] for el in example['output']]})
 
     
+        return dataset
+    
+    
+class BIOASQ12B(Processor):
+    """ 
+    BIOASQ Benchmark from bioasq challenge source, year 2024 task B (12B)
+    To get a larger training set we merge the official train and validation sets and fix the validation size to 1200 and train size to the rest (= 4189 rows)
+    We then discard all 'summary' question types from the validation set yielding a final val set with 940 rows
+
+    - To re-process the official challenge raw data zip files, please provide the train_zip_path and dev_zip_path
+    - To load an already processed version, provide the hf_path
+    """
+
+    def __init__(self, hf_path: str = None, train_zip_path: str = None, dev_zip_path: str = None, *args, **kwargs):
+        assert (hf_path is not None and (train_zip_path is None and dev_zip_path is None)) or (hf_path is None and (train_zip_path is not None and dev_zip_path is not None)), "Please either either provide raw file paths ```train_zip_path``` and ```dev_zip_path``` or a processed dataset HuggingFace path ```hf_path```. To download the raw files, see http://participants-area.bioasq.org/datasets/"
+        self.dataset_name = 'BIOASQ12B'
+        self.hf_path = hf_path
+        self.train_zip_path = train_zip_path
+        self.dev_zip_path = dev_zip_path
+        super().__init__(*args, **kwargs, dataset_name=self.dataset_name)
+
+    def process(self):
+        if self.train_zip_path is not None and self.dev_zip_path is not None:
+            seed = 42
+            if self.split not in ["train", "dev"]:
+                raise ValueError("split should be 'train' or 'dev'")
+            all_data = []
+            with zipfile.ZipFile(self.train_zip_path, 'r') as z:
+                with z.open('BioASQ-training12b/training12b_new.json') as json_file:
+                    all_data.extend(json.load(json_file)['questions'])
+            with zipfile.ZipFile(self.dev_zip_path, 'r') as z:
+                for file_name in z.namelist():
+                    print(f"Loading file {file_name}")
+                    if file_name.endswith('.json'):
+                        with z.open(file_name) as json_file:
+                            all_data.extend(json.load(json_file)['questions'])
+            random.seed(seed)
+            random.shuffle(all_data)
+            dev_data = all_data[:1200]
+            train_data = all_data[1200:]
+            if self.split == "train":
+                data = train_data
+            elif self.split == "dev":
+                data = dev_data
+            
+            import itertools
+            dataset = {"id": [], "content": [], "label": [], "type": []}
+            for row in data:
+
+                # parse labels
+                if row['type'] == 'summary':
+                    if self.split == 'train':
+                        if isinstance(row["ideal_answer"], list) and isinstance(row["ideal_answer"][0], str):
+                            dataset['label'].append(row["ideal_answer"])
+                        else:
+                            raise ValueError(f"Unknown label structure for label {row['ideal_answer']}")
+                    elif self.split == 'dev': # discard summary questions for dev set
+                        continue
+                elif row['type'] == 'list':
+                    assert isinstance(row['exact_answer'], list) and isinstance(row['exact_answer'][0], list), f"unexpected parsing label for {row['id']}: {row['exact_answer']}"
+                    # put all combinations of needed answers x synonyms
+                    labels = [', '.join(combination) for combination in list(itertools.product(*row['exact_answer']))]
+                    if len(labels) > 1000:
+                        print(f"WARNING: id={row['id']} is list-type label and has {len(labels)} combinations. Truncating to 10 synonyms max.")
+                        labels = [', '.join(combination) for combination in list(itertools.product(*([e[:10] for e in row['exact_answer']])))]
+                        if len(labels) > 1000:
+                            print(f"    WARNING: After 10-truncation -> {len(labels)} labels. Truncating to 2 synonyms and 10 elements.")
+                            labels = [', '.join(combination) for combination in list(itertools.product(*([e[:2] for e in row['exact_answer']][:10])))]
+                            print(f"    WARNING: After final truncation -> {len(labels)} labels.")
+                    dataset["label"].append(labels)
+                elif row['type'] == 'yesno':
+                    dataset['label'].append([row['exact_answer']])
+                elif row['type'] == 'factoid':
+                    if isinstance(row['exact_answer'], list) and isinstance(row['exact_answer'][0], list) and len(row['exact_answer']) == 1:
+                        dataset['label'].append(row['exact_answer'][0])
+                    elif isinstance(row['exact_answer'], list) and isinstance(row['exact_answer'][0], str):
+                        dataset['label'].append(row['exact_answer'])
+                    else:
+                        raise ValueError(f"unexpected parsing label for {row['id']}: {row['exact_answer']}")
+                else:
+                    raise ValueError(f"Unexpected question type {row['type']}")
+                
+                dataset["id"].append(row["id"])
+                dataset["content"].append(row["body"])
+                dataset["type"].append(row["type"])
+
+            assert len(dataset["id"]) == len(dataset["content"]) == len(dataset["label"]), "id content and labels lengths are not the same"
+            dataset = datasets.Dataset.from_dict(dataset)
+
+        elif self.hf_path is not None:
+            dataset = datasets.load_dataset(self.hf_path)[self.split] # split = 'train' or 'dev'
+
         return dataset
     
     
@@ -647,6 +741,7 @@ class MergedDocDataset(Processor):
         if self.shuffle_labels:
             dataset = self.shuffled_labels_as_content(dataset)
         dataset.name = self.dataset_name + debug_str + oracle_provenance_str
+                
         return dataset
 
 
@@ -655,14 +750,14 @@ class ProcessDatasets:
     @staticmethod
     def process(datasets, out_folder='datasets', num_proc=1, overwrite=False, debug=False, oracle_provenance=False, shuffle_labels=False):
         def sanity_checks(dataset):
-            for example in tqdm(dataset, 'Checking dataset..'):
+            for example in tqdm(dataset, 'Checking dataset ..'):
                 for field_name, field_value in example.items():
                     if field_value is None:
-                        raise ValueError(f"Found None value in '{field_name}' field.")
+                        raise ValueError(f"Found None value in '{field_name}' field for dataset. Sample: {example}")
                     elif isinstance(field_value, list) and None in field_value:
                         raise ValueError(f"Found None in list in '{field_name}' field.")
                     elif isinstance(field_value, str) and len(field_value.strip()) == 0:
-                        raise ValueError(f"Found empty value in '{field_name}' field.")
+                        raise ValueError(f"Found empty value in '{field_name}' field. Sample: {example}")
                     elif isinstance(field_value, list) and len(field_value) == 0:
                         raise ValueError(f"Found empty list in '{field_name}' field.")
                 
@@ -754,7 +849,7 @@ class SquadDocumentsChunked(Processor):
 
     def process(self):
         dataset = datasets.load_dataset('rajpurkar/squad')['validation']
-
+        
         # Function to split content into two parts at a reasonable boundary (space or punctuation)
         def split_content(entry):
             import re
@@ -815,18 +910,14 @@ class KILTMULTIQA(Processor):
             new_ids = set(new_data.keys())
             assert  original_ids == new_ids , f"{len(original_ids)} vs {len(new_ids)}"
             
-            from modules.metrics import match_single
-
             # Ans we replace
             def replace_label(example, idx):
-                original_label = example['label'] # This is a list
                 new_label = new_data[example['id']] # This is a str
             
                 example['label'] = [new_label]
                 return example
                         
-            print('Replacing labels in dataset with read responses...')
-            dataset = dataset.map(replace_label, with_indices=True)
+            dataset = dataset.map(replace_label, with_indices=True, desc='Replacing labels in dataset with read responses...')
             
         return dataset
 
@@ -880,3 +971,125 @@ class KILTMULTIQA(Processor):
         dataset.name = self.dataset_name + debug_str + oracle_provenance_str
         
         return dataset
+    
+    
+class KiltMultiQAMSMarco(Processor):
+    def __init__(self,  *args, **kwargs):
+        dataset_name = 'kilt_combined_qa_ms_marco'
+        super().__init__(*args, **kwargs, dataset_name=dataset_name)
+        # No response file: it's purely Solar here.
+
+    def process(self):
+        return datasets.load_from_disk("/scratch/1/user/mlouis/calmar/data/kilt_combined_qa_ms_marco")
+            
+    def get_dataset(self):
+        print(f"Processing dataset {self.dataset_name} in {self.split} split ")
+        debug_str = '_debug' if self.debug else ''
+        assert self.dataset_name is not None # dataset name needs to be set in processor class
+        # if self.dataset_name == 'kilt_combined_qa':
+        #     print('Overrinding oracle for dataset loading ')
+        #     oracle_provenance_str = ''
+        # else:
+        oracle_provenance_str = '_oracle_provenance' if self.oracle_provenance else ''
+        # oracle_provenance_str = ''
+        out_folder = os.path.join(f'{self.out_folder}', f'{self.dataset_name}_{self.split}{oracle_provenance_str}')
+        if os.path.exists(out_folder) and not self.overwrite and self.use_cache:
+            dataset = datasets.load_from_disk(out_folder)
+            if self.debug:
+                dataset = dataset.select(range(min(50, len(dataset))))
+            if self.shuffle_labels:
+                dataset = self.shuffled_labels_as_content(dataset)
+            #id2index = self.tsv_to_dict(f'{out_folder}/id2index.csv')
+            id2index = pickle.load(open(f'{out_folder}/id2index.p', 'rb'))
+        else:
+            dataset = self.process()
+            id2index = self.get_index_to_id(dataset) 
+            if self.use_cache: # saving only if use_cache set (true most of the time)
+                dataset.save_to_disk(out_folder)
+                pickle.dump(id2index, open(f'{out_folder}/id2index.p', 'wb'))
+            if self.debug:
+                dataset = dataset.select(range(15))
+            if self.shuffle_labels:
+                dataset = self.shuffled_labels_as_content(dataset)
+                
+        dataset.id2index = id2index
+        dataset.name = self.dataset_name + debug_str + oracle_provenance_str
+        
+        return dataset
+    
+    
+class CNNDailyMail(Processor):
+
+    def __init__(self, is_query, *args, **kwargs):
+        self.dataset_name = 'cnn_dailymail'
+        if is_query:
+            self.dataset_name += '_query'
+        else:
+            self.dataset_name += '_doc'
+        self.is_query = is_query
+        super().__init__(*args, **kwargs, dataset_name=self.dataset_name)
+    
+    def chunk_text_into_sentences(self, text, num_chunks=5):
+        """
+        Splits the given text into chunks, preferably by sentence boundaries.
+        """
+        import re
+        sentences = re.split(r'(?<=[.!?])\s+', text.strip())
+        num_sentences = len(sentences)
+        chunk_size = num_sentences // num_chunks
+        remainder = num_sentences % num_chunks
+
+        chunks = []
+        start = 0
+        for i in range(num_chunks):
+            extra = 1 if i < remainder else 0
+            end = start + chunk_size + extra
+            chunk = ' '.join(sentences[start:end])
+            chunks.append(chunk)
+            start = end
+            
+        return [ch if len(ch) > 1 else ' done ' for ch  in chunks]
+
+        return chunks
+
+    def write_oracle_ranking(self, dataset):
+        """
+        Writes oracle ranking for the given dataset to a file.
+        """
+        from utils import get_oracle_ranking_filename
+
+        out_file = get_oracle_ranking_filename('/home/mlouis/code/bergen/runs', self.dataset_name, 'dev')
+        with open(out_file, 'w') as fout:
+            for sample in dataset:
+                query_id = sample['id']
+                for i in range(1, 6):
+                    fout.write(f'{query_id}\tq0\t{query_id}_{i}\t{i-1}\t{1 - i * 0.1}\trun\n')
+
+    def process(self):
+        """
+        Processes the dataset based on the configuration (is_query or not).
+        """
+        # Load the test dataset
+        dataset = datasets.load_dataset('abisee/cnn_dailymail', '3.0.0')['test'].select(range(1000))
+        ids = [sample['id'] for sample in dataset]
+
+        # Write oracle ranking
+        self.write_oracle_ranking(dataset)
+
+        if self.is_query:
+            # Create a dataset with a single query for each ID
+            queries = ['Summarize this news article in at most 3 sentences, each sentence not exceeding 15 words. Keep only the important details.'] * len(ids)
+            result_dataset = datasets.Dataset.from_dict({'id': ids, 'content': queries, 'label': [[sample['highlights']] for sample in dataset]})
+        else:
+            # Chunk articles into sentences and create the dataset
+            data_dict = {'id': [], 'content': []}
+            for sample in dataset:
+                article_id = sample['id']
+                chunks = self.chunk_text_into_sentences(sample['article'], 5)
+                for i, chunk in enumerate(chunks):
+                    data_dict['id'].append(f"{article_id}_{i}")
+                    data_dict['content'].append(chunk)
+
+            result_dataset = datasets.Dataset.from_dict(data_dict)
+
+        return result_dataset

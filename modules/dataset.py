@@ -36,7 +36,6 @@ class Tokenized_Sorted_Dataset(Dataset):
             # Sort by tokenized input length
         self.sorted_data = sorted(processed_data, key=lambda x: x[0])
 
-
     def __len__(self):
         return len(self.sorted_data)
 

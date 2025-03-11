@@ -1,7 +1,7 @@
 init_args: 
-  _target_: models.generators.vllm.LLM
+  _target_: models.generators.chunk_press_llm.ChunkPressLLM
   model_name: "mistralai/Mistral-7B-Instruct-v0.2"
   max_new_tokens: 128
   max_length: 32000
-  batch_size: 32
-
+  batch_size: 256
+  compression_ratio: 0.5
