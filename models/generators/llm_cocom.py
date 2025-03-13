@@ -110,7 +110,7 @@ class LLMCocom(Generator):
                 queries += data_dict['query']
                 ranking_labels += data_dict['ranking_label']
                 instructions += instruction
-                generated_response = self.generate(data_dict['model_input'], return_doc_embeddings=False)
+                generated_response = self.generate(data_dict['model_input'])
                 responses += generated_response
         
         return query_ids, queries, instructions, responses, labels, ranking_labels
