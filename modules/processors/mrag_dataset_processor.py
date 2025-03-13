@@ -1,17 +1,16 @@
-from ..dataset_processor import *
+from ..dataset_processor import Processor
 import datasets
 import os
 
 
 class MKQA(Processor):
-
     def __init__(self, lang, *args, **kwargs):
         dataset_name = f'mkqa_{lang}'
         super().__init__(*args, **kwargs, dataset_name=dataset_name)
         self.lang = lang
         
     def process(self):
-        mkqa = datasets.load_dataset('mkqa')
+        mkqa = datasets.load_dataset('mkqa', trust_remote_code=True)
         kilt_nq = datasets.load_dataset("kilt_tasks", "nq")
 
         mkqa_ids = {s['example_id']:i for i, s in enumerate(mkqa[self.split])}
@@ -31,8 +30,8 @@ class MKQA(Processor):
         dataset = dataset.remove_columns(['meta'])
         return dataset
 
-class XORQA(Processor):
 
+class XORQA(Processor):
     def __init__(self, lang, *args, **kwargs):
         dataset_name = f'xor_tydiqa_{lang}'
         self.lang = lang
@@ -51,12 +50,13 @@ class XORQA(Processor):
         # discarding empty answers 
         dataset = dataset.map(lambda example: {'label': extend([el for el in example['answers'] if len(el) > 0], self.lang)})
         dataset = dataset.rename_column("question", "content")
+        dataset = dataset.map(lambda x: {'id': str(x['id'])}) # ids should be strings.
         #dataset = dataset.remove_columns(['meta', 'output'])
         os.system("rm xor_dev_full_v1_1.jsonl")
         return dataset
 
-class TydiQA(Processor):
 
+class TydiQA(Processor):
     def __init__(self, langcode="en", language="english", *args, **kwargs):
         dataset_name = f'tydiqa_{langcode}'
         self.language = language

@@ -119,7 +119,7 @@ def main(args):
     elif args.format =='tiny':
         sel_col =['exp_folder', 'query_dataset', 'Generator', 'Retriever', 'Reranker', "M"] + llmeval_col
     elif args.format =='full':
-        sel_col = ['exp_folder', 'Retriever', 'P_1', 'Reranker', 'Generator',  'gen_time', 'query_dataset', "M", "EM", "F1", "Precision", "Recall","Recall_char3gram", "Rouge-L"]+llmeval_col
+        sel_col = ['exp_folder', 'Retriever', 'P_1', 'Reranker', 'Generator',  'gen_time', 'query_dataset', "M", "EM", "F1", "Precision", "Recall", "Recall_char3gram", "Rouge-L"] + llmeval_col
     else:
         raise ValueError('Invalid output format')
     df=df[sel_col]
