@@ -1,7 +1,6 @@
 init_args: 
     _target_: models.generators.llm_cocom.LLMCocom
     model_name: null
-    checkpoint_path: null
     batch_size: 64
     decoder_model_name: 'mistralai/Mistral-7B-Instruct-v0.2'
     context_max_length: 128

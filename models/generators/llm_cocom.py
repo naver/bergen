@@ -24,7 +24,6 @@ class LLMCocom(Generator):
                  ):
         """
         Class to use cocom with compression
-        checkpoint_path: path to a COCOM checkpoint
         max_new_tokens: maximum number of tokens for generation
         model_max_length: maximum length used in the final query (should be large enough)
         """
