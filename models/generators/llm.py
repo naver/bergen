@@ -233,12 +233,12 @@ class LLM(Generator):
                 # Count the number of padding tokens on the left
                 left_padding_count = (attention_mask_tensor[i] == 0).sum().item()
                 
-                if examples[i]['label_start_index']+left_padding_count + 1 > label_ids.size(1):
+                if examples[i]['label_start_index'] + left_padding_count + 1 > label_ids.size(1):
                     warnings.warn("Docs + query is too long: label will be ignored. If it happens too often consider\
                         increasing the `max_seq_length`.")
                     
                 # We now identify the position of the starting index of the label in the tokenized seq
-                # It is to delimiate where the loss should be computed.
+                # It is to delimitate where the loss should be computed.
                 no_loss_start_index = self.get_no_loss_start_index(ids=label_ids[i], 
                                                                    original_labels=label[i],
                                                                    label_start_index=examples[i]['label_start_index'],

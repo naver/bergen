@@ -1,0 +1,6 @@
+init_args: 
+  _target_: models.generators.vllm.LLM
+  model_name: "mistralai/Mistral-Small-24B-Instruct-2501"
+  max_new_tokens: 128
+  max_length: 32000
+  batch_size: 64
