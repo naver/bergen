@@ -151,6 +151,7 @@ class RAG:
         self.overwrite_exp = overwrite_exp
         self.overwrite_index = overwrite_index
         self.training_config = train
+        self.oracle_provenance = True if retriever_config is not None and retriever_config.init_args.model_name == 'oracle_provenance' else False
 
         assert self.generation_top_k <= self.rerank_top_k <= self.retrieve_top_k
         # init experiment (set run name, create dirs)
@@ -163,7 +164,7 @@ class RAG:
             overwrite=overwrite_datasets,
             debug=debug,
             shuffle_labels=True if generator_config is not None and generator_config.init_args.model_name == 'random_answer' else False,
-            oracle_provenance=True if retriever_config is not None and retriever_config.init_args.model_name == 'oracle_provenance' else False,
+            oracle_provenance=self.oracle_provenance,
             )
         
         self.metrics = {
@@ -197,7 +198,7 @@ class RAG:
 
         dataset = self.datasets[dataset_split]
         query_dataset_name = self.datasets[dataset_split]['query'].name
-        doc_dataset_name = self.datasets[dataset_split]['doc'].name
+        doc_dataset_name = self.datasets[dataset_split]['doc'].name if "doc" in self.datasets[dataset_split] else None
 
         # query generation (or copying in case query_generator="copy")
         if self.retriever is not None:
@@ -230,15 +231,30 @@ class RAG:
                 self.rerank_top_k,
                 )
 
+        doc_ids = [doc_ids_q[:self.generation_top_k] for doc_ids_q in doc_ids] if doc_ids != None else doc_ids 
+
+        gen_dataset = prepare_dataset_from_ids(
+            dataset, 
+            query_ids, 
+            doc_ids,
+            multi_doc=True, 
+            query_field="content",
+            oracle_provenance=self.oracle_provenance
+            )
+
+        # process context
+        if self.context_processor is not None and self.retriever is not None:
+            gen_dataset = self.process_context(
+                                               gen_dataset, 
+                                               query_dataset_name, 
+                                               doc_dataset_name, 
+                                               dataset_split
+                                              )
         # generate
         if self.generator is not None:
             questions, _, predictions, references = self.generate(
-                dataset, 
+                gen_dataset, 
                 dataset_split, 
-                query_dataset_name, 
-                doc_dataset_name, 
-                query_ids, 
-                doc_ids,
                 )
             # eval metrics
             self.eval_metrics(
@@ -286,6 +302,9 @@ class RAG:
                  eval_ranking=True,
                  ):
         
+        if self.oracle_provenance and "doc" in dataset['query'].features:
+            return dataset['query']["id"], None, None
+            
         ranking_file = get_ranking_filename(
             self.runs_folder,
             query_dataset_name,
@@ -338,6 +357,9 @@ class RAG:
                doc_ids, 
                rerank_top_k, 
                ):
+        
+        if self.oracle_provenance and "doc" in dataset['query'].features:
+            return dataset['query']["id"], None, None
         
         doc_ids = [doc_ids_q[:rerank_top_k] for doc_ids_q in doc_ids]
 
@@ -399,48 +421,36 @@ class RAG:
             self.retrieve_top_k,
             self.reranker.get_clean_model_name() if self.reranker is not None else None,
             self.rerank_top_k,
+            self.generation_top_k,
             self.query_generator.get_clean_model_name(),
             self.context_processor.get_clean_model_name(),
         )
         if not os.path.exists(process_context_file) or self.overwrite_exp or self.overwrite_index:
-            processed_contexts = self.context_processor.eval(gen_dataset['doc'], gen_dataset['query'])
+            processed_contexts, context_metrics = self.context_processor.eval(gen_dataset['doc'], 
+                                                                              gen_dataset['query'])
             os.makedirs(self.processed_context_folder, exist_ok=True)
             with open(process_context_file, 'w') as fp: 
-                json.dump({"processed_contexts": processed_contexts}, fp)
+                json.dump({"processed_contexts": processed_contexts,
+                           "context_metrics": context_metrics,
+                           "original_contexts": gen_dataset['doc'],
+                           "queries": gen_dataset['query']}, 
+                          fp)
         else:
             with open(process_context_file, 'r') as fp: 
-                processed_contexts = json.load(fp)["processed_contexts"]
-        #gen_dataset_new = gen_dataset.map(lambda ex: {"doc": processed_contexts}, batched=True)
+                save = json.load(fp)
+                processed_contexts = save["processed_contexts"]
+                context_metrics = save["context_metrics"]
         gen_dataset = gen_dataset.remove_columns('doc')
         gen_dataset = gen_dataset.add_column('doc', processed_contexts)
         shutil.copyfile(process_context_file, f'{self.experiment_folder}/{process_context_file.split("/")[-1]}')
+        with open(f'{self.experiment_folder}/eval_{dataset_split}_context_metrics.json', 'w') as fout:
+            json.dump(context_metrics, fout)
         return gen_dataset
     
     def generate(self, 
-                 dataset, 
+                 gen_dataset, 
                  dataset_split, 
-                 query_dataset_name, 
-                 doc_dataset_name, 
-                 query_ids, 
-                 doc_ids,
                  ):
-        doc_ids = [doc_ids_q[:self.generation_top_k] for doc_ids_q in doc_ids] if doc_ids is not None else doc_ids 
-
-        gen_dataset = prepare_dataset_from_ids(
-            dataset, 
-            query_ids, 
-            doc_ids,
-            multi_doc=True, 
-            query_field="content",
-            )
-
-        if self.context_processor is not None and self.retriever is not None:
-            gen_dataset = self.process_context(
-                                               gen_dataset, 
-                                               query_dataset_name, 
-                                               doc_dataset_name, 
-                                               dataset_split)
-        
         generation_start = time.time()
         query_ids, questions, instructions, predictions, references, ranking_labels  = self.generator.eval(gen_dataset)
         generation_time = time.time() - generation_start
