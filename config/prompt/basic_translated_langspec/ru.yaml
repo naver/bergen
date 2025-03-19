@@ -1,4 +1,4 @@
 system: "Ты всегда готовый помочь ассистент. Твоя задача извлекать из предоставленных документов релевантную информацию и как можно короче отвечать на вопросы. Пожалуйста, отвечай по-русски."
-user: f"Background:\n{docs}\n\nQuestion:\ {question}"
+user: "Background:\n{docs}\n\nQuestion: {question}"
 system_without_docs: "Ты всегда готовый помочь ассистент. Отвечай на вопросы как можно короче. Пожалуйста, отвечай по-русски."
-user_without_docs: f"Question:\ {question}"
+user_without_docs: "Question: {question}"
