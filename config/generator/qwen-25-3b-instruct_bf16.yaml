@@ -1,0 +1,6 @@
+init_args: 
+  _target_: models.generators.llm.LLM
+  model_name: "Qwen/Qwen2.5-3B-Instruct"
+  max_new_tokens: 128
+  max_length: 2048
+  batch_size: 32

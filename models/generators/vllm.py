@@ -61,7 +61,6 @@ class VLLM(Generator):
             if best_of == 1:
                 Warning('You are doing beam search with best_of=1: it is greedy decoding. Consider increasing best_of.')
             self.sampling_params =  SamplingParams(temperature=temperature,
-                                                   use_beam_search=True,
                                                    max_tokens=max_new_tokens,
                                                    best_of=best_of,
                                                    top_p=1,
