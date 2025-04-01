@@ -4,11 +4,11 @@ train:
 dev:
     doc: 
         init_args:
-            _target_: modules.dataset_processor.NarrativeQA
+            _target_: modules.dataset_processor.NarrativeQA_full
             split: "test"
     query: 
         init_args:
-            _target_: modules.dataset_processor.NarrativeQA
+            _target_: modules.dataset_processor.NarrativeQA_full
             split: "test"
 test:
     doc: null

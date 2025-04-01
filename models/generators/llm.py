@@ -24,7 +24,7 @@ class LLM(Generator):
                 model_name: str = None,
                 batch_size: int = 1, 
                 max_new_tokens: int = 1, 
-                max_doc_len: int = 100,
+                max_doc_len: int = 10**10,
                 max_length: int = None,
                 prompt: str = None,
                 quantization: str = None,

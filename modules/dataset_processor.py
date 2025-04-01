@@ -229,6 +229,25 @@ class MsMarcoQueries(Processor):
         dataset = datasets.Dataset.from_dict({"id":ids, "content": queries})  # no need for split?
         return dataset
 
+
+class Frames(Processor):
+    def __init__(self, *args, **kwargs):
+        dataset_name = 'frames'
+        super().__init__(*args, **kwargs, dataset_name=dataset_name)
+    
+    def process(self):
+        hf_name = 'google/frames-benchmark'
+        dataset = datasets.load_dataset(hf_name, num_proc=self.num_proc)[self.split]
+
+        dataset = dataset.rename_column("Prompt", "content")
+        dataset = dataset.map(lambda example: {"id": str(example["Unnamed: 0:"])})
+        dataset = dataset.map(lambda example: {"label": [example["Answer"]]})
+
+        columns_to_keep = ["id", "label", "content"]
+        dataset = dataset.remove_columns([col for col in dataset.column_names if col not in columns_to_keep])
+
+        return dataset
+
 # ---------------------------------------- #
 # Document processors
 # ---------------------------------------- #
@@ -236,6 +255,27 @@ class ReproduceWikiCorpora63(Processor):
 
     def __init__(self, data_path, label="", *args, **kwargs):
         self.dataset_name = 'reproduce-wiki-corpora-63'
+        if label != "":
+            self.dataset_name = self.dataset_name + label
+        self.path = data_path
+        super().__init__(*args, **kwargs, dataset_name=self.dataset_name)
+    
+    def process(self):
+        dataset = datasets.load_dataset("csv", data_files=[self.path], delimiter="\t", column_names=["id", "text", "title"])[self.split]
+                
+        def map_fn(example):
+            example['content'] = f"{example['title']}: {example['text']}"
+            return example
+        
+        dataset = dataset.map(map_fn, num_proc=self.num_proc)
+        dataset = dataset.remove_columns(['title', 'text'])
+        return dataset
+
+
+class Wikipedia2025(Processor):
+
+    def __init__(self, data_path, label="", *args, **kwargs):
+        self.dataset_name = 'Wikipedia2025'
         if label != "":
             self.dataset_name = self.dataset_name + label
         self.path = data_path
@@ -315,25 +355,6 @@ class KILT100w(Processor):
         del kilt_dataset
         return dataset
 
-class Frames(Processor):
-    def __init__(self, *args, **kwargs):
-        dataset_name = 'frames'
-        super().__init__(*args, **kwargs, dataset_name=dataset_name)
-    
-    def process(self):
-        hf_name = 'google/frames-benchmark'
-        dataset = datasets.load_dataset(hf_name, num_proc=self.num_proc)[self.split]
-
-        dataset = dataset.rename_column("Prompt", "content")
-        dataset = dataset.map(lambda example: {"id": str(example["Unnamed: 0:"])})
-        dataset = dataset.map(lambda example: {"label": [example["Answer"]]})
-
-        columns_to_keep = ["id", "label", "content"]
-        dataset = dataset.remove_columns([col for col in dataset.column_names if col not in columns_to_keep])
-
-        return dataset
-
-
 class NarrativeQA(Processor):
     def __init__(self, *args, **kwargs):
         dataset_name = 'narrativeqa'
@@ -348,6 +369,28 @@ class NarrativeQA(Processor):
         if self.oracle_provenance:
             # document
             dataset = dataset.map(lambda example: {'content': example['document']['summary']['text']})
+            dataset = dataset.remove_columns(["question", "document", "answers"])            
+        else:
+            # query
+            dataset = dataset.map(lambda example: {'content': example['question']['text'].lower()})
+            dataset = dataset.map(lambda example: {'label': [example['answers'][1]['text']]})
+            dataset = dataset.remove_columns(["question", "document", "answers"])
+        return dataset
+
+class NarrativeQA_full(Processor):
+    def __init__(self, *args, **kwargs):
+        dataset_name = 'narrativeqa_full'
+        super().__init__(*args, **kwargs, dataset_name=dataset_name)
+
+    def process(self):
+        hf_name = 'deepmind/narrativeqa' 
+        dataset = datasets.load_dataset(hf_name, num_proc=self.num_proc)[self.split]
+        
+        cid = [str(i) for i in range(len(dataset))]
+        dataset = dataset.add_column("id", cid)
+        if self.oracle_provenance:
+            # document
+            dataset = dataset.map(lambda example: {'content': example['document']['text']})
             dataset = dataset.remove_columns(["question", "document", "answers"])            
         else:
             # query
