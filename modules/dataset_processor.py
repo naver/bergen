@@ -230,24 +230,6 @@ class MsMarcoQueries(Processor):
         return dataset
 
 
-class Frames(Processor):
-    def __init__(self, *args, **kwargs):
-        dataset_name = 'frames'
-        super().__init__(*args, **kwargs, dataset_name=dataset_name)
-    
-    def process(self):
-        hf_name = 'google/frames-benchmark'
-        dataset = datasets.load_dataset(hf_name, num_proc=self.num_proc)[self.split]
-
-        dataset = dataset.rename_column("Prompt", "content")
-        dataset = dataset.map(lambda example: {"id": str(example["Unnamed: 0:"])})
-        dataset = dataset.map(lambda example: {"label": [example["Answer"]]})
-
-        columns_to_keep = ["id", "label", "content"]
-        dataset = dataset.remove_columns([col for col in dataset.column_names if col not in columns_to_keep])
-
-        return dataset
-
 # ---------------------------------------- #
 # Document processors
 # ---------------------------------------- #
@@ -353,6 +335,27 @@ class KILT100w(Processor):
             dataset = dataset.map(lambda example, idx: {'id': str(idx), **example}, with_indices=True)
 
         del kilt_dataset
+        return dataset
+
+class Frames(Processor):
+    def __init__(self, *args, **kwargs):
+        dataset_name = 'frames'
+        super().__init__(*args, **kwargs, dataset_name=dataset_name)
+    
+    def process(self):
+        if self.oracle_provenance:
+            dataset = datasets.load_dataset("csv", data_files=[self.path], column_names=["id", "content"])[self.split]
+        else:
+            hf_name = 'google/frames-benchmark'
+            dataset = datasets.load_dataset(hf_name, num_proc=self.num_proc)[self.split]
+
+            dataset = dataset.rename_column("Prompt", "content")
+            dataset = dataset.map(lambda example: {"id": str(example["Unnamed: 0"])})
+            dataset = dataset.map(lambda example: {"label": [example["Answer"]]})
+
+            columns_to_keep = ["id", "label", "content"]
+            dataset = dataset.remove_columns([col for col in dataset.column_names if col not in columns_to_keep])
+
         return dataset
 
 class NarrativeQA(Processor):

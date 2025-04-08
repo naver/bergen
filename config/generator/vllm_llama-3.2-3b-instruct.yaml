@@ -2,6 +2,6 @@ init_args:
   _target_: models.generators.vllm.VLLM
   model_name: "meta-llama/Llama-3.2-3B-Instruct"
   max_new_tokens: 128
-  max_length: 65536
+  max_length: 131072
   batch_size: 256
 
