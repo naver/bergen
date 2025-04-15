@@ -1,6 +1,6 @@
 init_args: 
   _target_: models.generators.vllm.VLLM
-  model_name: "Qwen/Qwen2.5-7B-Instruct"
+  model_name: "Qwen/Qwen2.5-32B-Instruct"
   max_new_tokens: 128
   max_length: 131072
   batch_size: 128

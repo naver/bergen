@@ -4,7 +4,7 @@ Copyright (c) 2024-present NAVER Corp.
 CC BY-NC-SA 4.0 license
 '''
 
-from pyserini.search import LuceneSearcher
+from pyserini.search.lucene import LuceneSearcher
 import subprocess
 from tqdm import tqdm
 import os

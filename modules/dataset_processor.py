@@ -229,10 +229,42 @@ class MsMarcoQueries(Processor):
         dataset = datasets.Dataset.from_dict({"id":ids, "content": queries})  # no need for split?
         return dataset
 
+class Frames(Processor):
+    def __init__(self, *args, **kwargs):
+        dataset_name = 'frames'
+        super().__init__(*args, **kwargs, dataset_name=dataset_name)
+    
+    def process(self):
+        hf_name = 'google/frames-benchmark'
+        dataset = datasets.load_dataset(hf_name, num_proc=self.num_proc)[self.split]
+
+        dataset = dataset.rename_column("Prompt", "content")
+        dataset = dataset.map(lambda example: {"id": str(example["Unnamed: 0:"])})
+        dataset = dataset.map(lambda example: {"label": [example["Answer"]]})
+
+        columns_to_keep = ["id", "label", "content"]
+        dataset = dataset.remove_columns([col for col in dataset.column_names if col not in columns_to_keep])
+
+        return dataset
+
 
 # ---------------------------------------- #
 # Document processors
 # ---------------------------------------- #
+
+class FramesOracle(Processor):
+    def __init__(self, data_path, label="", *args, **kwargs):
+        self.dataset_name = 'frames-oracle'
+        if label != "":
+            self.dataset_name = self.dataset_name + label
+        self.path = data_path
+        super().__init__(*args, **kwargs, dataset_name=self.dataset_name)
+    
+    def process(self):
+        dataset = datasets.load_dataset("csv", data_files=[self.path], column_names=["id", "content"])[self.split]
+        return dataset
+
+
 class ReproduceWikiCorpora63(Processor):
 
     def __init__(self, data_path, label="", *args, **kwargs):
@@ -253,11 +285,9 @@ class ReproduceWikiCorpora63(Processor):
         dataset = dataset.remove_columns(['title', 'text'])
         return dataset
 
-
-class Wikipedia2025(Processor):
-
+class Wikipedia2023(Processor):
     def __init__(self, data_path, label="", *args, **kwargs):
-        self.dataset_name = 'Wikipedia2025'
+        self.dataset_name = 'wikipedia2023'
         if label != "":
             self.dataset_name = self.dataset_name + label
         self.path = data_path
@@ -272,6 +302,24 @@ class Wikipedia2025(Processor):
         
         dataset = dataset.map(map_fn, num_proc=self.num_proc)
         dataset = dataset.remove_columns(['title', 'text'])
+        return dataset
+
+
+class Wikipedia2023Full(Processor):
+    def __init__(self, *args, **kwargs):
+        dataset_name = 'wikipedia2023full'
+        super().__init__(*args, **kwargs, dataset_name=dataset_name)
+        
+    def process(self):
+        hf_name = 'wikimedia/wikipedia'
+        hf_query_or_doc_name= "20231101.en"
+        dataset = datasets.load_dataset(hf_name, hf_query_or_doc_name, num_proc=self.num_proc)[self.split]
+        def map_fn(example):
+            example['content'] = f"{example['title']}: {example['text']}"
+            return example
+        
+        dataset = dataset.map(map_fn, num_proc=self.num_proc)
+        dataset = dataset.remove_columns(['title', 'text', 'url'])
         return dataset
     
 class ODQAWikiCorpora100WTamber(Processor):
@@ -335,27 +383,6 @@ class KILT100w(Processor):
             dataset = dataset.map(lambda example, idx: {'id': str(idx), **example}, with_indices=True)
 
         del kilt_dataset
-        return dataset
-
-class Frames(Processor):
-    def __init__(self, *args, **kwargs):
-        dataset_name = 'frames'
-        super().__init__(*args, **kwargs, dataset_name=dataset_name)
-    
-    def process(self):
-        if self.oracle_provenance:
-            dataset = datasets.load_dataset("csv", data_files=[self.path], column_names=["id", "content"])[self.split]
-        else:
-            hf_name = 'google/frames-benchmark'
-            dataset = datasets.load_dataset(hf_name, num_proc=self.num_proc)[self.split]
-
-            dataset = dataset.rename_column("Prompt", "content")
-            dataset = dataset.map(lambda example: {"id": str(example["Unnamed: 0"])})
-            dataset = dataset.map(lambda example: {"label": [example["Answer"]]})
-
-            columns_to_keep = ["id", "label", "content"]
-            dataset = dataset.remove_columns([col for col in dataset.column_names if col not in columns_to_keep])
-
         return dataset
 
 class NarrativeQA(Processor):
