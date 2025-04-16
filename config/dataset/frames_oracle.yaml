@@ -6,7 +6,7 @@ dev:
         init_args:
             _target_: modules.dataset_processor.FramesOracle
             split: "train"
-            data_path: "/nfs/data/calmar/amyrzakha/data/new_wiki/wiki_text_1/merged_output_2.csv"
+            data_path: "/nfs/data/calmar/amyrzakha/data/new_wiki/frames_oracle.csv"
     
     query: 
         init_args:

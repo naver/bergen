@@ -122,6 +122,32 @@ class Generator(ABC):
                     else:
                         raise e
             
+            if hasattr(self, 'max_length') and self.max_length is not None:
+                tokenized_prompt = self.tokenizer(prompt, truncation=False, return_tensors="pt")['input_ids'][0]
+                prompt_length = len(tokenized_prompt)
+                
+                if prompt_length > self.max_length:
+                    half = int(self.max_length / 2)
+                    
+                    first_half = tokenized_prompt[:half]
+                    second_half = tokenized_prompt[-half:]
+                    
+                    truncated_prompt = self.tokenizer.decode(first_half, skip_special_tokens=True) + self.tokenizer.decode(second_half, skip_special_tokens=True)
+                    
+                    prompt = truncated_prompt
+                    
+                    if label is not None:
+                        if self.tokenizer.chat_template is None:
+                            response_marker = self.get_response()
+                            if response_marker in truncated_prompt:
+                                response_marker_pos = truncated_prompt.find(response_marker)
+                                label_start_index = len(self.tokenizer(truncated_prompt[:response_marker_pos + len(response_marker)], 
+                                                                    add_special_tokens=False)['input_ids'])
+                            else:
+                                label_start_index = None
+                        else:
+                            label_start_index = None
+            
             if label is not None:
                 assert label_start_index is not None # check we did find the prompt length
                 if not prompt.endswith(self.tokenizer.eos_token):
