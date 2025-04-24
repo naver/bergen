@@ -1,0 +1,6 @@
+init_args: 
+  _target_: models.generators.llm_openai.OpenAI
+  model_name: "gpt-4o"
+  max_new_tokens: 128
+  max_length: 128000
+  batch_size: 2
