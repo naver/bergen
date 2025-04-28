@@ -147,7 +147,7 @@ class Generator(ABC):
         tokenized_docs = self.tokenizer(docs, truncation=False, return_tensors="pt")['input_ids'][0]
         docs_length = len(tokenized_docs)
         
-        truncation_threshold = self.max_length - 64
+        truncation_threshold = self.max_length - 128
         assert truncation_threshold >= 0, "Truncation threshold must be non-negative. Check max_length value."
         
         if docs_length > truncation_threshold:
