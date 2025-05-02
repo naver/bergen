@@ -239,7 +239,7 @@ class Frames(Processor):
         dataset = datasets.load_dataset(hf_name, num_proc=self.num_proc)[self.split]
 
         dataset = dataset.rename_column("Prompt", "content")
-        dataset = dataset.map(lambda example: {"id": str(example["Unnamed: 0:"])})
+        dataset = dataset.map(lambda example: {"id": str(example["Unnamed: 0"])})
         dataset = dataset.map(lambda example: {"label": [example["Answer"]]})
 
         columns_to_keep = ["id", "label", "content"]
@@ -261,7 +261,8 @@ class FramesOracle(Processor):
         super().__init__(*args, **kwargs, dataset_name=self.dataset_name)
     
     def process(self):
-        dataset = datasets.load_dataset("csv", data_files=[self.path], column_names=["id", "content"])[self.split]
+        hf_name = 'naver/frames_oracle'
+        dataset = datasets.load_dataset(hf_name, num_proc=self.num_proc)[self.split]
         return dataset
 
 
