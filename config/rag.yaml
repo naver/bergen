@@ -11,12 +11,12 @@ defaults:
 
 # main variables locating the local data folder and index
 run_name: null
-dataset_folder: '/nfs/data/calmar/rag/datasets/'
-index_folder: '/nfs/data/calmar/rag/indexes'
-runs_folder: '/nfs/data/calmar/amyrzakha/projects/runs'
+dataset_folder: 'datasets/'
+index_folder: 'indexes/'
+runs_folder: 'runs/'
 generated_query_folder: 'generated_queries/'
 processed_context_folder: 'processed_contexts/'
-experiments_folder: '/nfs/data/calmar/amyrzakha/projects/experiments'    
+experiments_folder: 'experiments/'   
 
 # topk documents to retrieve, rerank and to use for generation
 retrieve_top_k: 50

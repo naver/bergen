@@ -253,16 +253,14 @@ class Frames(Processor):
 # ---------------------------------------- #
 
 class FramesOracle(Processor):
-    def __init__(self, data_path, label="", *args, **kwargs):
-        self.dataset_name = 'frames-oracle'
-        if label != "":
-            self.dataset_name = self.dataset_name + label
-        self.path = data_path
-        super().__init__(*args, **kwargs, dataset_name=self.dataset_name)
+    def __init__(self, *args, **kwargs):
+        dataset_name = 'frames_oracle'
+        super().__init__(*args, **kwargs, dataset_name=dataset_name)
     
     def process(self):
         hf_name = 'naver/frames_oracle'
         dataset = datasets.load_dataset(hf_name, num_proc=self.num_proc)[self.split]
+        dataset = dataset.map(lambda example: {"id": str(example["id"])})
         return dataset
 
 

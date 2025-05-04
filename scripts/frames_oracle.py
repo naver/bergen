@@ -10,7 +10,7 @@ sys.path.append('../')
 from utils import get_oracle_ranking_filename
 dataset_names = ['frames', 'frames_debug']
 top_n_oracle_passages = 1
-run_folder = '/nfs/data/calmar/amyrzakha/projects/runs'
+run_folder = '../runs'
 split = 'test'
 
 split_mapping = {'validation': 'dev', 'test': 'dev', 'train': 'train'}
