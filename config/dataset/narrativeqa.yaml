@@ -5,10 +5,12 @@ dev:
     doc: 
         init_args:
             _target_: modules.dataset_processor.NarrativeQA
+            full_text: false
             split: "test"
     query: 
         init_args:
             _target_: modules.dataset_processor.NarrativeQA
+            full_text: false
             split: "test"
 test:
     doc: null

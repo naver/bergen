@@ -4,7 +4,7 @@ train:
 dev:
     doc: 
         init_args:
-            _target_: modules.dataset_processor.FramesOracle
+            _target_: modules.dataset_processor.Frames
             split: "train"
     
     query: 

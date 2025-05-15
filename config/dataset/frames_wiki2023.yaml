@@ -4,9 +4,9 @@ train:
 dev:
     doc: 
         init_args:
-            _target_: modules.dataset_processor.Wikipedia2023
+            _target_: modules.dataset_processor.Wiki_monolingual_100w
+            lang: "en"
             split: "train"
-            data_path: "/nfs/data/calmar/amyrzakha/data/wiki2023/chunked_dataset.tsv"
     query: 
         init_args:
             _target_: modules.dataset_processor.Frames

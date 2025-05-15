@@ -4,7 +4,7 @@ train:
 dev:
     doc: 
         init_args:
-            _target_: modules.dataset_processor.Wikipedia2023Full
+            _target_: modules.dataset_processor.Wikipedia2023_full
             split: "train"
     query: 
         init_args:
