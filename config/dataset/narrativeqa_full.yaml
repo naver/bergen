@@ -1,0 +1,17 @@
+train:
+    doc: null
+    query: null
+dev:
+    doc: 
+        init_args:
+            _target_: modules.dataset_processor.NarrativeQA
+            full_text: true 
+            split: "test"
+    query: 
+        init_args:
+            _target_: modules.dataset_processor.NarrativeQA
+            full_text: true
+            split: "test"
+test:
+    doc: null
+    query: null

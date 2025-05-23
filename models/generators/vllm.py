@@ -19,7 +19,7 @@ class VLLM(Generator):
                 model_name: str = None, 
                 batch_size: int = 1,
                 max_new_tokens: int = 1, 
-                max_doc_len: int = 100,
+                max_doc_len: int = 10**10,
                 max_length: int = None,
                 prompt: str = None,
                 quantization: str = None,
@@ -27,14 +27,16 @@ class VLLM(Generator):
                 temperature: float = 1.,
                 use_beam_search: bool = False,
                 best_of: int = 1,
-                sampling: bool = False
+                sampling: bool = False,
+                use_middle_truncation: bool = False
                 ):
         Generator.__init__(self,
                            model_name=model_name,
                            batch_size=batch_size,
                            max_new_tokens=max_new_tokens,
                            max_doc_len=max_doc_len,
-                           max_length=max_length)
+                           max_length=max_length,
+                           use_middle_truncation=use_middle_truncation)
         
         self.quantization = quantization
         self.prompt = prompt
@@ -61,7 +63,6 @@ class VLLM(Generator):
             if best_of == 1:
                 Warning('You are doing beam search with best_of=1: it is greedy decoding. Consider increasing best_of.')
             self.sampling_params =  SamplingParams(temperature=temperature,
-                                                   use_beam_search=True,
                                                    max_tokens=max_new_tokens,
                                                    best_of=best_of,
                                                    top_p=1,

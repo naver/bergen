@@ -16,16 +16,18 @@ import random
 
 class Generator(ABC):
     def __init__(self,
-                 model_name: str =None,
+                 model_name: str = None,
                  batch_size: int = 1,
                  max_new_tokens: int = 1,
                  max_doc_len: int = 10**10,
-                 max_length: int = None):
+                 max_length: int = None,
+                 use_middle_truncation: bool = False):
         self.model_name = model_name
         self.batch_size = batch_size
         self.max_new_tokens = max_new_tokens
         self.max_doc_len = max_doc_len
         self.max_length = max_length
+        self.use_middle_truncation = use_middle_truncation
 
     @abstractmethod
     def generate(self, inp):
@@ -122,12 +124,44 @@ class Generator(ABC):
                     else:
                         raise e
             
+            
             if label is not None:
                 assert label_start_index is not None # check we did find the prompt length
                 if not prompt.endswith(self.tokenizer.eos_token):
                     prompt += self.tokenizer.eos_token # most models have this already, but not gemma-2b !
                 
             return prompt, label_start_index
+
+    def middle_truncation(self, docs):
+        """
+        Truncate documents by removing the middle section while preserving both the beginning and end.
+        Args:
+            docs (str): The document text to truncate
+                
+        Returns:
+            str: The truncated document text
+        """
+        if docs is None or self.max_length is None or not hasattr(self, 'tokenizer'):
+            return docs
+        
+        tokenized_docs = self.tokenizer(docs, truncation=False, return_tensors="pt")['input_ids'][0]
+        docs_length = len(tokenized_docs)
+        
+        truncation_threshold = self.max_length - 128
+        assert truncation_threshold >= 0, "Truncation threshold must be non-negative. Check max_length value."
+        
+        if docs_length > truncation_threshold:
+            half = int(truncation_threshold / 2)
+            
+            first_half = tokenized_docs[:half]
+            second_half = tokenized_docs[-half:]
+            
+            first_half_text = self.tokenizer.decode(first_half, skip_special_tokens=True)
+            second_half_text = self.tokenizer.decode(second_half, skip_special_tokens=True)
+            docs = first_half_text + second_half_text
+
+        return docs
+
 
     def format_instruction(self, sample: dict, eval: bool = True) -> (str, int):
         """
@@ -149,6 +183,8 @@ class Generator(ABC):
             for i, doc in enumerate(input_docs):
                 doc = ' '.join(doc.split()[:self.max_doc_len])
                 docs += f"Document {i+1}: {doc}\n"
+            if self.use_middle_truncation:
+                docs = self.middle_truncation(docs)
             return self.compile_prompt(self.prompt.system, self.prompt.user, question, docs, label=label)
         else:
             # We have no retrieved documents: switch to no doc prompt

@@ -85,8 +85,10 @@ init_args:
   max_length: 32000
   batch_size: 256
   max_doc_len: 100
+  use_middle_truncation: True
 ```
 Hydra instantiates the given `_target_` class passing the rest of the arguments to the class constructor. Here:
 - max_length: the maximum length (in tokens) of the full prompt passed to the generator
 - max_new_tokens: max number of generated tokens
 - max_doc_len: each retrieved document is cropped to max_doc_len words before being appended to the query
+- use_middle_truncation: when the input prompt exceeds max_length, the middle part of the prompt is removed

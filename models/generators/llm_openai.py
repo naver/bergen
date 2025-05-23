@@ -14,7 +14,7 @@ class OpenAI(Generator):
                 model_name="gpt-3.5-turbo",
                 batch_size=1, 
                 max_new_tokens=1, 
-                max_doc_len=100,
+                max_doc_len=25000,
                 max_length=None,
                 prompt=None
                  ):
@@ -116,7 +116,7 @@ class OpenAI(Generator):
 
         return data_dict
 
-    def compile_prompt(self, system_prompt, user_prompt, question, docs=None):
+    def compile_prompt(self, system_prompt, user_prompt, question, docs, label):
         """
         openai chat template
         """

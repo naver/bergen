@@ -1,0 +1,16 @@
+train:
+    doc: null
+    query: null
+dev:
+    doc: 
+        init_args:
+            _target_: modules.dataset_processor.Frames
+            split: "train"
+    
+    query: 
+        init_args:
+            _target_: modules.dataset_processor.Frames
+            split: "test"
+test:
+    doc: null
+    query: null

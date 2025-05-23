@@ -229,9 +229,32 @@ class MsMarcoQueries(Processor):
         dataset = datasets.Dataset.from_dict({"id":ids, "content": queries})  # no need for split?
         return dataset
 
+
 # ---------------------------------------- #
 # Document processors
 # ---------------------------------------- #
+class Frames(Processor):
+    def __init__(self, *args, **kwargs):
+        dataset_name = 'frames'
+        super().__init__(*args, **kwargs, dataset_name=dataset_name)
+    
+    def process(self):
+        if self.oracle_provenance:
+            # document
+            dataset = datasets.load_dataset('naver/frames_oracle', num_proc=self.num_proc)['train']
+            dataset = dataset.map(lambda example: {"id": str(example["id"])})
+        else:
+            #query
+            hf_name = 'google/frames-benchmark'
+            dataset = datasets.load_dataset(hf_name, num_proc=self.num_proc)[self.split]
+            dataset = dataset.rename_column("Prompt", "content")
+            dataset = dataset.map(lambda example: {"id": str(example["Unnamed: 0"]), "label": [example["Answer"]]})
+            columns_to_keep = ["id", "label", "content"]
+            dataset = dataset.remove_columns([col for col in dataset.column_names if col not in columns_to_keep])
+
+        return dataset
+
+
 class ReproduceWikiCorpora63(Processor):
 
     def __init__(self, data_path, label="", *args, **kwargs):
@@ -313,6 +336,33 @@ class KILT100w(Processor):
             dataset = dataset.map(lambda example, idx: {'id': str(idx), **example}, with_indices=True)
 
         del kilt_dataset
+        return dataset
+
+
+class NarrativeQA(Processor):
+    def __init__(self, full_text, *args, **kwargs):
+        dataset_name = 'narrativeqa_full' if full_text else 'narrativeqa'
+        super().__init__(*args, **kwargs, dataset_name=dataset_name)
+        self.full_text = full_text 
+
+    def process(self):
+        hf_name = 'deepmind/narrativeqa' 
+        dataset = datasets.load_dataset(hf_name, num_proc=self.num_proc)[self.split]
+        
+        cid = [str(i) for i in range(len(dataset))]
+        dataset = dataset.add_column("id", cid)
+
+        if self.oracle_provenance:
+            # document
+            if self.full_text:
+                dataset = dataset.map(lambda example: {'content': example['document']['text']}) # Using the full document text (from 'document.text') as oracle document
+            else:
+                dataset = dataset.map(lambda example: {'content': example['document']['summary']['text']})  # Using the summary text (from 'document.summary.text') as oracle document         
+        else:
+            # query
+            dataset = dataset.map(lambda example: {'content': example['question']['text'].lower(), 'label': [example['answers'][1]['text']]})
+
+        dataset = dataset.remove_columns(["question", "document", "answers"])
         return dataset
 
 class Wiki_monolingual_100w(Processor):
