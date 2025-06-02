@@ -72,8 +72,6 @@ python3 bergen.py +context_processor=provence/provence_rerank_0.1 dataset=multid
 python3 bergen.py +context_processor=provence/provence_standalone_0.1 dataset=multidomain/pubmed_bioasq11b_ragged retriever='splade-v3' reranker='debertav3' ++generation_top_k=5 generator='vllm_llama-2-7b-chat'
 ```
 
-_The code for evaluation is currently in [pull-request](https://github.com/naver/bergen/pull/40) and will be merged soon._
-
 ### Training Provence models
 
 Training consists of three steps: (1) retrieval+reranking; (2) data labeling; (3) training Provence model.
