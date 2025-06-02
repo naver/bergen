@@ -14,7 +14,6 @@ dev:
             _target_: modules.processors.bright_dataset_processor.BRIGHTQueryProcessor
             split: "biology"
             longdoc: False
-            qlen: 100
 test:
     doc: null
     query: null
