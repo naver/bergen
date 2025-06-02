@@ -55,7 +55,7 @@ class RepLlama(Retriever):
         return_dict = self.tokenizer(content, padding=True, truncation=True, max_length=self.max_len,return_tensors='pt')
         return return_dict
 
-    def __call__(self, kwargs):
+    def __call__(self, query_or_doc, kwargs):
         kwargs = {key: value.to(self.device) for key, value in kwargs.items()}
         # get accumulated eos token counts per exmaple
         accumulated_eos_tokens = (kwargs['input_ids'] != self.tokenizer.pad_token_id).cumsum(dim=1)

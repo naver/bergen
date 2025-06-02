@@ -533,14 +533,73 @@ class MsMarcoCollection(Processor):
     def process(self):
         # load from the ir-dataset HF repo
         hf_name = "irds/msmarco-passage"
-        dataset = datasets.load_dataset(hf_name, 'docs', num_proc=self.num_proc)  # no need for split?
+        dataset = datasets.load_dataset(hf_name, 'docs', num_proc=self.num_proc,trust_remote_code=True)  # no need for split?
         dataset = dataset.rename_column("doc_id", "id")
         dataset = dataset.rename_column("text", "content")
         return dataset
 
+class MsMarcoTrainQueries(Processor):
+
+    def __init__(self, *args, **kwargs):
+        dataset_name = 'ms-marco-train-queries'
+        super().__init__(*args, **kwargs, dataset_name=dataset_name)
+
+    def process(self):
+        import ir_datasets
+        ird = ir_datasets.load("msmarco-passage/train/judged")
+        Qid= [q.query_id for q in ird.queries_iter()]
+        Qtext= [q.text for q in ird.queries_iter()]
+        hf_dataset= datasets.Dataset.from_dict({'id':Qid, 'content':Qtext})
+        return hf_dataset
+
 # applies processing to dataset names
 # processes query and doc with different processors
 
+
+class IRDSDocProcessor(Processor):
+    def __init__(self, irds_name,*args, **kwargs):
+        dataset_name = irds_name.replace('/','_')+'_doc'
+        super().__init__(*args, **kwargs, dataset_name=dataset_name)
+        self.irds_name=irds_name
+
+    def process(self):
+        import ir_datasets
+        dataset = ir_datasets.load(self.irds_name)
+        print(dataset)
+        def dataset_generator():
+            for doc in dataset.docs_iter():
+                    doc # namedtuple<doc_id, text, title>
+                    doc_text=''
+                    if hasattr(doc,'title'):
+                        doc_text+=doc.title+ ' ' +doc.text
+                    else:
+                        doc_text+=doc.text
+                    yield {'id':doc.doc_id, 'content':doc_text}
+        
+        hf_dataset= datasets.Dataset.from_generator(dataset_generator)
+        return hf_dataset
+
+
+class IRDSQueryProcessor(Processor):
+    def __init__(self, irds_name,*args, **kwargs):
+        dataset_name = irds_name.replace('/','_')+'_query'
+        self.irds_name=irds_name
+        super().__init__(*args, **kwargs, dataset_name=dataset_name)
+
+    def process(self):
+        import ir_datasets
+        dataset = ir_datasets.load(self.irds_name)
+        print(dataset)
+        def dataset_generator():
+            for doc in dataset.queries_iter():
+                    ## namedtuple<query_id, text>
+                    yield {'id':doc.query_id, 'content':doc.text}
+
+        hf_dataset= datasets.Dataset.from_generator(dataset_generator)
+        return hf_dataset
+
+
+    
 
 class UT1Queries(Processor):
     def __init__(self, *args, **kwargs):
