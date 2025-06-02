@@ -124,7 +124,7 @@ The script for training `train_provence.py` is provided in the same folder as th
 
 * `PATH_TO_DATA`: the data folder generated in step 2
 * `TRAINING_TYPE`: "joint" for joint reranking+context compression model, "compression" for compression-only (standlone) model, "ranking" for reranking only
-* `PATH_TO_RUN`: `.trec` file generated in step 1 (only needed to train the reranking head). If you use the same setting as ours, it's `../../runs/run.rerank.retriever.top_50.naver_splade-v3.rerank.top_50.ms-marco-docs-v1-queries-dev.ms-marco-docs-v1-chunked-v1.dev.naver_trecdl22-crossencoder-debertav3.trec`
+* `PATH_TO_RUN`: `.trec` file generated in step 1 (only needed to train the reranking head).
 * `EXP_FOLDER`: your custom folder where to save the checkpoints and the logs
 
 Do not forget your CUDA / sbatch settings! One epoch on the full MS Marco data takes several days, but you can get good results with smaller data, e.g. 1/10 of the whole set.
