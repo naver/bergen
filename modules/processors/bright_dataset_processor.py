@@ -7,8 +7,8 @@ import requests
 
    
 class BRIGHTDocProcessor(Processor):
-    def __init__(self, longdoc,split,*args, **kwargs):
-        dataset_name = 'BRIGHT_%s'%split
+    def __init__(self, longdoc, split,*args, **kwargs):
+        dataset_name = 'BRIGHT_%s'% split 
         super().__init__(*args, **kwargs, split=split,dataset_name=dataset_name)
         self.longdoc = longdoc
 
@@ -22,8 +22,8 @@ class BRIGHTDocProcessor(Processor):
    
    
 class BRIGHTQueryProcessor(Processor):
-    def __init__(self, longdoc,split,qlen,*args, **kwargs):
-        dataset_name = 'BRIGHTQuery_%s'%split
+    def __init__(self, longdoc,split,qlen=-1,*args, **kwargs):
+        dataset_name = 'BRIGHTQuery_%s' %split
         super().__init__(*args, **kwargs, split=split,dataset_name=dataset_name)
         self.longdoc = longdoc
         self.qlen = qlen
@@ -32,7 +32,7 @@ class BRIGHTQueryProcessor(Processor):
         hf_name = 'xlangai/BRIGHT' 
         dataset = datasets.load_dataset(hf_name, "examples",num_proc=self.num_proc)[self.split]
         dataset = dataset.rename_column("query", "content")
-        dataset['content'] = dataset['content'].split()[:qlen]
+        dataset = dataset.map(lambda x:{'content':" ".join(x['content'].split()[:self.qlen])})
         if self.longdoc:
             dataset = dataset.rename_column("gold_ids_long", "ranking_label")
         else:
