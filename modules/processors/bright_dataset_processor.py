@@ -32,7 +32,8 @@ class BRIGHTQueryProcessor(Processor):
         hf_name = 'xlangai/BRIGHT' 
         dataset = datasets.load_dataset(hf_name, "examples",num_proc=self.num_proc)[self.split]
         dataset = dataset.rename_column("query", "content")
-        dataset = dataset.map(lambda x:{'content':" ".join(x['content'].split()[:self.qlen])})
+        if self.qlen != -1:
+           dataset = dataset.map(lambda x:{'content':" ".join(x['content'].split()[:self.qlen])})
         if self.longdoc:
             dataset = dataset.rename_column("gold_ids_long", "ranking_label")
         else:
