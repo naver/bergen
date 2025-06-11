@@ -1,0 +1,19 @@
+train:
+    doc: null  
+    query: null
+  
+dev:
+    doc: 
+        init_args:
+            _target_: modules.processors.coir_dataset_processor.CoIRDocumentProcessor
+            task_name: codefeedback-st
+            split: "full"
+    
+    query: 
+        init_args:
+            _target_: modules.processors.coir_dataset_processor.CoIRQueryProcessor
+            task_name: codefeedback-st
+            split: "test"
+test:
+    doc: null
+    query: null
