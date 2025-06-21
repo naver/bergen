@@ -148,8 +148,10 @@ class LLM(Generator):
         return decoded
         
     def __del__(self):
-        gc.collect()
-        torch.cuda.empty_cache()
+        if "gc" in globals() and gc:
+            gc.collect()
+        if "torch" in globals() and torch and torch.cuda.is_available():
+            torch.cuda.empty_cache()
             
     def get_no_loss_start_index(self, 
                                 ids: torch.LongTensor, 
