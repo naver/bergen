@@ -74,7 +74,7 @@ python3 bergen.py +context_processor=provence/provence_standalone_0.1 dataset=mu
 
 ### Training Provence models
 
-Training consists of three steps: (1) retrieval+reranking; (2) data labeling; (3) training Provence model. We also provide below the data obtained after steps 1 and 2 so that you can jump directly to [step 3](https://github.com/naver/bergen/tree/main/scripts/provence#step-3-training-provence).
+Training consists of three steps: (1) retrieval+reranking; (2) data labeling; (3) training Provence model. We also provide below the [data](https://github.com/naver/bergen/blob/main/scripts/provence/readme.md#our-training-data-obtained-after-steps-1--2) obtained after steps 1 and 2 so that you can jump directly to [step 3](https://github.com/naver/bergen/tree/main/scripts/provence#step-3-training-provence).
 
 If you have any questions, do not hesitate to contact us by corresponding emails specified in the [paper](https://openreview.net/forum?id=TDy5Ih78b4&noteId=TDy5Ih78b4)!
 
