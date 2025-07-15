@@ -74,9 +74,9 @@ python3 bergen.py +context_processor=provence/provence_standalone_0.1 dataset=mu
 
 ### Training Provence models
 
-Training consists of three steps: (1) retrieval+reranking; (2) data labeling; (3) training Provence model.
+Training consists of three steps: (1) retrieval+reranking; (2) data labeling; (3) training Provence model. We also provide below the data obtained after steps 1 and 2 so that you can jump directly to [step 3](https://github.com/naver/bergen/tree/main/scripts/provence#step-3-training-provence).
 
-If you have any questions, do not hesitate to contact us by corresponding emails specified in the [paper](https://openreview.net/forum?id=TDy5Ih78b4&noteId=TDy5Ih78b4)! We can also share the data obtained after steps 1 and 2 which take the longest time.
+If you have any questions, do not hesitate to contact us by corresponding emails specified in the [paper](https://openreview.net/forum?id=TDy5Ih78b4&noteId=TDy5Ih78b4)!
 
 #### Step 1: retrieval+reranking
 
@@ -128,3 +128,22 @@ The script for training `train_provence.py` is provided in the same folder as th
 * `EXP_FOLDER`: your custom folder where to save the checkpoints and the logs
 
 Do not forget your CUDA / sbatch settings! One epoch on the full MS Marco data takes several days, but you can get good results with smaller data, e.g. 1/10 of the whole set.
+
+
+### Our training data obtained after steps 1 & 2
+
+Here you can find zip archives for MS Marco and NQ data, for context pruning:
+
+MS Marco: https://drive.google.com/file/d/1UYyZlB-t_T3uloPb5dJxCVWn22IQOP6s/view?usp=sharing
+
+NQ: https://drive.google.com/file/d/18qBPAoAmJGXrdVzpOHgylTOyCEIl_hk5/view?usp=sharing
+
+Each archive includes a set of jsons, each json contains a question-context pair & a LLama-3-8B-generated answer & extracted indexes of relevant sentences.
+
+Here are the corresponding trec runs:
+
+MS Marco: https://drive.google.com/file/d/1A_IZMDYxzZHjmG4lCfNySI3wGCMd6IWG/view?usp=sharing
+
+NQ: https://drive.google.com/file/d/1ZVx7rUygGE1qZfDdaly2xoSEZ6h560ma/view?usp=sharing
+
+We train the final model on a mix of both, but training separately on one of them also gives good results. MS Marco is larger and leads to a bit better model, NQ is smaller -> faster training.
