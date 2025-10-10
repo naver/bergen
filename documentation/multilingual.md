@@ -20,7 +20,7 @@ For more details on installing BEGREN and running experiments, please refer to t
 
 ## Downloads
 * [archive with our main experiments](https://download.europe.naverlabs.com/bergen/bergen_multilingual_exps.zip)
-* [archived search indexes for 12 languages](https://download.europe.naverlabs.com/bergen/mrag_indexes/). Each index represents Wikipedia in a chosen language, encoded with `BGE-m3`. To be unpacked in `indexes` directory, i.e. `indexes/wiki-100w-{lang}_doc_BAAI_bge-m3`
+* [archived search indexes for 12 languages](http://download.europe.naverlabs.com/bergen/mrag_indexes/). Each index represents Wikipedia in a chosen language, encoded with `BGE-m3`. To be unpacked in `indexes` directory, i.e. `indexes/wiki-100w-{lang}_doc_BAAI_bge-m3`
 
 ## Datasets
 
