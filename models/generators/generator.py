@@ -89,8 +89,8 @@ class Generator(ABC):
             
             label_start_index = None
             if self.tokenizer.chat_template is None:
-                user_prompt_with_values = eval(user_prompt).replace(':\ ', ': ')
-                # we add the 'reponse incitation' to non chat template
+                user_prompt_with_values = user_prompt.format(question=question, docs=docs)
+                # we add the 'reponse incitation' to non chat-template
                 prompt = f"{system_prompt}\n{user_prompt_with_values}" + self.get_response()
                 if label is not None:
                     # Compute prompt size in tokens without labels.
@@ -100,7 +100,7 @@ class Generator(ABC):
             else:        
                 messages = [
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": eval(user_prompt).replace(':\ ', ': ')}
+                    {"role": "user", "content": user_prompt.format(question=question, docs=docs)}
                 ]
                 try:
                     # Handle the label
