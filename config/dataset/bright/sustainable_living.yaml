@@ -1,0 +1,19 @@
+train:
+    doc: null  
+    query: null
+  
+dev:
+    doc: 
+        init_args:
+            _target_: modules.processors.bright_dataset_processor.BRIGHTDocProcessor
+            split: "sustainable_living"
+            longdoc: False
+    
+    query: 
+        init_args:
+            _target_: modules.processors.bright_dataset_processor.BRIGHTQueryProcessor
+            split: "sustainable_living"
+            longdoc: False
+test:
+    doc: null
+    query: null

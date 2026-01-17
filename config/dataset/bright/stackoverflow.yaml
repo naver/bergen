@@ -1,0 +1,19 @@
+train:
+    doc: null  
+    query: null
+  
+dev:
+    doc: 
+        init_args:
+            _target_: modules.processors.bright_dataset_processor.BRIGHTDocProcessor
+            split: "stackoverflow"
+            longdoc: False
+    
+    query: 
+        init_args:
+            _target_: modules.processors.bright_dataset_processor.BRIGHTQueryProcessor
+            split: "stackoverflow"
+            longdoc: False
+test:
+    doc: null
+    query: null
