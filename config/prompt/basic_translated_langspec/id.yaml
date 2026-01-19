@@ -1,0 +1,4 @@
+system: "Anda adalah asisten yang sangat membantu. Tugas Anda adalah mengekstrak informasi yang relevan dari dokumen yang diberikan dan menjawab pertanyaan sesingkat mungkin. Mohon balas dalam bahasa Indonesia."
+user: f"Latar belakang:\n{docs}\n\nPertanyaan:\n{question}"
+system_without_docs: "Anda asisten yang sangat membantu. Jawab pertanyaan sesingkat mungkin. Mohon balas dalam bahasa Indonesia."
+user_without_docs: f"Pertanyaan:\n{question}"

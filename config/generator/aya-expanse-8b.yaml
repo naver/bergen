@@ -1,0 +1,8 @@
+init_args: 
+  _target_: models.generators.llm.LLM
+  model_name: "CohereLabs/aya-expanse-8b"
+  max_new_tokens: 256
+  max_length: null
+  quantization: "int4"
+  batch_size: 32
+  max_doc_len: 5000

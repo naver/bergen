@@ -113,13 +113,14 @@ def get_doc_embeds_from_dataset(d_ids, embeds_dataset):
 # horrible function :/ needs to be refactored into mult_doc and single doc
 # gets q_ids and d_ids and does a lookup by id to get the content
 # then constructs hf_dataset out of it
-def prepare_dataset_from_ids(dataset, q_ids, d_ids, multi_doc=False, query_field="content", oracle_provenance=False):
+def prepare_dataset_from_ids(dataset, q_ids, d_ids, multi_doc=False, query_field="content", oracle_provenance=False, gen_query_field=None):
 
     # if query _ids and doc_ids are None only return queries and optional labels /ranking labels
     if q_ids == d_ids == None:
         dataset_dict = {
             'query': dataset['query'][query_field], 
             'q_id': dataset['query']['id'],
+            'generated_query': dataset['query'][gen_query_field] if gen_query_field in dataset['query'].features else dataset['query'][query_field], 
             }
         # if labels or ranking_labels are in query dataset add them to the dataset
 
@@ -130,13 +131,13 @@ def prepare_dataset_from_ids(dataset, q_ids, d_ids, multi_doc=False, query_field
         if not (oracle_provenance and "doc" in dataset['query'].features): 
             assert isinstance(d_ids[0][0], str), f"{d_ids[0]}"
             assert isinstance(list(dataset['doc'].id2index.keys())[0], str), "Dataset id type is not string, real index retrieval will fail and retrieve nothing. Please convert to string in dataset_processor!"
-        dataset_dict = defaultdict(list)
         # get labels
         labels = get_by_id(dataset['query'], q_ids, 'label')
         # get ranking_labels
         ranking_labels = get_by_id(dataset['query'], q_ids, 'ranking_label')
         # get queries
         queries = get_by_id(dataset['query'], q_ids, query_field)
+        queries2 = get_by_id(dataset['query'], q_ids, gen_query_field) if gen_query_field in dataset['query'].features else queries
         # put together dataset_dict for each query
         def mygen():
             for i, q_id in tqdm(enumerate(q_ids), desc='Fetching data from dataset...', total=len(q_ids)):
@@ -151,27 +152,23 @@ def prepare_dataset_from_ids(dataset, q_ids, d_ids, multi_doc=False, query_field
                 # for multi_doc=True, all documents are saved to the 'doc' entry
 
                 if multi_doc:
-                    x={'doc':docs, 'query': queries[i],'q_id':q_id, 'd_id':d_ids_, 'd_idx':doc_idxs}
+                    x={'doc':docs, 'query': queries[i],'q_id':q_id, 'd_id':d_ids_, 'd_idx':doc_idxs, 'generated_query': queries2[i]}
                     # add labels if they exist in datset
                     if len(labels) > 0:
-                        #dataset_dict['label'].append(labels[i])
                         x['label']=labels[i]
                     # add ranking_labels if they exist in datset
                     if len(ranking_labels) > 0:
-                        #dataset_dict['ranking_label'].append(ranking_labels[i])
                         x['ranking_labels']=ranking_labels[i]
                     yield x
                 else:
                     # for multi_doc=False, we save every document to a new entry
                         for d_id, doc, d_idx in zip(d_ids_, docs, doc_idxs):
-                            x= {'d_id': d_id, 'd_idx': d_idx, 'doc': doc, 'query':queries[i], 'q_id':q_id}
+                            x= {'d_id': d_id, 'd_idx': d_idx, 'doc': doc, 'query':queries[i], 'q_id':q_id, 'generated_query': queries2[i]}
                             # add labels if they exist in datset
                             if len(labels) > 0 :
-                                dataset_dict['label'].append(labels[i])
                                 x['label']=labels[i]
                             # add ranking_labels if they exist in datset
                             if len(ranking_labels) > 0:
-                                dataset_dict['ranking_label'].append(ranking_labels[i])
                                 x['ranking_labels']=ranking_labels[i]
                             yield x
 

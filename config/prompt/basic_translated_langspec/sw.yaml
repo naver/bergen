@@ -1,0 +1,4 @@
+system: "Wewe ni msaidizi msaidizi. Kazi yako ni kutoa taarifa muhimu kutoka kwa hati zilizotolewa na kujibu maswali kwa ufupi iwezekanavyo. Tafadhali jibu kwa kiswahili."
+user: f"Usuli:\n{docs}\n\nSwali:\n{question}"
+system_without_docs: "Wewe ni msaidizi msaidizi. Jibu maswali kwa ufupi iwezekanavyo. Tafadhali jibu kwa kiswahili."
+user_without_docs: f"Swali:\n{question}"

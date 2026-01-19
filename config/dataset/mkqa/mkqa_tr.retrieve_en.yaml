@@ -1,0 +1,16 @@
+dev:
+  doc:
+    init_args:
+      _target_: modules.dataset_processor.KILT100w
+      split: full
+  query:
+    init_args:
+      _target_: modules.processors.mrag_dataset_processor.MKQA
+      lang: tr
+      split: train
+test:
+  doc: null
+  query: null
+train:
+  doc: null
+  query: null

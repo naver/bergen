@@ -1,0 +1,18 @@
+dev:
+  doc:
+    init_args:
+      _target_: modules.dataset_processor.Wiki_monolingual_100w
+      lang: ko
+      split: train
+  query:
+    init_args:
+      _target_: modules.processors.mrag_dataset_processor.TydiQA
+      langcode: ko
+      language: korean
+      split: validation
+test:
+  doc: null
+  query: null
+train:
+  doc: null
+  query: null

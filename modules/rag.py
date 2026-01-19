@@ -427,13 +427,14 @@ class RAG:
         )
         if not os.path.exists(process_context_file) or self.overwrite_exp or self.overwrite_index:
             processed_contexts, context_metrics = self.context_processor.eval(gen_dataset['doc'], 
-                                                                              gen_dataset['query'])
+                                                                              gen_dataset['generated_query'])
             os.makedirs(self.processed_context_folder, exist_ok=True)
             with open(process_context_file, 'w') as fp: 
                 json.dump({"processed_contexts": processed_contexts,
-                           "context_metrics": context_metrics,
-                           "original_contexts": gen_dataset['doc'],
-                           "queries": gen_dataset['query']}, 
+                           "context_metrics": str(context_metrics),
+                           "original_contexts": gen_dataset['doc'][:],
+                           "generated_queries": gen_dataset['generated_query'][:], 
+                           "queries": gen_dataset['query'][:]}, 
                           fp)
         else:
             with open(process_context_file, 'r') as fp: 
@@ -444,7 +445,7 @@ class RAG:
         gen_dataset = gen_dataset.add_column('doc', processed_contexts)
         shutil.copyfile(process_context_file, f'{self.experiment_folder}/{process_context_file.split("/")[-1]}')
         with open(f'{self.experiment_folder}/eval_{dataset_split}_context_metrics.json', 'w') as fout:
-            json.dump(context_metrics, fout)
+            json.dump(str(context_metrics), fout)
         return gen_dataset
     
     def generate(self, 
@@ -560,6 +561,7 @@ class RAG:
             query_ids, 
             doc_ids, 
             multi_doc=True, 
+            gen_query_field="generated_query",
             )
 
         # context processing if needed

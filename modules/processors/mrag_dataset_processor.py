@@ -1,7 +1,10 @@
 from ..dataset_processor import Processor
 import datasets
+from datasets import Dataset
 import os
-
+import numpy as np
+import pandas as pd
+import random
 
 class MKQA(Processor):
     def __init__(self, lang, *args, **kwargs):
@@ -70,3 +73,102 @@ class TydiQA(Processor):
         dataset = dataset.remove_columns(['title', 'context', 'answers'])
         return dataset
 
+class MIRACL(Processor):
+
+    def __init__(self, lang, *args, **kwargs):
+        dataset_name = f'miracl_{lang}'
+        super().__init__(*args, **kwargs, dataset_name=dataset_name)
+        self.lang = lang
+        
+    def process(self):
+        dataset = datasets.load_dataset('miracl/miracl', self.lang)[self.split]
+        dataset = dataset.rename_column("query_id", "id") 
+        dataset = dataset.rename_column("query", "content") 
+        dataset = dataset.map(lambda example: {'label': [ps['text'] for ps in example['positive_passages'] if len(ps) > 0]})
+        dataset = dataset.remove_columns(['positive_passages', 'negative_passages'])
+        return dataset
+
+class XPQA(Processor):
+    def __init__(self, lang, *args, **kwargs):
+        dataset_name = f'xpqarand_{lang}'
+        super().__init__(*args, **kwargs, dataset_name=dataset_name)
+        self.lang = lang
+        
+    def process(self):
+        df_raw = pd.read_csv("https://raw.githubusercontent.com/amazon-science/contextual-product-qa/refs/heads/main/xPQA/test_answerable_corrected.csv")
+        df = df_raw[df_raw['lang']==self.lang]
+
+        gdf = df.groupby('qid').agg({
+            'question': 'first',
+            'answer': lambda x: list(x),
+            'context': lambda x: list(x),
+        }).reset_index()
+        def process_data(row):
+            nan_context = []
+            gcontext = []
+            for a, c in zip(row['answer'], row['context']):
+                if a is np.nan:
+                    nan_context.append(c)
+                else:
+                    gcontext.append((c, a))
+            return {
+                'qid': row['qid'],
+                'question': row['question'],
+                'context': gcontext,
+                'nan_context': nan_context
+            }
+        gdf = pd.DataFrame(gdf.apply(process_data, axis=1).tolist())
+        gdf = gdf.explode('context').reset_index(drop=True)
+        gdf['answer'] = gdf['context'].apply(lambda x: [x[1]])
+        def create_context(row):
+            all_context = row['nan_context'] + [row['context'][0]] 
+            random.shuffle(all_context)
+            return ['\n'.join(all_context)]
+        gdf['context'] = gdf.apply(lambda x: create_context(x), axis=1)
+        gdf = gdf.drop(columns=['nan_context'])
+        gdf['qid'] = gdf.index.astype(str)
+
+        gdf = gdf[gdf['answer'].map(lambda x: (len(x) > 0) and (len(str(x[0])) > 0))]
+        gdf.rename(columns={'qid': 'id', 'question': 'content', 'answer': 'label', 'context': 'doc'}, inplace=True)
+        # convert id to str
+        gdf['id'] = gdf['id'].astype(str)
+        gdf['doc_id'] = gdf['id']
+        dataset = Dataset.from_pandas(gdf)
+        return dataset
+
+class MedExpQAExp(Processor):
+    def __init__(self, lang, *args, **kwargs):
+        dataset_name = f'medexpqaexp_{lang}'
+        super().__init__(*args, **kwargs, dataset_name=dataset_name)
+        self.lang = lang
+        
+    def process(self):
+        hf_name = 'HiTZ/MedExpQA' 
+        dataset = datasets.load_dataset(hf_name, self.lang, num_proc=self.num_proc)[self.split]
+        def make_question(x):
+            choices_str = '\n\n'.join([f"{i}. {c}" for i, c in x['options'].items()])
+            if self.lang == 'en':
+                return {'content': f"{x['full_question']}\nHere are the potential choices:\n\n{choices_str}\n\nThe correct answer is:"}
+            elif self.lang == 'es':
+                return {'content': f"{x['full_question']}\nAquí están las posibles opciones:\n\n{choices_str}\n\nLa opción correcta es:"}
+            elif self.lang == 'fr':
+                return {'content': f"{x['full_question']}\nVoici les options possibles:\n\n{choices_str}\n\nLa bonne option est:"}
+            elif self.lang == 'it':
+                return {'content': f"{x['full_question']}\nEcco le opzioni possibili:\n\n{choices_str}\n\nL'opzione corretta è:"}
+        dataset = dataset.map(make_question, num_proc=self.num_proc, batched=False)
+
+
+        def get_right_answer(example):
+            answer_index = example['correct_option']
+            return example['options'][str(answer_index)]
+
+        dataset = dataset.map(lambda example, idx: {'id': str(idx), 
+                                                    "label": [str(example["correct_option"]) + '. ' + get_right_answer(example)],
+                                                    "doc": [example['full_answer']],
+                                                    "doc_id": str(idx)}, with_indices=True)
+        dataset = dataset.remove_columns(['correct_option', 'explanations', 'full_answer', 
+                                          'full_answer_no_ref', 'full_question', 'lang', 'options', 
+                                          'question_id_specific', 'type', 'year', 'rag'])
+        dataset = dataset.filter(lambda example: len(example['label'])>0)
+        dataset = dataset.filter(lambda example: len(example['content'])>0)
+        return dataset
