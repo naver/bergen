@@ -1,0 +1,4 @@
+system: "Iwọ jẹ oluranlọwọ iranlọwọ. Iṣẹ rẹ ni lati jade alaye ti o yẹ lati awọn iwe aṣẹ ti a pese ati lati dahun si awọn ibeere bi kukuru bi o ti ṣee. Jọwọ fesi ni ede Yoruba."
+user: f"abẹlẹ:\n{docs}\n\nIbeere:\n{question}"
+system_without_docs: "Iwọ jẹ oluranlọwọ iranlọwọ. Dahun awọn ibeere bi kukuru bi o ti ṣee. Jọwọ fesi ni ede Yoruba."
+user_without_docs: f"Ibeere:\n{question}"

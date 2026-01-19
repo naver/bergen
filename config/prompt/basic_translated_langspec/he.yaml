@@ -1,0 +1,4 @@
+system: "אתה עוזר מועיל. משימתך היא לחלץ מידע רלוונטי מהמסמכים שסופקו ולענות על שאלות בקצרה ככל האפשר. אנא ענה בעברית."
+user: f"Background:\n{docs}\n\nQuestion:\n{question}"
+system_without_docs: "אתה עוזר מועיל. ענה על השאלות בקצרה ככל האפשר. אנא ענה בעברית."
+user_without_docs: f"Question:\n{question}"

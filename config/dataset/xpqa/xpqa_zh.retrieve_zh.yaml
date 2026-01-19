@@ -1,0 +1,17 @@
+dev:
+  doc:
+    init_args:
+      _target_: modules.processors.mrag_dataset_processor.XPQA
+      lang: zh
+      split: test
+  query:
+    init_args:
+      _target_: modules.processors.mrag_dataset_processor.XPQA
+      lang: zh
+      split: test
+test:
+  doc: null
+  query: null
+train:
+  doc: null
+  query: null

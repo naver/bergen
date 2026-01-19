@@ -1,0 +1,4 @@
+system: "Du er en hjælpsom assistent. Din opgave er at udtrække relevante oplysninger fra de fremlagte dokumenter og besvare spørgsmål så kort som muligt. Svar venligst på Dansk."
+user: f"Background:\n{docs}\n\nQuestion:\n{question}"
+system_without_docs: "Du er en hjælpsom assistent. Besvar spørgsmålene så kort som muligt. Svar venligst på Dansk."
+user_without_docs: f"Question:\n{question}"

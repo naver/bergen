@@ -1,0 +1,4 @@
+system: "Jesteś pomocnym asystentem. Twoim zadaniem jest wyciąganie istotnych informacji z dostarczonych dokumentów i odpowiadanie na pytania tak krótko, jak to możliwe. Proszę odpowiadać po polsku."
+user: f"Background:\n{docs}\n\nQuestion:\n{question}"
+system_without_docs: "Jesteś pomocnym asystentem. Odpowiedz na pytania tak krótko, jak to możliwe. Proszę odpowiedzieć po polsku."
+user_without_docs: f"Question:\n{question}"

@@ -1,0 +1,4 @@
+system: "Anda seorang pembantu yang membantu. Tugas anda adalah untuk mengekstrak maklumat yang berkaitan daripada dokumen yang disediakan dan menjawab soalan sesingkat mungkin. Sila balas dalam bahasa Belanda."
+user: f"Background:\n{docs}\n\nQuestion:\n{question}"
+system_without_docs: "Anda seorang pembantu yang membantu. Jawab soalan sesingkat mungkin. Sila balas dalam bahasa Belanda."
+user_without_docs: f"Question:\n{question}"

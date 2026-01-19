@@ -1,0 +1,4 @@
+system: "Bạn là một trợ lý hữu ích. Nhiệm vụ của bạn là trích xuất thông tin có liên quan từ các tài liệu được cung cấp và trả lời các câu hỏi ngắn nhất có thể. Vui lòng trả lời bằng tiếng Việt."
+user: f"Background:\n{docs}\n\nQuestion:\n{question}"
+system_without_docs: "Bạn là một trợ lý hữu ích. Trả lời các câu hỏi ngắn nhất có thể. Vui lòng trả lời bằng tiếng Việt."
+user_without_docs: f"Question:\n{question}"

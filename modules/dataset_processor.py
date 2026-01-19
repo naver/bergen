@@ -27,6 +27,7 @@ import json
 from functools import partial
 import random
 from typing import Dict
+import aiohttp
 
 # Base class that every processor interhits from 
 class Processor(object):
@@ -294,6 +295,48 @@ class ODQAWikiCorpora100WTamber(Processor):
         dataset = dataset.remove_columns(['title', 'text'])
         return dataset
     
+class MIRACL(Processor):
+
+    def __init__(self, lang, *args, **kwargs):
+        dataset_name = f'miracl_corpus_{lang}'
+        self.lang = lang
+        super().__init__(*args, **kwargs, dataset_name=dataset_name)
+
+    def process(self):
+        hf_name = 'miracl/miracl-corpus'
+        dataset = datasets.load_dataset(hf_name, self.lang, num_proc=self.num_proc, trust_remote_code=True)[self.split]      
+
+        def map_100w(sample, num_words=100):
+            wiki_id = sample['docid']
+            title = sample['title']
+            doc = sample['text']
+            if self.lang not in ["zh", "ja", "th"]:      
+                import spacy
+                nlp = spacy.load("xx_sent_ud_sm")
+                words = [token.text for token in nlp(doc)]
+            elif self.lang == "ja":
+                import fugashi
+                fugashi_tagger = fugashi.Tagger()
+                words = [token.surface for token in fugashi_tagger(doc)]
+            elif self.lang == "zh":
+                import jieba
+                words = list(jieba.cut(doc))
+            elif self.lang == "th":
+                from pythainlp.tokenize import word_tokenize as thai_tokenize
+                words = thai_tokenize(doc, keep_whitespace=False)
+            paragraphs = [title + '. ' + " ".join(words[i:i + num_words]) for i in range(0, len(words), num_words)]
+            wiki_ids = [wiki_id] * len(paragraphs)
+            return {'paragraphs': paragraphs, "wiki_ids": wiki_ids}
+        
+        kilt_dataset = dataset.map(map_100w, num_proc=self.num_proc)
+        paragraphs = [el for sublist in kilt_dataset['paragraphs'] for el in sublist]
+        wiki_ids = [el for sublist in kilt_dataset['wiki_ids'] for el in sublist]
+        dataset = datasets.Dataset.from_dict({'content': paragraphs, 'wikipedia_id': wiki_ids})
+        dataset = dataset.map(lambda example, idx: {'id': str(idx), **example}, with_indices=True)
+
+        del kilt_dataset
+        return dataset
+        
 class KILT100w(Processor):
 
     def __init__(self, *args, **kwargs):
@@ -302,7 +345,8 @@ class KILT100w(Processor):
 
     def process(self):
         hf_name = 'kilt_wikipedia'
-        dataset = datasets.load_dataset(hf_name, num_proc=self.num_proc)[self.split]
+        dataset = datasets.load_dataset(hf_name, num_proc=self.num_proc, trust_remote_code=True,
+                                        storage_options={'client_kwargs': {'timeout': aiohttp.ClientTimeout(total=4600)}})[self.split]
 
         def map_100w(sample, num_words=100):
             wiki_id = sample['wikipedia_id']
@@ -381,10 +425,25 @@ class Wiki_monolingual_100w(Processor):
             wiki_id = sample['id']
             title = sample['title']
             doc = sample["text"]
-            if self.lang not in ["zh", "ja", "th"]:
-                words = doc.split()
-            else:
-                words = list(doc)
+            if self.lang not in ["zh", "ja", "th", "hu"]:
+                import spacy
+                nlp = spacy.load("xx_sent_ud_sm")
+                words = [token.text for token in nlp(doc)]
+            elif self.lang == "ja":
+                import fugashi
+                fugashi_tagger = fugashi.Tagger()
+                words = [token.surface for token in fugashi_tagger(doc)]
+            elif self.lang == "zh":
+                import jieba
+                words = list(jieba.cut(doc))
+            elif self.lang == "th":
+                from pythainlp.tokenize import word_tokenize as thai_tokenize
+                words = thai_tokenize(doc, keep_whitespace=False)
+            elif self.lang == "hu":
+                import stanza
+                hu_nlp = stanza.Pipeline('hu', processors='tokenize')
+                doc = hu_nlp(" ".join(doc.split()[:10000]))
+                words = [word.text for sent in doc.sentences for word in sent.words]
             paragraphs = [title + '. ' + " ".join(words[i:i + num_words]) for i in range(0, len(words), num_words)]
             wiki_ids = [wiki_id] * len(paragraphs)
             return {'paragraphs': paragraphs, "wiki_ids": wiki_ids}

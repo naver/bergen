@@ -1,0 +1,17 @@
+train:
+    doc: null
+    query: null
+dev:
+    doc:
+      init_args:
+        _target_: modules.dataset_processor.Wiki_monolingual_100w
+        split: train
+        lang: vi
+    query:
+      init_args:
+        _target_: modules.processors.mrag_dataset_processor.MKQA
+        split: train
+        lang: vi
+test:
+    doc: null
+    query: null

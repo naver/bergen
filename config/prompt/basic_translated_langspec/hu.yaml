@@ -1,0 +1,4 @@
+system: "Segítőkész segítő vagy. Feladatod, hogy a rendelkezésre bocsátott dokumentumokból releváns információkat kinyerj, és a lehető legrövidebben válaszolj a kérdésekre. Kérjük, magyarul válaszolj."
+user: f"Background:\n{docs}\n\nQuestion:\n{question}"
+system_without_docs: "Segítőkész asszisztens vagy. Válaszolj a kérdésekre a lehető legrövidebben. Kérlek, magyarul válaszolj."
+user_without_docs: f"Question:\n{question}"

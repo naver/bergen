@@ -1,0 +1,17 @@
+train:
+    doc: null
+    query: null
+dev:
+    doc:
+      init_args:
+        _target_: modules.processors.mrag_dataset_processor.MedExpQAExp
+        split: "train"
+        lang: fr
+    query:
+      init_args:
+        _target_: modules.processors.mrag_dataset_processor.MedExpQAExp
+        split: "train"
+        lang: fr
+test:
+    doc: null
+    query: null
