@@ -11,6 +11,7 @@ from modules.process_context import ProcessContext
 from modules.dataset_processor import ProcessDatasets
 from modules.metrics import RAGMetrics
 import time 
+from transformers import AdamW
 import random
 import shutil
 import os 
@@ -517,14 +518,22 @@ class RAG:
         # change how to deal w/ top-k? should different between re-ranking and generation (for joint training!)
         # maybe put two fields in the dict (easier even if redundant?); need to change collate function etc.
         # prepare dataset
-        gen_dataset = prepare_dataset_from_ids(
-            dataset, 
-            query_ids, 
-            doc_ids, 
-            multi_doc=True,
-            scores=scores,
-            )
-
+        if self.generator.model.config.to_dict().get("joint_reranking", False):
+            gen_dataset = prepare_dataset_from_ids(
+                dataset, 
+                query_ids, 
+                doc_ids, 
+                multi_doc=True,
+                scores=scores,
+                )
+        else:
+            gen_dataset = prepare_dataset_from_ids(
+                dataset, 
+                query_ids, 
+                doc_ids,
+                multi_doc=True,
+                scores=None,
+                )
         # context processing if needed
         if self.context_processor is not None and self.retriever is not None:
             gen_dataset = self.process_context(
@@ -635,6 +644,28 @@ class RAG:
         # ok I think this is what was weird and source of confusion 
         model = self.generator.model
 
+        optimizer = None  # default 
+        # If we want grouped learning rates, we handle that here:
+        if 'compressor_lr' in self.training_config:
+            print('\nSetting grouped learning rates\n')
+            regular_lr = self.training_config.trainer.learning_rate
+            compressor_lr = self.training_config.compressor_lr
+            
+            # Making groups:
+            groups = [
+                {
+                    "params": [p for n, p in model.named_parameters() if "compr" in n and p.requires_grad],
+                    "lr": compressor_lr,  # Learning rate for the first group
+                },
+                {
+                    "params": [p for n, p in model.named_parameters() if "decoder" in n and p.requires_grad],
+                    "lr": regular_lr,  # Learning rate for the second group
+                }
+            ]
+            
+            # Creating optimizer:
+            optimizer = AdamW(groups)
+
         if self.generator.model.config.to_dict().get("joint_reranking", False):
             print("~~ JOINT TRAINING OF RERANKER ~~")
             # HARD-CODED paths, to change... 
@@ -649,6 +680,7 @@ class RAG:
             data_collator=self.generator.collate_fn,
             train_dataset=train_test_datasets['train'],
             eval_dataset=train_test_datasets['test'],
+            optimizers=(optimizer, None),
             custom_test_dataset=custom_test_dataset,
             qrel=qrel,
         )
@@ -659,13 +691,14 @@ class RAG:
             args=args,
             data_collator=self.generator.collate_fn,
             train_dataset=train_test_datasets['train'],
-            eval_dataset=train_test_datasets['test']
+            eval_dataset=train_test_datasets['test'],
+            optimizers=(optimizer, None),
         )
-        metrics_0 = trainer.evaluate()
-        print("\n \n ", metrics_0, "\n \n")
+        # metrics_0 = trainer.evaluate()
+        # print("\n \n ", metrics_0, "\n \n")
         trainer.train(resume_from_checkpoint=None)
-        metrics_final = trainer.evaluate()
-        print("\n \n ", metrics_final, "\n \n")
+        # metrics_final = trainer.evaluate()
+        # print("\n \n ", metrics_final, "\n \n")
         
         model = trainer.model
         model.save_pretrained(f"{self.experiment_folder}/last_model")

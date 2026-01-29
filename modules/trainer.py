@@ -235,7 +235,7 @@ class JointTrainer(Trainer):
             enc_attention_mask=enc_attention_mask,
             dec_input_ids=dec_input_ids,
             dec_attention_mask=dec_attention_mask,
-            label=label_ids,
+            labels=label_ids,
             rr_scores=rr_scores,
         )
         return output

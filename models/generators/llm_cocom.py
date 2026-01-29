@@ -30,6 +30,7 @@ class LLMCocom(Generator):
                  compr_rms_norm: bool = False, # only useful for surgical mistral compressor
                  compr_use_mlp: bool = True,
                  joint_reranking: bool = False,
+                 lambda_loss: float = 1.,
                  attn_implementation: str = 'flash_attention_2',
                  query_dependent: bool = False,
                  device_map = 'auto',
@@ -49,7 +50,16 @@ class LLMCocom(Generator):
         # Loading the cocom model:
         if checkpoint_path is not None:
             self.model = COCOM.from_pretrained(checkpoint_path, device_map=device_map, attn_implementation=attn_implementation)
-                
+            if joint_reranking and not self.model.config.joint_reranking:
+                print("=== adding reranking capabilities to a pre trained model")
+                self.model.config.joint_reranking = joint_reranking
+                self.model.config.lambda_loss = lambda_loss
+                if "llama" in checkpoint_path:
+                    # to have the right tokenization
+                    self.model.config.compr_model_name = "llama1B"
+                    self.model.compr.compr_model_name = "llama1B"
+                self.model.compr.plug_ranking_head()
+                self.model.compr.add_ranking_token()
         else:
             cfg = COCOMConfig(
                 decoder_model_name=decoder_model_name,
@@ -64,6 +74,7 @@ class LLMCocom(Generator):
                 compr_rms_norm=compr_rms_norm,
                 compr_use_mlp=compr_use_mlp,
                 joint_reranking=joint_reranking,
+                lambda_loss=lambda_loss,
                 context_max_length=context_max_length,
                 compr_mlp_hidden_dim=compr_mlp_hidden_dim,
                 lora=True,
