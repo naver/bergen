@@ -122,6 +122,6 @@ class OpenAI(Generator):
         """
         instr_prompt = [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": eval(user_prompt).replace(':\ ', ': ')}
+            {"role": "user", "content": user_prompt.format(question=question, docs=docs)}
         ]
         return instr_prompt

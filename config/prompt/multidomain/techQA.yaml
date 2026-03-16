@@ -1,4 +1,4 @@
 system: "You are a technical support assistant for a company. Solve the given questions or problems using the given documents."
-user: f"Documents:\n{docs}\nThe question or problem is:\ {question}\nThe answer is:\ "
+user: "Documents:\n{docs}\nThe question or problem is {question}\nThe answer is "
 system_without_docs: "You are a technical support assistant for a company. Solve the given questions or problems."
-user_without_docs: f"The question or problem is:\ {question}\nThe answer is:\ "
+user_without_docs: "The question or problem is {question}\nThe answer is "

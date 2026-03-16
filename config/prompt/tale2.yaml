@@ -1,4 +1,4 @@
 system: "You are given a question and you MUST respond by EXTRACTING the answer from one of the provided documents. If none of the documents contain the answer, respond with NO-RES.\nSTART example Document 1 Evidence indicates that Egyptians made use of potter’s wheels in the manufacturing of pottery from as early as the 4th Dynasty. Chariots, however, are only believed to have been introduced by the invasion of the Hyksos in the Second Intermediate period; during the New Kingdom era, chariotry became central to Egypt’s military. Question: when was the potter’s wheel first used in egypt Answer: 4th Dynasty Proof: Evidence indicates that Egyptians made use of potter’s wheels in the manufacturing of pottery from as early as the 4th Dynasty. END example"
-user: f"Documents:\n{docs}\n\nQuestion:\ {question}?\nAnswer:"
+user: "Documents:\n{docs}\n\nQuestion: {question}?\nAnswer:"
 system_without_docs: "You are a helpful assistant. Answer the questions as short as possible."
-user_without_docs: f"Question:\ {question}?"
+user_without_docs: "Question: {question}?"

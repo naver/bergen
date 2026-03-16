@@ -35,8 +35,8 @@ class BaseEval:
         # Set up prompts
         self.prompt = eval_config['prompt']
         self.prompt_pairwise = eval_config['prompt_pairwise']
-        self.system_prompt = eval(self.prompt.system).replace(':\ ', ': ')
-        self.system_prompt_pairwise = eval(self.prompt_pairwise.system).replace(':\ ', ': ')
+        self.system_prompt = self.prompt.system.format(rubrik_section=self.rubrik_section)
+        self.system_prompt_pairwise =  self.prompt_pairwise.system.format(rubrik_section=self.rubrik_section)
 
         # Set up LLM parameters
         self.batch_size = batch_size or self.llm.batch_size
@@ -59,19 +59,34 @@ class BaseEval:
     def __del__(self):
         torch.cuda.empty_cache()
         gc.collect()        
-                 
-    def create_instruction(self, answer: str, question: str, prediction: str) -> str:
+
+    def create_instruction(self, question, answer, prediction):
         prefix = []
-        rubrik_section = self.rubrik_section # for the 'eval'
         if getattr(self.llm.tokenizer, "chat_template") is not None and  'system' in self.llm.tokenizer.chat_template:
-            prefix =  [
-                {'role': 'system', 'content': self.system_prompt},
-                {'role': 'user', 'content': eval(self.prompt.user).replace(':\ ', ': ')}
-            ]
+            prefix =  [{
+                'role': 'system',
+                'content': self.system_prompt
+            }]
+            prefix.extend([{
+                'role': 'user',
+                'content': self.prompt.user.format(rubrik_section=self.rubrik_section,
+                                                    question=question,
+                                                    answer=answer,
+                                                    prediction=prediction)}]
+            )
+        
         else:
-            prefix = ([
-                {'role': 'user','content': eval(self.prompt.user_without_system).replace(':\ ', ': ')}
-            ])
+            prefix = ([{
+                'role': 'user',
+                'content': self.prompt.user_without_system.format(rubrik_section=self.rubrik_section,
+                                                    question=question,
+                                                    answer=answer,
+                                                    prediction=prediction)
+            }])
+        if 'assistant' in self.prompt:
+            prefix.extend([{'role': 'assistant',
+                'content': self.prompt.assistant}]
+            )
         return self.llm.tokenizer.apply_chat_template(prefix,  add_generation_prompt=True, tokenize=False) 
     
     def create_pairwise_instruction(self, question: str, answer: str, prediction_1: str, prediction_2: str) -> (str, bool):
@@ -88,7 +103,10 @@ class BaseEval:
         assert hasattr(self.llm.tokenizer, 'chat_template'), 'Please use an LLM with a chat template'
         prefix =  [
                 {'role': 'system', 'content': self.system_prompt_pairwise},
-                {'role': 'user', 'content': eval(self.prompt_pairwise.user).replace(':\ ', ': ')}
+                {'role': 'user', 'content': self.prompt_pairwise.user.format(question=question, 
+                                                                             answer=answer, 
+                                                                             prediction_1=prediction_1, 
+                                                                             prediction_2=prediction_2)}
             ]
         return self.llm.tokenizer.apply_chat_template(prefix,  add_generation_prompt=True, tokenize=False), switch
         

@@ -1,4 +1,4 @@
 system: "你是一名乐于助人的助手。你的任务是从提供的文档中提取相关信息，并尽可能简短地回答问题。请用简体中文回复。"
-user: f"Background:\n{docs}\n\nQuestion:\ {question}"
+user: "Background:\n{docs}\n\nQuestion: {question}"
 system_without_docs: "你是一个乐于助人的助手。请尽可能简短地回答问题。请用简体中文回复。"
-user_without_docs: f"Question:\ {question}"
+user_without_docs: "Question: {question}"

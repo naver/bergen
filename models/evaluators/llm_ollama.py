@@ -4,16 +4,16 @@ Copyright (c) 2024-present NAVER Corp.
 CC BY-NC-SA 4.0 license
 '''
 
-from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 from tqdm import tqdm
 import torch
-import re
 import numpy as np
-from langchain_community.llms import Ollama
 import ollama
-from langchain_core.prompts import ChatPromptTemplate
 import omegaconf
+
+from langchain_community.llms import Ollama
+from langchain_core.prompts import ChatPromptTemplate
 from models.evaluators.utils import *
+
 
 class OllamaEval:
     """
@@ -31,22 +31,21 @@ class OllamaEval:
         self.rubrik_section = ", ".join(["{{"+opt+"}}" for opt in self.options])
 
         #self.rubrik_section = "\n - ".join(sorted([f"{opt} answer" for opt in self.options]))
-        self.system_prompt = eval(self.prompt.system)
+        self.system_prompt = self.prompt.system.format(rubrik_section=self.rubrik_section)
         self.output_values = torch.tensor([self.options[opt] for opt in sorted(self.options)]).float()
         self.model_name = model_name
-        self.model = Ollama(model=model_name, base_url=f"{basic_url}", temperature=0, system=eval(self.prompt.system))
+        self.model = Ollama(model=model_name, base_url=f"{basic_url}", temperature=0, system=self.system_prompt)
        
 
     def create_instruction(self,sample):
         answer = ", ".join(sample['reference']).replace("{", "").replace("}","")
-        question=sample['question'].replace("{", "").replace("}","")
-        #need to remove "{}"
-        prediction=sample['candidate'].replace("{", "").replace("}","")
+        question = sample['question'].replace("{", "").replace("}","")
+        prediction = sample['candidate'].replace("{", "").replace("}","")
         template = ChatPromptTemplate.from_messages([
-            ("user", eval(self.prompt.user)),
+            ("user", self.prompt.user),
             ("ai", ' Response: '),
         ])
-        return template.invoke({'answer':answer, 'question':question, 'prediction':prediction, 'self.rubrik_section':self.rubrik_section})
+        return template.invoke({'answer': answer, 'question': question, 'prediction': prediction, 'rubrik_section': self.rubrik_section})
 
    
 
