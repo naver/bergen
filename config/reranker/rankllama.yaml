@@ -1,5 +1,5 @@
 init_args: 
   _target_: models.rerankers.crossencoder.CrossEncoder
-  model_name: "BAAI/bge-reranker-large"
+  model_name: "castorini/rankllama-v1-7b-lora-passage"
   max_len: 256
-batch_size: 256
+batch_size: 32
