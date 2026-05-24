@@ -17,7 +17,7 @@ Non-neural metrics will be calculated automatically. Neural metrics such as `BEM
 By default `evaluate.py` will scan all folders in `experiments/` and evaluate them sequentially. To evaluate a single folder pass the folder using `--folder`. To avoid running out of memory either run `BEM` using `--bem` or run `LLM` using `--llm` . A csv file will automatically be saved to `results/` containing the table in `csv` format.
 
 When using `--llm` you have a choice on how you transform LLM predictions in the final score:
-- directly check in the generated answer for the expepected label occurence (default Yes/No), and assign corresponding score (default 1/0), when no expected label is found, or more than one expected label is matched, we assign score -100 to the corresponding sample, such samples are excluded from the mean score computation
+- directly check in the generated answer for the expected label occurrence (default Yes/No), and assign corresponding score (default 1/0), when no expected label is found, or more than one expected label is matched, we assign score -100 to the corresponding sample, such samples are excluded from the mean score computation
 - rely on the logits assigned to the first token (not available with vllm generators): get values corresponding to the expected labels, normalize them to 1 (get probability distribution across possible labels `p(label)`); final score would correspond to Inline equation: $\sum_{label} score(label)*p(label)$ 
 The choice of score interpretation is done via `use_logits` parameter specified at evaluation config file. Default value is set to `True` (corresponding to the second option)
 
