@@ -109,7 +109,7 @@ class Generator(ABC):
                         label_start_index = len(self.tokenizer.apply_chat_template(messages, tokenize=True, add_generation_prompt=True, add_special_tokens=False))
                         messages.append({"role": "assistant", "content": label})
                     
-                    prompt = self.tokenizer.apply_chat_template(messages, add_generation_prompt=add_generation_prompt, tokenize=False)
+                    prompt = self.tokenizer.apply_chat_template(messages, add_generation_prompt=add_generation_prompt, tokenize=False, enable_thinking=False)
 
                 except TemplateError as e:
                     if "System role not supported" in str(e):
@@ -120,7 +120,7 @@ class Generator(ABC):
                             label_start_index = len(self.tokenizer.apply_chat_template(messages, tokenize=True, add_generation_prompt=True, add_special_tokens=False))
                             messages.append({"role": "assistant", "content": label})
 
-                        prompt = self.tokenizer.apply_chat_template(messages,  add_generation_prompt=add_generation_prompt, tokenize=False)
+                        prompt = self.tokenizer.apply_chat_template(messages,  add_generation_prompt=add_generation_prompt, tokenize=False, enable_thinking=False)
                     else:
                         raise e
             

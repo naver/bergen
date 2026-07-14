@@ -1,0 +1,9 @@
+init_args:
+    _target_: models.generators.llm_pisco.LLMPisco
+    model_name: null            # PISCO checkpoint path (set on CLI: generator.init_args.model_name=...)
+    batch_size: 16
+    max_new_tokens: 128
+    topk_docs: 5
+    compressor_max_length: 128
+    decoder_max_length: 2048
+    query_dependent: false
